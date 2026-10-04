@@ -1,0 +1,99 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "./styles/shadow-properties.css";
+
+@source "../components";
+@source "../entrypoints";
+
+@custom-variant dark (&:where(.bili-dark, .bili-dark *));
+
+@theme {
+  --color-background: #ffffff;
+  --color-foreground: #202024;
+  --color-card: #ffffff;
+  --color-card-foreground: #202024;
+  --color-popover: #ffffff;
+  --color-popover-foreground: #202024;
+  --color-primary: #c93669;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f6f7f9;
+  --color-secondary-foreground: #202024;
+  --color-muted: #f6f7f9;
+  --color-muted-foreground: #686873;
+  --color-accent: #fcecf2;
+  --color-accent-foreground: #c93669;
+  --color-destructive: #b93839;
+  --color-success: #237c55;
+  --color-border: #e4e4e9;
+  --color-input: #dedee5;
+  --color-ring: #c93669;
+  --color-sidebar: #f6f7f9;
+  --color-sidebar-foreground: #202024;
+  --color-sidebar-accent: #fcecf2;
+  --color-sidebar-accent-foreground: #c93669;
+  --color-sidebar-border: #e4e4e9;
+  --color-sidebar-ring: #c93669;
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-xl: 12px;
+  --font-sans:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+    "Microsoft YaHei", sans-serif;
+}
+
+@layer base {
+  :root,
+  :host {
+    font-family: var(--font-sans);
+    font-size: 16px;
+    color-scheme: light;
+    color: var(--color-foreground);
+    line-height: 1.5;
+    text-align: left;
+  }
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply m-0 bg-background text-foreground;
+  }
+  button:not(:disabled),
+  summary,
+  select:not(:disabled) {
+    cursor: pointer;
+  }
+  button,
+  a,
+  summary {
+    touch-action: manipulation;
+  }
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: var(--color-primary);
+  }
+  select,
+  textarea {
+    @apply rounded-md border border-input bg-background text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50;
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-ring);
+    outline-offset: 3px;
+  }
+}
+
+@utility bili-font {
+  @apply font-sans text-sm text-foreground;
+}
+@utility bili-primary-button {
+  @apply inline-flex items-center justify-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

@@ -1,0 +1,12 @@
+overrides:
+  esbuild: ^0.28.2
+
+allowBuilds:
+  esbuild: true
+  sharp: true
+  spawn-sync: true
+  unrs-resolver: true
+
+ignoreWorkspaceRootCheck: true
+minimumReleaseAge: 0
+pmOnFail: warn

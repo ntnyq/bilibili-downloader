@@ -1,0 +1,90 @@
+export class MediaNetworkError extends Error {
+  override name = 'MediaNetworkError'
+}
+
+/**
+ * Enforce the shared input budget even when the CDN omits Content-Length.
+ */
+export async function fetchMedia(
+  urls: string[],
+  signal: AbortSignal,
+  remainingBytes: number,
+  onProgress: (received: number) => void,
+): Promise<Uint8Array<ArrayBuffer>> {
+  let lastError: unknown
+  for (const url of urls) {
+    signal.throwIfAborted()
+    const controller = new AbortController()
+    let timeout: ReturnType<typeof setTimeout> | undefined
+    const resetTimeout = () => {
+      clearTimeout(timeout)
+      timeout = setTimeout(
+        () => controller.abort(new Error('下载连接超时。')),
+        30000,
+      )
+    }
+    try {
+      onProgress(0)
+      resetTimeout()
+      const response = await fetch(url, {
+        credentials: 'omit',
+        signal: AbortSignal.any([signal, controller.signal]),
+      })
+      if (!response.ok || !response.body) {
+        throw new MediaNetworkError(`素材服务器返回 HTTP ${response.status}。`)
+      }
+      // Fetch decodes compressed bodies; Content-Length describes wire bytes.
+      const encoding = response.headers
+        .get('content-encoding')
+        ?.trim()
+        .toLowerCase()
+      const declaredBytes =
+        !encoding || encoding === 'identity'
+          ? Number(response.headers.get('content-length')) || 0
+          : 0
+      if (declaredBytes > remainingBytes) {
+        throw new RangeError(
+          `素材超过剩余 ${Math.floor(remainingBytes / 1024 / 1024)} MB 的大小限制，已停止下载。`,
+        )
+      }
+      const reader = response.body.getReader()
+      const chunks: Uint8Array<ArrayBuffer>[] = []
+      let received = 0
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) {
+          break
+        }
+        received += value.byteLength
+        if (received > remainingBytes) {
+          throw new RangeError('素材超过剩余大小限制，已停止下载。')
+        }
+        chunks.push(value)
+        onProgress(received)
+        resetTimeout()
+      }
+      if (!received || (declaredBytes > 0 && received !== declaredBytes)) {
+        throw new MediaNetworkError('素材传输不完整。')
+      }
+      const bytes = new Uint8Array(received)
+      let offset = 0
+      for (const chunk of chunks) {
+        bytes.set(chunk, offset)
+        offset += chunk.length
+      }
+      return bytes
+    } catch (error) {
+      signal.throwIfAborted()
+      if (error instanceof RangeError) {
+        throw error
+      }
+      lastError = error
+    } finally {
+      clearTimeout(timeout)
+      controller.abort()
+    }
+  }
+  throw new MediaNetworkError('所有素材线路均下载失败，请稍后重试。', {
+    cause: lastError,
+  })
+}

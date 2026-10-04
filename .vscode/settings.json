@@ -1,0 +1,52 @@
+{
+  "oxc.enable": true,
+  "eslint.enable": true,
+  "prettier.enable": false,
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "oxc.oxc-vscode",
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
+    "source.organizeImports": "never",
+    "source.sortImports": "never"
+  },
+  "eslint.validate": [
+    "vue",
+    "xml",
+    "yaml",
+    "toml",
+    "json",
+    "jsonc",
+    "json5",
+    "markdown",
+    "javascript",
+    "typescript",
+    "javascriptreact",
+    "typescriptreact"
+  ],
+  "js/ts.experimental.useTsgo": false,
+  "cSpell.allowCompoundWords": true,
+  "cSpell.words": [
+    "bilibili",
+    "bumpp",
+    "bvid",
+    "changelogithub",
+    "clsx",
+    "cmdk",
+    "dtrace",
+    "esbuild",
+    "iconify",
+    "IDBP",
+    "nocheck",
+    "nuxt",
+    "ofetch",
+    "oxfmt",
+    "oxfmtrc",
+    "oxlint",
+    "pinia",
+    "shadcn",
+    "unplugin",
+    "unrs",
+    "VITE",
+    "vueuse"
+  ]
+}

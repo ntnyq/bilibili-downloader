@@ -1,0 +1,8 @@
+# Extension logo
+
+Generated with the built-in image generation tool. The transparent source is
+`icon.png`; WXT auto-icons generates the 16, 32, 48, and 128 px extension icons.
+
+## Prompt
+
+Use case: logo-brand. Create a refined, polished browser-extension logo for a Bilibili downloader. Design a charming detailed Bilibili little television mascot, front facing: pink rounded rectangular television casing with two angled antennae, a clearly inset white screen with a thick pink frame, two characteristic short diagonal dark-pink eyes and a tiny cheerful w-shaped mouth, a narrow right-side control strip with two small circular buttons and two simple speaker slots, two small feet. Put a separate prominent download badge overlapping the LOWER RIGHT CORNER of the television: a vivid Bilibili cyan-blue circular badge, containing a crisp thick white down arrow with a small white tray beneath. Add a clean white separation ring around this badge so it reads clearly over the pink casing. The TV face must remain visible and unobstructed; the download symbol belongs only in this bottom-right badge, never in the middle of the screen. Balance richer character details with bold clean shapes that still work as a browser extension icon. High-quality flat vector-like logo, smooth precise curves, charming expressive face, saturated pink and cyan blue, consistent rounded shapes, no textures, no gradients, no shadows, no 3D. Single icon centered on a square canvas with roughly 8 percent safe padding around the outer silhouette. Genuinely transparent background outside the mark. No text, no letters, no watermark, no mockup, no presentation sheet.
