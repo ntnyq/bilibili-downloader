@@ -17,6 +17,7 @@ export default defineConfig({
   outDir: 'dist',
   autoIcons: {
     baseIconPath: 'assets/images/icon.png',
+    developmentIndicator: false,
   },
 
   hooks: {

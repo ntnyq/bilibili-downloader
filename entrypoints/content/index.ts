@@ -1,10 +1,11 @@
 import '~/assets/tailwind.css'
 import { createApp, shallowRef } from 'vue'
 import { createShadowRootUi, defineContentScript } from '#imports'
+import { DOWNLOAD_PAGE_MATCHES } from '~/constants/contentScript'
 import App from './App.vue'
 
 export default defineContentScript({
-  matches: ['https://www.bilibili.com/video/*'],
+  matches: DOWNLOAD_PAGE_MATCHES,
   runAt: 'document_idle',
   cssInjectionMode: 'ui',
   async main(ctx) {
@@ -16,8 +17,10 @@ export default defineContentScript({
     const ui = await createShadowRootUi(ctx, {
       name: 'bilibili-downloader',
       position: 'inline',
+      // Wait for Bilibili to hydrate its SSR tree before inserting a sibling.
+      // The player precedes the toolbar and is not a safe fallback anchor.
       anchor:
-        '#arc_toolbar_report, .video-toolbar-container, .video-toolbar, #bilibili-player',
+        '#app:not([data-server-rendered]) :is(#arc_toolbar_report, .video-toolbar-container, .video-toolbar)',
       append: 'after',
       isolateEvents: true,
       onMount(container) {

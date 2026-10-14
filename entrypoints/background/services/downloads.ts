@@ -7,6 +7,7 @@ import { DOWNLOAD_LIBRARY_STORAGE_KEY } from '~/types/downloadHistory'
 import { BilibiliApiError, getVideoInfo } from '~/utils/bilibili/api'
 import { getBatchPage } from '~/utils/bilibili/batch'
 import { MEDIA_DOMAINS } from '~/utils/bilibili/streams'
+import { createVideoInfoCache } from '~/utils/bilibili/videoInfoCache'
 import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/assets'
 import { createBatchJobs } from '~/utils/downloads/batch'
 import {
@@ -55,6 +56,7 @@ import type { BatchAddResult } from '~/types/batchSession'
 import type { DownloadJob, VideoInfo } from '~/types/download'
 
 const RUNNER_STORAGE_KEY = 'downloadRunnerTabId'
+const getCachedVideoInfo = createVideoInfoCache(getVideoInfo)
 let queueLock = Promise.resolve<unknown>(undefined)
 let headerRules: Promise<void> | undefined
 let batchLock = Promise.resolve<unknown>(undefined)
@@ -461,7 +463,7 @@ async function handleRequest(
   }
   if (message.type === 'video.get') {
     await ensureHeaders()
-    return getVideoInfo(message.videoId)
+    return getCachedVideoInfo(message.videoId)
   }
   if (message.type === 'queue.add' || message.type === 'queue.bundle.add') {
     await ensureHeaders()
