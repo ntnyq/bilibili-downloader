@@ -19,11 +19,11 @@ Chromium 使用 `--browser chromium`。Firefox 使用扩展清单
 `browser_specific_settings.gecko.id` 的固定 ID：
 
 ```sh
-python3 scripts/install-native-host.py --browser firefox --extension-id bilibili-video-downloader@ntnyq
+python3 scripts/install-native-host.py --browser firefox --extension-id bilibili-downloader@ntnyq
 ```
 
 请以实际构建清单的 ID 为准，不要使用 Firefox 为网页分配的临时 UUID。
-若重新加载的 Chromium 扩展 ID 改变，重新运行安装命令以更新精确的允许列表。
+若扩展 ID 因重新加载或更名而改变，重新运行对应浏览器的安装命令以更新精确的允许列表。
 
 默认输出目录为用户的 `Downloads`。可通过 `--output-dir` 设置其他目录，或通过
 `--ffmpeg` 指定 FFmpeg 的绝对路径。安装器记录当前 Python 和 FFmpeg 的绝对路径，

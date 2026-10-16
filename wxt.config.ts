@@ -71,14 +71,14 @@ export default defineConfig({
   manifest: {
     default_locale: 'en',
     description: '__MSG_extensionDescription__',
-    homepage_url: 'https://github.com/ntnyq/bilibili-video-downloader',
+    homepage_url: 'https://github.com/ntnyq/bilibili-downloader',
     minimum_chrome_version: '120',
     name: '__MSG_extensionName__',
     optional_permissions: ['notifications', 'nativeMessaging'],
     browser_specific_settings: {
       gecko: {
         data_collection_permissions: { required: ['none'] },
-        id: 'bilibili-video-downloader@ntnyq',
+        id: 'bilibili-downloader@ntnyq',
         strict_min_version: '142.0',
       },
     },

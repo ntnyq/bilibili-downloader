@@ -82,7 +82,7 @@ const {
         <p class="mt-[8px] text-[12px] text-muted-foreground leading-[20px]">
           从
           <a
-            href="https://github.com/ntnyq/bilibili-video-downloader"
+            href="https://github.com/ntnyq/bilibili-downloader"
             target="_blank"
             rel="noreferrer"
             class="text-primary underline outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
