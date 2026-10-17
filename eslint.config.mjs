@@ -6,4 +6,7 @@ export default defineESLintConfig({
   oxfmt: true,
   prettier: false,
   svgo: true,
+  vue: {
+    vuePerfectionist: {},
+  },
 })

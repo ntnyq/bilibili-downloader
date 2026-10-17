@@ -47,6 +47,7 @@ test('old persisted jobs migrate to best; settings patches never reset unrelated
   assert.equal(downloadJobSchema.parse(legacy).qualityPreference, 'best')
   assert.deepEqual(downloadSettingsSchema.parse({}), {
     quality: 'best',
+    doubleClickKind: 'video',
     isPaused: false,
     filenameTemplate: DEFAULT_FILENAME_TEMPLATE,
     folderMode: 'flat',

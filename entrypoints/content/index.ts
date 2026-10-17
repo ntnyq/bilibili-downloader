@@ -17,11 +17,20 @@ export default defineContentScript({
     const ui = await createShadowRootUi(ctx, {
       name: 'bilibili-downloader',
       position: 'inline',
-      // Wait for Bilibili to hydrate its SSR tree before inserting a sibling.
-      // The player precedes the toolbar and is not a safe fallback anchor.
+      css: `:host {
+        display: inline-flex !important;
+        position: relative !important;
+        z-index: 1000 !important;
+        vertical-align: middle !important;
+        margin-left: 12px !important;
+      }`,
+      // Wait for Bilibili to hydrate its SSR tree before adding the action.
       anchor:
         '#app:not([data-server-rendered]) :is(#arc_toolbar_report, .video-toolbar-container, .video-toolbar)',
-      append: 'after',
+      append(anchor, host) {
+        const actions = anchor.querySelector('.video-toolbar-right') || anchor
+        actions.append(host)
+      },
       isolateEvents: true,
       onMount(container) {
         const app = createApp(App, { getUrl: () => url.value })

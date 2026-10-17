@@ -23,7 +23,7 @@ const {
   save,
   resetDefaults,
 } = useDownloadFileSettings()
-const templateField = useTemplateRef<HTMLLabelElement>('templateField')
+const templateFieldRef = useTemplateRef<HTMLLabelElement>('templateFieldRef')
 const hasTemplateFocus = shallowRef(false)
 const insertionError = shallowRef('')
 const previewDirectory = computed(() =>
@@ -44,7 +44,7 @@ const VARIABLES = [
 ] as const
 
 async function insertVariable(token: string) {
-  const input = templateField.value?.querySelector('input')
+  const input = templateFieldRef.value?.querySelector('input')
   if (!input || !isReady.value || isSaving.value) {
     return
   }
@@ -111,7 +111,7 @@ watch(filenameTemplate, () => {
           </p>
         </div>
         <label
-          ref="templateField"
+          ref="templateFieldRef"
           class="block"
         >
           <span

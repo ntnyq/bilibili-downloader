@@ -1,7 +1,9 @@
 <script lang="ts" setup>
 import { CheckIcon } from '@lucide/vue'
 
-defineProps<{ step: number }>()
+defineProps<{
+  step: number
+}>()
 const steps = ['选择来源', '确认视频', '加入队列']
 </script>
 

@@ -9,7 +9,9 @@ import {
 import { canPauseJob } from '~/utils/downloads/taskControl'
 import type { DownloadJob } from '~/types/download'
 
-const props = defineProps<{ job: DownloadJob }>()
+const props = defineProps<{
+  job: DownloadJob
+}>()
 const emit = defineEmits<{
   cancel: [id: string]
   retry: [id: string]

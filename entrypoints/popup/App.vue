@@ -3,6 +3,7 @@ import { browser } from '#imports'
 
 const url = shallowRef('')
 const pageError = shallowRef('')
+
 onMounted(async () => {
   try {
     const [tab] = await browser.tabs.query({

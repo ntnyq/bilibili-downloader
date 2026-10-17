@@ -19,7 +19,10 @@ const props = defineProps<
 
 const emit = defineEmits<DropdownMenuRadioItemEmits>()
 
-defineSlots<{ default: () => VNode[]; 'indicator-icon': () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+  'indicator-icon': () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 

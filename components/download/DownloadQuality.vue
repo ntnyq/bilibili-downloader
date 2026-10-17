@@ -11,7 +11,10 @@ import {
 import { QUALITY_LABELS } from '~/utils/downloads/quality'
 import type { QualityPreference } from '~/types/download'
 
-defineProps<{ disabled?: boolean; variant?: 'select' | 'cards' }>()
+defineProps<{
+  disabled?: boolean
+  variant?: 'select' | 'cards'
+}>()
 const quality = defineModel<QualityPreference>({ required: true })
 const options: QualityPreference[] = ['best', '1080', '720', '480']
 const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {

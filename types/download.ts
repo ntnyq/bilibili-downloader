@@ -39,6 +39,7 @@ export const filenameTemplateSchema = z
   )
 export const downloadSettingsSchema = z.object({
   quality: qualityPreferenceSchema.default('best'),
+  doubleClickKind: downloadKindSchema.default('video'),
   isPaused: z.boolean().default(false),
   filenameTemplate: filenameTemplateSchema.default(DEFAULT_FILENAME_TEMPLATE),
   folderMode: folderModeSchema.default('flat'),
@@ -46,6 +47,7 @@ export const downloadSettingsSchema = z.object({
 })
 export const downloadSettingsPatchSchema = z.object({
   quality: qualityPreferenceSchema.optional(),
+  doubleClickKind: downloadKindSchema.optional(),
   isPaused: z.boolean().optional(),
   filenameTemplate: filenameTemplateSchema.optional(),
   folderMode: folderModeSchema.optional(),

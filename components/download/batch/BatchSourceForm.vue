@@ -4,7 +4,10 @@ import { MAX_BATCH_ITEMS } from '~/types/batch'
 import { MAX_BATCH_DRAFT_LENGTH } from '~/types/batchSession'
 import type { BatchSourceKind } from '~/types/batchSession'
 
-defineProps<{ disabled: boolean; loading: boolean }>()
+defineProps<{
+  disabled: boolean
+  loading: boolean
+}>()
 const emit = defineEmits<{
   preview: []
   stop: []
@@ -13,6 +16,7 @@ const sourceKind = defineModel<BatchSourceKind>('sourceKind', {
   required: true,
 })
 const input = defineModel<string>('input', { required: true })
+
 const sources: {
   kind: BatchSourceKind
   label: string

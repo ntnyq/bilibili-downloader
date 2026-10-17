@@ -9,7 +9,9 @@ const props = defineProps<TabsRootProps & { class?: HTMLAttributes['class'] }>()
 
 const emit = defineEmits<TabsRootEmits>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 const forwarded = useForwardPropsEmits(delegatedProps, emit)

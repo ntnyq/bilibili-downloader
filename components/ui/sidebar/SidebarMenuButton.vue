@@ -12,7 +12,9 @@ const props = withDefaults(defineProps<SidebarMenuButtonProps>(), {
   size: 'default',
 })
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 export interface SidebarMenuButtonProps extends PrimitiveProps {
   variant?: SidebarMenuButtonVariants['variant']

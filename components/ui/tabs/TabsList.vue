@@ -7,7 +7,9 @@ import type { HTMLAttributes, VNode } from 'vue'
 
 const props = defineProps<TabsListProps & { class?: HTMLAttributes['class'] }>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 </script>

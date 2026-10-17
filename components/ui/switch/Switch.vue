@@ -11,7 +11,10 @@ const props = defineProps<
 
 const emit = defineEmits<SwitchRootEmits>()
 
-defineSlots<{ default: () => VNode[]; thumb: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+  thumb: () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 

@@ -2,7 +2,9 @@
 import { useNativeDownload } from '~/composables/useNativeDownload'
 import type { DownloadJob } from '~/types/download'
 
-const props = defineProps<{ job: DownloadJob }>()
+const props = defineProps<{
+  job: DownloadJob
+}>()
 const {
   isExporting,
   error: exportError,

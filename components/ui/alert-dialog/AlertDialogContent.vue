@@ -18,7 +18,10 @@ const emit = defineEmits<AlertDialogContentEmits>()
 defineOptions({
   inheritAttrs: false,
 })
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
+
 const overlayTarget = useOverlayTarget()
 const delegatedProps = reactiveOmit(props, 'class')
 

@@ -9,7 +9,9 @@ const props = defineProps<
   TabsTriggerProps & { class?: HTMLAttributes['class'] }
 >()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 

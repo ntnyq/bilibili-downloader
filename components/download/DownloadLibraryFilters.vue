@@ -5,8 +5,12 @@ import type { VNode } from 'vue'
 import type { DownloadKind } from '~/types/download'
 import type { DownloadHistoryRecord } from '~/types/downloadHistory'
 
-const props = defineProps<{ records: DownloadHistoryRecord[] }>()
-defineSlots<{ actions: () => VNode[] }>()
+const props = defineProps<{
+  records: DownloadHistoryRecord[]
+}>()
+defineSlots<{
+  actions: () => VNode[]
+}>()
 const search = defineModel<string>('search', { required: true })
 const kind = defineModel<DownloadKind | 'all'>('kind', { required: true })
 const kinds = [

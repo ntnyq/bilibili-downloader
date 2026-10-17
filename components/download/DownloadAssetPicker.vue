@@ -20,12 +20,15 @@ import {
 } from '~/utils/downloads/assets'
 import type { DownloadKind, SubtitleLanguage } from '~/types/download'
 
-defineProps<{ disabled?: boolean }>()
+defineProps<{
+  disabled?: boolean
+}>()
 const kind = defineModel<DownloadKind>('kind', { required: true })
 const subtitleLanguage = defineModel<SubtitleLanguage>('subtitleLanguage', {
   required: true,
 })
 const groupId = useId()
+
 const ASSETS = [
   { value: 'video', label: '视频', icon: VideoIcon },
   { value: 'audio', label: '音频', icon: Music2Icon },

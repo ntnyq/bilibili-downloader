@@ -14,9 +14,16 @@ import { useVideoDownload } from '~/composables/useVideoDownload'
 import { DOWNLOAD_KIND_LABELS, jobIdentity } from '~/utils/downloads/assets'
 import { isJobActive } from '~/utils/downloads/model'
 import { QUALITY_LABELS } from '~/utils/downloads/quality'
+import type { VNode } from 'vue'
 
-const props = defineProps<{ url: string; embedded?: boolean }>()
-const optionsUrl = browser.runtime.getURL('/options.html')
+const props = defineProps<{
+  url: string
+  embedded?: boolean
+}>()
+defineSlots<{
+  'header-actions'?: () => VNode[]
+}>()
+
 const {
   video,
   currentPage,
@@ -48,6 +55,7 @@ const {
   openManager,
 } = useDownloadQueue()
 const { bundles } = useDownloadBundle(jobs)
+const optionsUrl = browser.runtime.getURL('/options.html')
 const latestBundle = computed(() =>
   bundles.value.find(bundle => bundle.bvid === video.value?.bvid),
 )
@@ -141,15 +149,18 @@ const downloadLabel = computed(() => {
         <ExtensionLogo class="size-8" />
         B 站下载器
       </div>
-      <Button
-        :href="optionsUrl"
-        as="a"
-        target="_blank"
-        variant="ghost"
-        size="icon-sm"
-        aria-label="设置与说明"
-        ><Settings2Icon class="size-4"
-      /></Button>
+      <div class="flex items-center gap-1">
+        <Button
+          :href="optionsUrl"
+          as="a"
+          target="_blank"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="设置与说明"
+          ><Settings2Icon class="size-4"
+        /></Button>
+        <slot name="header-actions" />
+      </div>
     </header>
     <div class="min-h-0 flex-1 overflow-y-auto px-4 py-2.5">
       <div
@@ -183,6 +194,8 @@ const downloadLabel = computed(() => {
         v-else-if="video && currentPage"
         :class="
           embedded
+          && isMultipart
+          && hasPageAssets
           && '@min-[600px]:grid @min-[600px]:grid-cols-2 @min-[600px]:gap-x-6'
         "
       >
@@ -244,6 +257,8 @@ const downloadLabel = computed(() => {
         <div
           :class="
             embedded
+            && isMultipart
+            && hasPageAssets
             && '@min-[600px]:col-start-2 @min-[600px]:row-start-1 @min-[600px]:row-span-2'
           "
         >

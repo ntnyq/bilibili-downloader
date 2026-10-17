@@ -33,15 +33,16 @@ const {
   error: settingsError,
   updateSettings,
 } = useDownloadSettings()
-const filter = shallowRef<'all' | 'active' | 'paused' | 'completed' | 'failed'>(
-  'all',
-)
 const {
   isExporting,
   error: exportError,
   notice: exportNotice,
   downloadHistory,
 } = useDownloadHistory()
+
+const filter = shallowRef<'all' | 'active' | 'paused' | 'completed' | 'failed'>(
+  'all',
+)
 const search = shallowRef('')
 const failedJobs = computed(() =>
   jobs.value.filter(job => job.status === 'failed'),
@@ -78,15 +79,31 @@ const visibleJobs = computed(() =>
     ),
 )
 const filters = computed(() => [
-  { id: 'all' as const, label: '全部任务', count: jobs.value.length },
-  { id: 'active' as const, label: '待处理', count: activeJobs.value.length },
-  { id: 'paused' as const, label: '已暂停', count: pausedJobs.value.length },
+  {
+    id: 'all' as const,
+    label: '全部任务',
+    count: jobs.value.length,
+  },
+  {
+    id: 'active' as const,
+    label: '待处理',
+    count: activeJobs.value.length,
+  },
+  {
+    id: 'paused' as const,
+    label: '已暂停',
+    count: pausedJobs.value.length,
+  },
   {
     id: 'completed' as const,
     label: '已完成',
     count: completedJobs.value.length,
   },
-  { id: 'failed' as const, label: '失败', count: failedJobs.value.length },
+  {
+    id: 'failed' as const,
+    label: '失败',
+    count: failedJobs.value.length,
+  },
 ])
 
 async function showFile(id?: number) {

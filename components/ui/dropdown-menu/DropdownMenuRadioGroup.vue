@@ -10,7 +10,9 @@ const props = defineProps<DropdownMenuRadioGroupProps>()
 
 const emit = defineEmits<DropdownMenuRadioGroupEmits>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const forwarded = useForwardPropsEmits(props, emit)
 </script>

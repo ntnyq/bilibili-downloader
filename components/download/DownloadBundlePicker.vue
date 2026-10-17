@@ -19,32 +19,40 @@ import type {
   SubtitleLanguage,
 } from '~/types/download'
 
-const props = defineProps<{ disabled?: boolean; folderMode: FolderMode }>()
+const props = defineProps<{
+  disabled?: boolean
+  folderMode: FolderMode
+}>()
 
-defineSlots<{ single: () => VNode[] }>()
+defineSlots<{
+  single: () => VNode[]
+}>()
 
 const enabled = defineModel<boolean>('enabled', { required: true })
 const kinds = defineModel<DownloadKind[]>('kinds', { required: true })
 const subtitleLanguage = defineModel<SubtitleLanguage>('subtitleLanguage', {
   required: true,
 })
+
 const downloadMode = computed({
   get: () => (enabled.value ? 'bundle' : 'single'),
   set(value: string | number) {
     enabled.value = value === 'bundle'
   },
 })
+
+const folderHint = computed(() =>
+  getBundleFolderMode(props.folderMode) === 'owner-video'
+    ? 'Bilibili / UP 主 / 视频'
+    : 'Bilibili / 视频',
+)
+
 function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
   kinds.value =
     checked === true
       ? [...kinds.value.filter(item => item !== kind), kind]
       : kinds.value.filter(item => item !== kind)
 }
-const folderHint = computed(() =>
-  getBundleFolderMode(props.folderMode) === 'owner-video'
-    ? 'Bilibili / UP 主 / 视频'
-    : 'Bilibili / 视频',
-)
 </script>
 
 <template>

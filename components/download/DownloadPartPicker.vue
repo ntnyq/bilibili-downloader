@@ -3,7 +3,10 @@ import { SearchIcon, XIcon } from '@lucide/vue'
 import { formatDuration } from '~/utils/downloads/model'
 import type { DownloadMode, VideoPage } from '~/types/download'
 
-const props = defineProps<{ pages: VideoPage[]; currentPage: number }>()
+const props = defineProps<{
+  pages: VideoPage[]
+  currentPage: number
+}>()
 const mode = defineModel<DownloadMode>('mode', { required: true })
 const selectedPages = defineModel<number[]>('selectedPages', { required: true })
 const modes = [

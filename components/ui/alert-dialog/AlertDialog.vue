@@ -7,7 +7,9 @@ const props = defineProps<AlertDialogProps>()
 
 const emit = defineEmits<AlertDialogEmits>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const forwarded = useForwardPropsEmits(props, emit)
 </script>

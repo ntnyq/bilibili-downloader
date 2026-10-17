@@ -18,7 +18,9 @@ const props = withDefaults(
   },
 )
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'inset', 'variant', 'class')
 

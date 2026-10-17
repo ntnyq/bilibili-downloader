@@ -2,8 +2,14 @@
 import { CheckIcon, LoaderCircleIcon } from '@lucide/vue'
 import type { BatchImportRow } from '~/composables/useBatchImport'
 
-const props = defineProps<{ rows: BatchImportRow[]; disabled: boolean }>()
-const emit = defineEmits<{ toggle: [key: string]; toggleAll: [] }>()
+const props = defineProps<{
+  rows: BatchImportRow[]
+  disabled: boolean
+}>()
+const emit = defineEmits<{
+  toggle: [key: string]
+  toggleAll: []
+}>()
 const available = computed(() =>
   props.rows.filter(
     row =>

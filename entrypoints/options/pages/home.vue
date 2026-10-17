@@ -58,6 +58,7 @@ const {
             </AlertDescription></Alert
           >
         </DownloadSettingsSection>
+        <DownloadQuickSettings />
         <DownloadFileSettings />
         <DownloadNotificationSettings />
       </div>

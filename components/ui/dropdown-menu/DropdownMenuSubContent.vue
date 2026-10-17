@@ -14,7 +14,9 @@ const props = defineProps<
 
 const emit = defineEmits<DropdownMenuSubContentEmits>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 

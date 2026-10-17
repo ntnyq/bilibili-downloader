@@ -6,7 +6,9 @@ const props = defineProps<{
   class?: HTMLAttributes['class']
 }>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 </script>
 
 <template>

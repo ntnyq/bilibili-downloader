@@ -5,7 +5,9 @@ import type { VNode } from 'vue'
 
 const props = defineProps<DropdownMenuTriggerProps>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const forwardedProps = useForwardProps(props)
 </script>

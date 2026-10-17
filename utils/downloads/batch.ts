@@ -85,6 +85,7 @@ export function createBatchJobs(
     subtitleLanguage: options.subtitleLanguage,
     settings: {
       quality: options.quality,
+      doubleClickKind: 'video',
       isPaused: false,
       filenameTemplate: options.filenameTemplate,
       folderMode: options.folderMode,

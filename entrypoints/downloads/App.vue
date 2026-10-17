@@ -3,6 +3,7 @@ import { errorMessage } from '~/utils/downloads/model'
 import { startDownloadRunner } from '~/utils/downloads/runner'
 
 const runnerError = shallowRef('')
+
 onMounted(() => {
   startDownloadRunner(message => {
     runnerError.value = message

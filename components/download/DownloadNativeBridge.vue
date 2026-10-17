@@ -2,7 +2,9 @@
 import { useNativeBridge } from '~/composables/useNativeBridge'
 import type { DownloadJob } from '~/types/download'
 
-const props = defineProps<{ job: DownloadJob }>()
+const props = defineProps<{
+  job: DownloadJob
+}>()
 const {
   isRunning,
   status,

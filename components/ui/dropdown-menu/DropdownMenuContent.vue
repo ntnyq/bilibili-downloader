@@ -23,7 +23,9 @@ const emit = defineEmits<DropdownMenuContentEmits>()
 defineOptions({
   inheritAttrs: false,
 })
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 const overlayTarget = useOverlayTarget()
 const delegatedProps = reactiveOmit(props, 'class')
 

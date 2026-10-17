@@ -15,7 +15,10 @@ import {
 import { QUALITY_LABELS } from '~/utils/downloads/quality'
 import type { DownloadHistoryRecord } from '~/types/downloadHistory'
 
-const props = defineProps<{ record: DownloadHistoryRecord; isBusy: boolean }>()
+const props = defineProps<{
+  record: DownloadHistoryRecord
+  isBusy: boolean
+}>()
 const emit = defineEmits<{
   requeue: [identity: string]
   remove: [identity: string]

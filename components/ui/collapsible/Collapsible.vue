@@ -7,7 +7,9 @@ const props = defineProps<CollapsibleRootProps>()
 
 const emit = defineEmits<CollapsibleRootEmits>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const forwarded = useForwardPropsEmits(props, emit)
 </script>

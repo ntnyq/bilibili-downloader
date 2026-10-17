@@ -9,7 +9,9 @@ const props = defineProps<{
   variant?: AlertVariants['variant']
 }>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 </script>
 
 <template>

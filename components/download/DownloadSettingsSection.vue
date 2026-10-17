@@ -17,7 +17,10 @@ interface Props {
   autoSave?: boolean
 }
 defineProps<Props>()
-defineSlots<{ icon: () => VNode[]; default: () => VNode[] }>()
+defineSlots<{
+  icon: () => VNode[]
+  default: () => VNode[]
+}>()
 const titleId = useId()
 </script>
 

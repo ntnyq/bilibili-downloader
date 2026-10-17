@@ -19,7 +19,10 @@ const props = defineProps<
 
 const emit = defineEmits<DropdownMenuCheckboxItemEmits>()
 
-defineSlots<{ default: () => VNode[]; 'indicator-icon': () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+  'indicator-icon': () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 

@@ -10,7 +10,9 @@ const props = defineProps<
   ScrollAreaRootProps & { class?: HTMLAttributes['class'] }
 >()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 </script>

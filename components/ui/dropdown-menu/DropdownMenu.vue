@@ -7,7 +7,9 @@ const props = defineProps<DropdownMenuRootProps>()
 
 const emit = defineEmits<DropdownMenuRootEmits>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 
 const forwarded = useForwardPropsEmits(props, emit)
 </script>

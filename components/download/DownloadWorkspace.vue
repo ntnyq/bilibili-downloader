@@ -13,7 +13,10 @@ import {
 import { useDownloadQueue } from '~/composables/useDownloadQueue'
 import DownloadBatchImport from './batch/DownloadBatchImport.vue'
 
-defineProps<{ runnerError: string }>()
+defineProps<{
+  runnerError: string
+}>()
+const { jobs } = useDownloadQueue()
 const sections = [
   {
     id: 'queue',
@@ -51,7 +54,6 @@ const currentSection = computed(
   () =>
     sections.find(section => section.id === activeSection.value) || sections[0],
 )
-const { jobs } = useDownloadQueue()
 </script>
 
 <template>

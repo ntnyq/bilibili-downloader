@@ -5,7 +5,9 @@ import type { VNode } from 'vue'
 
 const props = defineProps<CollapsibleContentProps>()
 
-defineSlots<{ default: () => VNode[] }>()
+defineSlots<{
+  default: () => VNode[]
+}>()
 </script>
 
 <template>

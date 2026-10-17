@@ -2,7 +2,9 @@
 import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/assets'
 import type { DownloadBundleSummary } from '~/types/downloadBundle'
 
-const props = defineProps<{ bundle: DownloadBundleSummary }>()
+const props = defineProps<{
+  bundle: DownloadBundleSummary
+}>()
 const emit = defineEmits<{
   retry: [id: string]
   cancel: [id: string]
