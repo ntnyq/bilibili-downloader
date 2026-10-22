@@ -3,9 +3,11 @@ import {
   getMediaCacheStats,
 } from '~/utils/downloads/mediaCache'
 import { errorMessage } from '~/utils/downloads/model'
+import { getAvailableMediaStorageBytes } from '~/utils/downloads/storageBudget'
 
 export function useDownloadCache() {
   const stats = shallowRef<Awaited<ReturnType<typeof getMediaCacheStats>>>()
+  const availableBytes = shallowRef<number | null>(null)
   const isRefreshing = shallowRef(false)
   const isClearing = shallowRef(false)
   const refreshError = shallowRef('')
@@ -22,9 +24,13 @@ export function useDownloadCache() {
     isRefreshing.value = true
     const currentRevision = revision
     try {
-      const value = await getMediaCacheStats()
+      const [value, available] = await Promise.all([
+        getMediaCacheStats(),
+        getAvailableMediaStorageBytes(),
+      ])
       if (!isDisposed && revision === currentRevision) {
         stats.value = value
+        availableBytes.value = available
         refreshError.value = ''
       }
     } catch (error) {
@@ -81,6 +87,7 @@ export function useDownloadCache() {
 
   return {
     stats: readonly(stats),
+    availableBytes: readonly(availableBytes),
     isRefreshing: readonly(isRefreshing),
     isClearing: readonly(isClearing),
     error: computed(() => actionError.value || refreshError.value),

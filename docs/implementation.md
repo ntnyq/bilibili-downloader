@@ -55,7 +55,7 @@ flowchart LR
   D -->|storage.onChanged| A
 ```
 
-**本版采用下载中心标签页承担长任务。** Chromium 的 service worker 随时可能挂起；独立扩展页面可以持有 Worker、缓存文件和 Blob，并与 Firefox 共用实现，无需 Chrome 专属的 offscreen API。首次点击下载会创建不抢焦点的后台标签页。用户需要保持下载中心打开，可以关闭原视频页面；关闭下载中心会中断任务，重新打开后可以重试。当前音视频流程会保留 OPFS 已提交的块，并在重试校验通过后续传；下面最初流程中的全量输入内存下载已由磁盘缓存与 WORKERFS 挂载替代。
+**本版采用下载中心标签页承担长任务。** Chromium 的 service worker 随时可能挂起；独立扩展页面可以持有 Worker、缓存文件和 Blob，并与 Firefox 共用实现，无需 Chrome 专属的 offscreen API。首次点击下载会创建不抢焦点的后台标签页。用户需要保持下载中心打开，可以关闭原视频页面；关闭下载中心会中断任务，重新打开后可以重试。当前音视频流程会保留 OPFS 已提交的块，并在重试校验通过后续传；下面最初流程中的全量输入内存下载已由磁盘缓存替代；DASH、progressive 和 AAC 的输出也已改为磁盘封装。
 
 ### 组件与状态边界
 
@@ -116,26 +116,36 @@ failed / cancelled → queued（用户重试）
 - 使用 Web Locks 选出一个下载中心执行队列，即使用户手动打开多个下载中心也不会并行合并。
 - 每次领取任务生成新的 `runId`，防止上一次执行的延迟进度覆盖已经重试的任务。
 - 最多排队 1000 个任务，保留最近 100 条终态记录；清除记录不会删除磁盘文件。
-- `AbortController` 取消网络读取，`FFmpeg.terminate()` 终止合并，保存中取消会通知浏览器下载 API。
+- `AbortController` 取消网络读取，终止专用 Worker 取消合并，保存中取消会通知浏览器下载 API。
 - 关闭下载中心会把未完成任务标为失败；刷新时恢复处理中任务为失败，并保留排队项。
 - 下载地址过期：先尝试备用 CDN，所有线路失败后重新获取一次播放地址。每条连接连续 30 秒无数据则超时；不会无限重试风控错误。
-- 不实现断点续传；重试从当前分 P 开头下载。
+- 有效 Range 响应持续向前时不限制请求次数；无效表示最多恢复一次，避免无进展循环。强 ETag 和缓存校验决定是否可安全续传。
 
 ## MP4 合并与资源释放
 
-单线程 `@ffmpeg/core` 随扩展打包到 `ffmpeg/`，无远程可执行脚本，不要求 SharedArrayBuffer / 页面跨源隔离。WXT 的 `build:publicAssets` 负责复制核心、WASM 和 Worker 文件，`prepare:publicPaths` 提供路径类型。
+常见 DASH MP4 视频与独立 AAC 音轨使用 Mediabunny 在专用 Worker 中无损封装，不解码、不重新编码，也不要求设备支持对应 WebCodecs 解码器。每个输入由 OPFS 文件组成的 Blob 提供，按需读取，单源读取缓存为 4 MiB。
 
-DASH 合并等价于：
+`remuxMedia` 只保留各轨道的下一个编码数据包，按轨道头部时间戳交错供给输出；每条轨道内部始终遵循解码顺序，保留 B 帧的显示时间戳和音视频偏移，避免先喂完整视频导致大量音频或视频积压。输出使用分片 MP4 / M4A（`fastStart: 'fragmented'`，最小片段时长 2 秒），媒体数据按 1 MiB 块经 `StreamTarget` 定位写入 OPFS。固定版本的 Mediabunny 补丁在片段写出后只保留最终 `tfra` 所需的首个同步样本及其原始序号，释放其余样本对象，并修复同一片段内多个关键帧的标记压缩。详见 `patches/README.md`。[Mediabunny 输出格式](https://mediabunny.dev/guide/output-formats)、[输出目标](https://mediabunny.dev/guide/writing-media-files)。
 
-```sh
-ffmpeg -i video.m4s -i audio.m4s -map 0:v:0 -map 1:a:0 -c copy -movflags +faststart output.mp4
-```
+输入普通 MP4 的 `moov` 改为按 box 遍历，仅保留样本表的文件偏移；发现轨道时跳过样本索引，首次请求该轨道的数据包时才解析。`stts`、`ctts`、`stsz`、`stz2`、`stss`、`stsc`、`stco` 与 `co64` 保留在输入源上，每轨道最多缓存 8 个 16 KiB 原始页；时间 / 显示偏移 / sample→chunk 三张游程表各最多保留 128 个前缀检查点和 256 条解码记录。首次数据包扫描游程表建立检查点，样本大小、chunk 偏移与同步样本按需读取；不再展开完整数组、累计大小或显示时间排序副本，PCM 也按需合并 chunk。未知 / 填充 box 跳过内容，不再整块读取或常驻原始 `moov`。读取器可能合并相邻读取或预读，16 KiB 不是实际 I/O 或任务总内存上限。异步 box 解析串行执行，同轨道共享初始化 Promise，避免并发查找污染当前轨道状态。
 
-每次只处理一个分 P。音视频依次流式读取并写入 FFmpeg 内存文件系统，先检查 Content-Length，再对实际读入字节计数；即使服务器不提供长度也执行 512 MB 总输入限制。进度百分比使用码率估算，界面以实际已下载字节数为准。
+普通 MP4 的上述八张样本表保留内存不随样本数线性增长，代价是随机访问可能从检查点重扫；极宽的 CTTS 显示偏移范围也可能增加候选样本扫描量。输出索引内存仍主要随片段数增长；当前片段媒体、输入片段查找索引和加密辅助信息仍需内存，因此不承诺整个任务恒定内存。编解码配置、标签等其他叶子 box 仍按 box 读取，异常巨大的单个叶子 box 仍可能占用较多内存。超长 GOP 也会延长当前片段的缓冲。分片 MP4 在部分旧播放器和编辑器中的兼容性低于普通 MP4。
 
-合并不重新编码，设置 3 分钟超时。成功读取输出后立即终止 Worker，释放输入与 WASM 内存。Blob URL 保留到 `downloads.search` 确认 `complete` 或 `interrupted` 后再释放，不把“开始保存”显示为“已保存”。[FFmpeg stream copy](https://ffmpeg.org/ffmpeg.html#Streamcopy)、[ffmpeg.wasm 使用文档](https://ffmpegwasm.netlify.app/docs/getting-started/usage/)。
+音视频任务不再设固定 16 GiB 上限。`StorageManager.estimate()` 提供当前 origin 的 `quota` 和 `usage`；下载时为尚未缓存的输入、预计封装输出（输入的 105%）与 64 MiB 安全余量检查空间。已缓存数据已计入 `usage`，不会再次算作缺失输入；已完成轨道仍计入输出大小。检查在媒体响应长度 / 缓存重验后、写块前执行，每 8 MiB 增量或 1 秒刷新估算，接近预算边缘及表示重置时立即刷新。没有长度的响应按实际增长计算，码率估算不再用来拒绝任务。封装前再取一次最新估算。[StorageManager.estimate](https://developer.mozilla.org/en-US/docs/Web/API/StorageManager/estimate)。
 
-512 MB 是本项目保守的输入上限，不代表浏览器只使用 512 MB 内存；下载缓冲、WASM 文件和输出 Blob 仍会增加峰值内存。更大的长视频适合后续增加本地 FFmpeg 助手。[ffmpeg.wasm 限制](https://ffmpegwasm.netlify.app/docs/faq/)。
+全新下载的输入参考容量约为 `(quota - usage - 64 MiB) / 2.05`；续传会扣除已缓存输入的重复预留。105% 与 64 MiB 是项目的封装开销 / 估算余量策略，不是浏览器硬限制。API 返回的是配额估算，并非系统实际剩余磁盘空间；若估算缺失或失败，仍按流写入并由真实 OPFS 写入报错处理。最终 Downloads 副本在 origin 配额之外，还需额外磁盘空间。
+
+缓存清单 v2 对连续同尺寸的 1 MiB 文件块进行游程压缩，正常长视频的清单只有一个完整块计数和尾块，不再受旧的 16384 文件块限制。v1 清单仍可读取，后续提交转换为 v2，文件路径和已提交数据保持不变。保留 1 MiB 清单 / 16384 个不同尺寸组的元数据边界与安全整数校验，用于限制损坏数据和极端碎片；这些约束不为正常连续流设置固定媒体字节上限。
+
+缓存面板轮询只读取并验证清单元数据，统计已提交字节，不逐块打开媒体文件。恢复缓存时仍完整验证每个块的存在与大小，创建输入 Blob 时再次检查；统计不是完整性检查，损坏缓存可能在复用前短暂计入用量。
+
+封装输出位于下载缓存根目录下的 `merged-output`，不会计入可续传素材数量。成功封装后只获取磁盘 `File` 快照，不调用完整输出的 `arrayBuffer` 或 FFmpeg `readFile`。`saveFile` 通过 Blob URL 交给浏览器下载 API，等保存结束再删除 OPFS 输出；保存失败或取消也会清理输出。Worker 必须在 120 秒内确认启动，确认后不以字节进度或总耗时判断失败：解析索引、最终写入索引及同步 WASM 工作期间可能长时间没有进度。用户仍可取消 / 暂停并终止 Worker，实际 Worker 错误、I/O 错误正常上报。页面关闭留下的输出会在下一次缓存清理中移除；失败或暂停任务的输入缓存保持原有续传语义。
+
+旧格式 progressive FLV / MP4 继续由浏览器内的单线程 `@ffmpeg/core` 解析和拼接。输入通过 WORKERFS 只读挂载，`ffmpegDiskFile` 为一个普通输出文件替换 Emscripten 文件操作：读写和 truncate / allocate 直接交给 Worker 内的 OPFS `FileSystemSyncAccessHandle`，定位操作支持大文件偏移；不继承 MEMFS 的媒体写入、内存扩容或 mmap。短写循环补全，原始配额 / I/O 错误保留并使任务失败，避免把截断文件标为成功。[同步磁盘接口](https://developer.mozilla.org/en-US/docs/Web/API/FileSystemFileHandle/createSyncAccessHandle)、[Emscripten 文件系统](https://emscripten.org/docs/api_reference/Filesystem-API.html)。
+
+分段仍使用 FFmpeg concat demuxer，`-c copy` 不重新编码。输出启用 `frag_keyframe`、2 秒 `frag_duration`、`empty_moov`、`delay_moov`、`default_base_moof` 与 `negative_cts_offsets`，按片段释放输出样本表；`delay_moov` 保留初始化所需的时间偏移，避免 AAC 起始时间偏移改变音画同步。MEMFS 只保存很小的拼接清单，WASM 仍需要输入容器索引和工作缓冲，核心堆上限为 2 GiB，因此内存并非严格恒定。progressive 同样使用动态磁盘预算，旧 512 MiB 限制及完整输出 `readFile` 路径已移除。FFmpeg 核心设置 `setTimeout(-1)` 取消固定 30 分钟时限，由终止专用 Worker 响应用户取消。[FFmpeg 分片与 MOV/MP4 选项](https://ffmpeg.org/ffmpeg-formats.html#mov_002c-mp4_002c-ismv)。
+
+WXT 只复制单线程 FFmpeg 核心 JS / WASM，移除了不再使用的 `@ffmpeg/ffmpeg` 包和包装 Worker。DASH / AAC 仍走 Mediabunny；两条路径共享磁盘配额检查、输出保存生命周期与残留清理，不执行远程脚本、不添加扩展权限。
 
 ## 扩展权限
 

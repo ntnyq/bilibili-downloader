@@ -4,6 +4,7 @@ import { formatBytes } from '~/utils/downloads/model'
 
 const {
   stats,
+  availableBytes,
   isRefreshing,
   isClearing,
   error: cacheError,
@@ -54,6 +55,12 @@ const {
         </div>
       </div>
       <p class="mt-[10px] text-[12px] text-muted-foreground leading-[20px]">
+        <template v-if="availableBytes !== null">
+          浏览器剩余配额约 {{ formatBytes(availableBytes) }}。
+        </template>
+        任务会按剩余配额为输入、封装输出和安全余量预留空间，最终下载文件还需额外磁盘空间。
+      </p>
+      <p class="mt-[10px] text-[12px] text-muted-foreground leading-[20px]">
         失败或刷新页面后，重试会尽量复用缓存并续传；续传需要媒体服务器支持。
         浏览器可能回收缓存。清理会移除续传数据，已保存文件与下载记录不受影响。
       </p>
@@ -73,10 +80,11 @@ const {
         {{ notice }}
       </p>
       <div class="mt-[16px] border-t border-border pt-[14px]">
-        <h2 class="font-medium">大型任务：本地 FFmpeg</h2>
+        <h2 class="font-medium">可选方案：本地 FFmpeg</h2>
         <p class="mt-[8px] text-[12px] text-muted-foreground leading-[20px]">
-          浏览器合并仍有单个分 P 输入 512 MB
-          上限。对已失败、已取消或已完成的音视频任务，
+          DASH、旧格式 FLV / MP4
+          和独立音轨均可在浏览器中磁盘封装，按剩余配额动态检查容量。
+          如需在浏览器外处理已失败、已取消或已完成的音视频任务，
           点击「导出本地任务」，再使用 Python 3 和 FFmpeg 在电脑上下载、合并。
         </p>
         <p class="mt-[8px] text-[12px] text-muted-foreground leading-[20px]">

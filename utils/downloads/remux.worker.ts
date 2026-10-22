@@ -1,0 +1,64 @@
+import { mergeProgressiveMedia } from './progressiveMedia'
+import { remuxMedia } from './remuxMedia'
+import type { StreamTargetChunk } from 'mediabunny'
+import type { RemuxKind } from './remuxMedia'
+
+export interface RemuxRequest {
+  kind: RemuxKind
+  inputs: Blob[]
+  handle: FileSystemFileHandle
+}
+
+export type RemuxResponse =
+  | { type: 'ready' }
+  | { type: 'progress'; bytes: number }
+  | { type: 'complete' }
+  | { type: 'error'; name: string; message: string }
+
+self.addEventListener(
+  'message',
+  async ({ data }: MessageEvent<RemuxRequest>) => {
+    let writer: FileSystemWritableFileStream | undefined
+    const post = (message: RemuxResponse) => self.postMessage(message)
+    // Acknowledge startup before parsing indexes or entering synchronous WASM.
+    // Neither phase guarantees packet progress or an available event loop.
+    post({ type: 'ready' })
+    try {
+      let lastProgressAt = 0
+      const onProgress = (bytes: number) => {
+        if (Date.now() - lastProgressAt >= 500) {
+          lastProgressAt = Date.now()
+          post({ type: 'progress', bytes })
+        }
+      }
+      if (data.kind === 'progressive') {
+        await mergeProgressiveMedia(data.inputs, data.handle, onProgress)
+        post({ type: 'complete' })
+        return
+      }
+      writer = await data.handle.createWritable()
+      const fileWriter = writer
+      const writable = new WritableStream<StreamTargetChunk>({
+        write: chunk => fileWriter.write(chunk),
+        close: () => fileWriter.close(),
+        abort: () => fileWriter.abort(),
+      })
+      await remuxMedia(
+        data.kind,
+        data.inputs,
+        writable,
+        new AbortController().signal,
+        onProgress,
+      )
+      post({ type: 'complete' })
+    } catch (error) {
+      await writer?.abort().catch(() => {})
+      post({
+        type: 'error',
+        name: error instanceof Error ? error.name : 'Error',
+        message:
+          error instanceof Error ? error.message : '浏览器音视频封装失败。',
+      })
+    }
+  },
+)

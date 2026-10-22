@@ -41,8 +41,8 @@ const { openManager, error: queueError } = useDownloadQueue()
           SDR，同画质优先兼容性较好的编码。实际画质显示在任务进度中。
         </p>
         <p class="mt-[10px]">
-          每个分 P 的音视频输入总计最多 512
-          MB。暂不支持直播、番剧、互动视频或受保护的视频。
+          DASH、旧格式视频和独立音轨均使用浏览器磁盘封装，按剩余配额动态预留输入与封装输出空间。
+          暂不支持直播、番剧、互动视频或受保护的视频。
         </p>
         <p class="mt-[10px]">
           文件保存在浏览器下载目录的 Bilibili

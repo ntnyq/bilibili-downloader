@@ -1,9 +1,11 @@
 import { z } from 'zod'
 
-const CACHE_DIRECTORY = 'media-cache-v1'
+export const MEDIA_CACHE_DIRECTORY = 'media-cache-v1'
 const MANIFEST_FILE = 'manifest.json'
 const HASH_PATTERN = /^[\da-f]{64}$/u
-const MAX_CACHE_CHUNKS = 16384
+const MAX_LEGACY_CHUNKS = 16384
+const MAX_CHUNK_RUNS = 16384
+const MAX_MANIFEST_BYTES = 1024 * 1024
 
 /**
  * Each immutable file is bounded so appending never copies the entire download.
@@ -53,32 +55,107 @@ export function parseStrongETag(value: string | null): string | null {
     : null
 }
 
-const manifestSchema = z
+const manifestFields = {
+  resourceKey: z.string().regex(HASH_PATTERN).nullable(),
+  etag: z
+    .string()
+    .refine(value => parseStrongETag(value) === value)
+    .nullable(),
+  total: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).nullable(),
+  received: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+  complete: z.boolean(),
+  updatedAt: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
+}
+
+const legacyManifestSchema = z
   .object({
+    ...manifestFields,
     version: z.literal(1),
-    resourceKey: z.string().regex(HASH_PATTERN).nullable(),
-    etag: z
-      .string()
-      .refine(value => parseStrongETag(value) === value)
-      .nullable(),
-    total: z.number().int().positive().max(Number.MAX_SAFE_INTEGER).nullable(),
-    received: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
-    complete: z.boolean(),
-    updatedAt: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER),
     chunks: z
       .array(z.number().int().positive().max(MEDIA_CACHE_CHUNK_BYTES))
-      .max(MAX_CACHE_CHUNKS),
+      .max(MAX_LEGACY_CHUNKS),
+  })
+  .strict()
+
+const manifestSchema = z
+  .object({
+    ...manifestFields,
+    version: z.literal(2),
+    chunks: z
+      .array(
+        z
+          .object({
+            size: z.number().int().positive().max(MEDIA_CACHE_CHUNK_BYTES),
+            count: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+          })
+          .strict(),
+      )
+      .max(MAX_CHUNK_RUNS),
   })
   .strict()
   .refine(
     value =>
-      value.received === value.chunks.reduce((sum, size) => sum + size, 0)
+      value.received
+        === value.chunks.reduce((sum, run) => sum + run.size * run.count, 0)
       && (value.total === null || value.received <= value.total)
       && (!value.complete
         || (value.received > 0 && value.total === value.received)),
   )
 
 type CacheManifest = z.infer<typeof manifestSchema>
+
+/**
+ * Normal streaming produces one run of full chunks and a small tail. Bounding
+ * interruption-driven fragmentation no longer puts a byte ceiling on a track.
+ */
+function appendChunk(
+  runs: CacheManifest['chunks'],
+  size: number,
+): CacheManifest['chunks'] {
+  const last = runs.at(-1)
+  if (last?.size === size) {
+    return [...runs.slice(0, -1), { size, count: last.count + 1 }]
+  }
+  if (runs.length >= MAX_CHUNK_RUNS) {
+    throw new MediaCacheError('下载缓存碎片过多，请清理该任务缓存后重新下载。')
+  }
+  return [...runs, { size, count: 1 }]
+}
+
+function* manifestChunks(manifest: CacheManifest) {
+  let index = 0
+  for (const { size, count } of manifest.chunks) {
+    for (let entry = 0; entry < count; entry++) {
+      yield { index: index++, size }
+    }
+  }
+}
+
+function normalizeManifest(value: unknown): CacheManifest | undefined {
+  const current = manifestSchema.safeParse(value)
+  if (current.success) {
+    return current.data
+  }
+  const legacy = legacyManifestSchema.safeParse(value)
+  if (!legacy.success) {
+    return
+  }
+  const chunks: CacheManifest['chunks'] = []
+  for (const size of legacy.data.chunks) {
+    const last = chunks.at(-1)
+    if (last?.size === size) {
+      last.count++
+    } else {
+      chunks.push({ size, count: 1 })
+    }
+  }
+  const result = manifestSchema.safeParse({
+    ...legacy.data,
+    version: 2,
+    chunks,
+  })
+  return result.success ? result.data : undefined
+}
 
 /**
  * Narrow filesystem boundary also allows deterministic crash/quota tests.
@@ -178,7 +255,7 @@ async function readManifest(
   try {
     const handle = await directory.getFileHandle(MANIFEST_FILE)
     const file = await handle.getFile()
-    if (file.size > 128 * 1024) {
+    if (file.size > MAX_MANIFEST_BYTES) {
       return
     }
     let value: unknown
@@ -190,20 +267,38 @@ async function readManifest(
       }
       throw error
     }
-    const result = manifestSchema.safeParse(value)
-    if (!result.success) {
+    const manifest = normalizeManifest(value)
+    if (!manifest) {
       return
     }
-    for (const [index, size] of result.data.chunks.entries()) {
-      const chunk = await directory.getFileHandle(chunkFilename(index))
-      if ((await chunk.getFile()).size !== size) {
-        return
-      }
-    }
-    return result.data
+    return manifest
   } catch (error) {
     if (isMissing(error)) {
       return
+    }
+    throw error
+  }
+}
+
+/**
+ * Validate media files when reusing a representation, never during UI polling.
+ * Statistics report committed manifest bytes without reopening every chunk.
+ */
+async function hasValidChunks(
+  directory: MediaCacheDirectory,
+  manifest: CacheManifest,
+): Promise<boolean> {
+  try {
+    for (const { index, size } of manifestChunks(manifest)) {
+      const chunk = await directory.getFileHandle(chunkFilename(index))
+      if ((await chunk.getFile()).size !== size) {
+        return false
+      }
+    }
+    return true
+  } catch (error) {
+    if (isMissing(error)) {
+      return false
     }
     throw error
   }
@@ -230,7 +325,7 @@ export async function createMediaCache(
 ): Promise<MediaCache> {
   try {
     const storage = storageRoot ?? (await getStorageRoot())
-    const root = await storage.getDirectoryHandle(CACHE_DIRECTORY, {
+    const root = await storage.getDirectoryHandle(MEDIA_CACHE_DIRECTORY, {
       create: true,
     })
     const jobKey = await hashKey(jobId)
@@ -255,18 +350,25 @@ export async function createMediaCache(
         throw error
       }
       const manifest = await readManifest(directory)
-      if (!manifest) {
+      if (!manifest || !(await hasValidChunks(directory, manifest))) {
         await removeEntry(job, name)
         return
       }
       // A crash between writing a chunk and committing its manifest leaves an
       // unreferenced file. It must never become part of a subsequent download.
-      const files = new Set([
-        MANIFEST_FILE,
-        ...manifest.chunks.map((_, index) => chunkFilename(index)),
-      ])
+      const chunkCount = manifest.chunks.reduce(
+        (sum, run) => sum + run.count,
+        0,
+      )
       for await (const filename of directory.keys()) {
-        if (!files.has(filename)) {
+        const index = Number(filename.slice('chunk-'.length))
+        if (
+          filename !== MANIFEST_FILE
+          && (!Number.isSafeInteger(index)
+            || !(index >= 0)
+            || !(index < chunkCount)
+            || filename !== chunkFilename(index))
+        ) {
           await removeEntry(directory, filename)
         }
       }
@@ -305,7 +407,7 @@ export async function createMediaCache(
       reset(inputKey, representation) {
         return guarded(async () => {
           const manifest = manifestSchema.parse({
-            version: 1,
+            version: 2,
             resourceKey: representation.resourceKey,
             etag: representation.etag,
             total: representation.total,
@@ -329,28 +431,25 @@ export async function createMediaCache(
           }
           const entry = await required(inputKey)
           const previous = entry.manifest
-          if (previous.chunks.length >= MAX_CACHE_CHUNKS) {
-            throw new MediaCacheError(
-              '下载缓存碎片过多，请清理缓存后重新下载。',
-            )
-          }
           const received = previous.received + bytes.byteLength
           if (
-            previous.complete
+            !Number.isSafeInteger(received)
+            || previous.complete
             || (previous.total !== null && received > previous.total)
           ) {
             throw new MediaCacheError('下载缓存大小与素材不一致。')
           }
-          await writeFile(
-            entry.directory,
-            chunkFilename(previous.chunks.length),
-            bytes,
+          const chunks = appendChunk(previous.chunks, bytes.byteLength)
+          const chunkCount = previous.chunks.reduce(
+            (sum, run) => sum + run.count,
+            0,
           )
+          await writeFile(entry.directory, chunkFilename(chunkCount), bytes)
           await commit(entry, {
             ...previous,
             received,
             updatedAt: Date.now(),
-            chunks: [...previous.chunks, bytes.byteLength],
+            chunks,
           })
         })
       },
@@ -394,7 +493,7 @@ export async function createMediaCache(
             throw new MediaCacheError('素材缓存尚未完整下载。')
           }
           const chunks: File[] = []
-          for (const [index, size] of manifest.chunks.entries()) {
+          for (const { index, size } of manifestChunks(manifest)) {
             const handle = await directory.getFileHandle(chunkFilename(index))
             const file = await handle.getFile()
             if (file.size !== size) {
@@ -437,7 +536,7 @@ async function readCacheRoot(
 ): Promise<MediaCacheDirectory | undefined> {
   try {
     const storage = storageRoot ?? (await getStorageRoot())
-    return await storage.getDirectoryHandle(CACHE_DIRECTORY)
+    return await storage.getDirectoryHandle(MEDIA_CACHE_DIRECTORY)
   } catch (error) {
     if (isMissing(error)) {
       return
@@ -504,7 +603,7 @@ export async function clearMediaCache(
   try {
     const storage = storageRoot ?? (await getStorageRoot())
     if (jobId === undefined) {
-      await removeEntry(storage, CACHE_DIRECTORY)
+      await removeEntry(storage, MEDIA_CACHE_DIRECTORY)
       return
     }
     const root = await readCacheRoot(storage)

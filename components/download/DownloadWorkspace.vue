@@ -45,7 +45,7 @@ const sections = [
   {
     id: 'local',
     label: '缓存与本地助手',
-    description: '管理续传缓存，将大型音视频任务交给本地助手。',
+    description: '管理浏览器磁盘缓存，或按需连接本地助手。',
     icon: HardDriveIcon,
   },
 ] as const
@@ -184,7 +184,7 @@ const currentSection = computed(
             variant="ghost"
             size="sm"
             class="text-primary"
-            >大型任务使用本地助手</Button
+            >缓存与可选本地助手</Button
           >
         </footer>
       </div>

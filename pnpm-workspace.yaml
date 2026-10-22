@@ -1,6 +1,9 @@
 overrides:
   esbuild: ^0.28.2
 
+patchedDependencies:
+  mediabunny@1.62.1: patches/mediabunny@1.62.1.patch
+
 allowBuilds:
   esbuild: true
   sharp: true

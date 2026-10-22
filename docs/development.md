@@ -1,6 +1,6 @@
 # Development
 
-[English homepage](../README.md) · [中文首页](../README-zh.md)
+[Documentation home](index.md) · [简体中文](zh/development.md)
 
 The extension is built with WXT, Vue 3, TypeScript, and Tailwind CSS.
 Use the pnpm version pinned in `package.json`.
@@ -24,7 +24,7 @@ Use `pnpm dev:firefox` for Firefox development. Dependency installation runs
 | `pnpm zip`           | Chromium distribution archive in `dist/` |
 | `pnpm zip:firefox`   | Firefox distribution archive in `dist/`  |
 
-See the [installation instructions](../README.md#install) to load a build.
+See the [installation instructions](index.md#install) to load a build.
 Generated files in `dist/` should not be edited directly.
 
 ## Project structure
@@ -33,6 +33,9 @@ Generated files in `dist/` should not be edited directly.
 - `components/`, `composables/`, `stores/`, `utils/`: shared UI, state, and logic.
 - `assets/`, `locales/`, `types/`: styles, icons, translations, and declarations.
 - `scripts/`: tooling and native download helpers.
+- `tests/bilibili/`, `tests/downloads/`: TypeScript tests for the corresponding utility modules.
+- `tests/native/`: Python tests for native download and messaging helpers.
+- `tests/fixtures/downloads/`: synthetic media fixtures and test support scripts.
 - `wxt.config.ts`: extension metadata, permissions, and build configuration.
 
 ## Verification
@@ -54,9 +57,26 @@ Changes to WebExtension APIs or manifest behavior also need Firefox testing.
 Include screenshots or recordings for visible UI changes and describe any new
 permissions or configuration requirements in the pull request.
 
-## Further reading
+## Documentation site
 
-The following guides are currently in Chinese:
+The VitePress site uses English at `/` and Simplified Chinese at `/zh/`.
+Keep matching page filenames in `docs/` and `docs/zh/` so the language switcher
+can open the same page in either language. Homepages live in `docs/index.md`
+and `docs/zh/index.md`; navigation and translated theme labels are configured
+in `docs/.vitepress/config.ts`.
+
+Run these commands from the repository root:
+
+```sh
+pnpm --dir docs install
+pnpm docs:dev
+pnpm docs:build
+```
+
+The static site is generated in `docs/.vitepress/dist/`. Preview it with
+`pnpm --dir docs preview`.
+
+## Further reading
 
 - [Usage guide](usage.md): downloads, queue controls, batch imports, assets, and file settings.
 - [Local helper](native-helper.md): Python and FFmpeg setup, resumable downloads, and cleanup.

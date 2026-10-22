@@ -5,8 +5,7 @@ import {
   parseStrongETag,
 } from './mediaCache'
 import type { CachedMediaState, MediaCache } from './mediaCache'
-
-const MAX_REQUESTS_PER_URL = 32
+import type { MediaStorageState } from './storageBudget'
 
 export interface FetchCachedMediaOptions {
   cache: MediaCache
@@ -16,6 +15,7 @@ export interface FetchCachedMediaOptions {
   maxBytes: number
   onProgress: (received: number) => void
   fetcher?: typeof fetch
+  checkStorage?: (state: MediaStorageState) => Promise<void>
 }
 
 interface MediaRange {
@@ -93,6 +93,7 @@ export async function fetchCachedMedia({
   maxBytes,
   onProgress,
   fetcher = fetch,
+  checkStorage,
 }: FetchCachedMediaOptions): Promise<Blob> {
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
     throw new RangeError('素材超过剩余大小限制，已停止下载。')
@@ -108,7 +109,7 @@ export async function fetchCachedMedia({
       continue
     }
     let hasRecovered = false
-    for (let attempt = 0; attempt < MAX_REQUESTS_PER_URL; attempt++) {
+    while (true) {
       signal.throwIfAborted()
       const previous = await cache.read(inputKey)
       const reusable =
@@ -142,6 +143,17 @@ export async function fetchCachedMedia({
       let canPreservePending = false
       const flush = async () => {
         if (pendingBytes) {
+          if (checkStorage) {
+            const state = await cache.read(inputKey)
+            if (!state) {
+              throw new MediaCacheError('下载缓存已丢失，请重新下载。')
+            }
+            await checkStorage({
+              received: state.received,
+              total: state.total,
+              additionalBytes: pendingBytes,
+            })
+          }
           const bytes = pending.slice(0, pendingBytes)
           pendingBytes = 0
           await cache.append(inputKey, bytes)
@@ -184,6 +196,11 @@ export async function fetchCachedMedia({
             await recover()
             continue
           }
+          await checkStorage?.({
+            received: reusable.received,
+            total: reusable.total,
+            additionalBytes: 0,
+          })
           return await cache.blob(inputKey)
         }
         if (response.status === 416 && reusable && !reusable.complete) {
@@ -198,6 +215,11 @@ export async function fetchCachedMedia({
             && total === reusable.total
             && total === reusable.received
           ) {
+            await checkStorage?.({
+              received: reusable.received,
+              total,
+              additionalBytes: 0,
+            })
             await cache.complete(inputKey)
             return await cache.blob(inputKey)
           }
@@ -269,6 +291,7 @@ export async function fetchCachedMedia({
           onProgress(0)
           state = { received: 0, total: length }
         }
+        await checkStorage?.({ ...state, additionalBytes: 0 })
         reader = response.body.getReader()
         canPreservePending = true
         let transferred = 0
@@ -313,14 +336,18 @@ export async function fetchCachedMedia({
           throw new MediaNetworkError('素材传输不完整，已保留下载缓存。')
         }
         if (state.total !== null && received < state.total) {
-          // Some servers cap individual range responses. The next request must
-          // make progress and is subject to the same validator and size checks.
+          // Valid ranges strictly advance toward a stable, finite total. Only
+          // representation recovery is bounded; progress must not spend retries.
           continue
         }
         await cache.complete(inputKey)
         return await cache.blob(inputKey)
       } catch (error) {
-        if (canPreservePending && !(error instanceof MediaCacheError)) {
+        if (
+          canPreservePending
+          && !(error instanceof MediaCacheError)
+          && !(error instanceof RangeError)
+        ) {
           await flush()
         }
         signal.throwIfAborted()

@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.3",
   "private": true,
-  "packageManager": "pnpm@12.14.0",
+  "packageManager": "pnpm@12.15.0",
   "description": "Download Bilibili videos, audio, covers, subtitles and danmaku, with multi-part batch downloads and asset bundles.",
   "keywords": [
     "wxt"
@@ -14,21 +14,22 @@
     "compile": "vue-tsc --noEmit",
     "dev": "wxt",
     "dev:firefox": "wxt -b firefox",
+    "docs:build": "pnpm --dir docs build",
+    "docs:dev": "pnpm --dir docs dev",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "eslint",
     "postinstall": "wxt prepare",
     "prepare": "husky",
     "release": "bumpp",
-    "test": "tsx --test utils/bilibili/*.test.ts utils/downloads/*.test.ts",
-    "test:native": "python3 -m unittest discover -s scripts -p '*_test.py'",
+    "test": "tsx --test tests/bilibili/*.test.ts tests/downloads/*.test.ts",
+    "test:native": "python3 -m unittest discover -s tests/native -p '*_test.py'",
     "typecheck": "vue-tsc --noEmit",
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox"
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",
-    "@ffmpeg/ffmpeg": "^0.12.15",
     "@lucide/vue": "^1.61.0",
     "@ntnyq/utils": "^0.23.0",
     "@vueuse/core": "^15.0.0",
@@ -37,6 +38,7 @@
     "consola": "^3.4.2",
     "dayjs": "^1.11.23",
     "js-md5": "^0.9.2",
+    "mediabunny": "1.62.1",
     "ofetch": "^1.5.1",
     "pinia": "^4.1.0",
     "reka-ui": "^2.11.0",
@@ -48,7 +50,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@ntnyq/eslint-config": "^7.0.0-beta.27",
+    "@ntnyq/eslint-config": "^7.0.0-beta.28",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "^6.0.10",
@@ -66,7 +68,7 @@
     "typescript": "^6.0.3",
     "unplugin-vue-components": "^32.1.0",
     "vue-tsc": "^3.3.13",
-    "wxt": "^0.21.4"
+    "wxt": "^0.21.5"
   },
   "nano-staged": {
     "*.{js,ts,mjs,tsx,vue,md,svg,yml,yaml,toml,json}": "eslint --fix",

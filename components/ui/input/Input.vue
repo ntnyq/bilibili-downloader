@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { useVModel } from '@vueuse/core'
 import { cn } from '~/lib/utils'
 import type { HTMLAttributes } from 'vue'
 
@@ -9,23 +8,14 @@ interface Props {
    */
   defaultValue?: string | number
   /**
-   * Value owned by the parent form.
-   */
-  modelValue?: string | number
-  /**
    * Additional classes applied to the input.
    */
   class?: HTMLAttributes['class']
 }
 const props = defineProps<Props>()
 
-const emit = defineEmits<{
-  'update:modelValue': [payload: string | number]
-}>()
-
-const modelValue = useVModel(props, 'modelValue', emit, {
-  passive: true,
-  defaultValue: props.defaultValue,
+const modelValue = defineModel<string | number>({
+  default: (rawProps: Props) => rawProps.defaultValue ?? '',
 })
 </script>
 

@@ -2,19 +2,15 @@ import { z } from 'zod'
 import { browser } from '#imports'
 import { downloadJobSchema, downloadJobsSchema } from '~/types/download'
 import { getVideoMedia } from '../bilibili/api'
+import { mergeBrowserMedia } from './browserMerge'
 import { exportAsset } from './exportAsset'
 import { MediaNetworkError } from './fetchMedia'
 import { createMediaCache, pruneMediaCache } from './mediaCache'
-import { mergeMedia } from './mergeMedia'
 import { sendDownloadMessage } from './messages'
-import {
-  createFilename,
-  errorMessage,
-  JOBS_STORAGE_KEY,
-  MAX_INPUT_BYTES,
-} from './model'
+import { createFilename, errorMessage, JOBS_STORAGE_KEY } from './model'
 import { fetchCachedMedia } from './resumableMedia'
 import { saveFile } from './saveFile'
+import { createMediaStorageBudget } from './storageBudget'
 import {
   abortChangedJobRun,
   abortStaleJobRun,
@@ -95,11 +91,6 @@ async function runJob(job: DownloadJob, controller: AbortController) {
           ),
         )
         await update({ quality: media.quality, totalBytes: estimatedBytes })
-        if (estimatedBytes > MAX_INPUT_BYTES) {
-          throw new RangeError(
-            '预计音视频输入超过浏览器 512 MB 上限，请导出本地任务使用 FFmpeg 助手。',
-          )
-        }
         // A different selection must never combine tracks from an older run.
         const identity = [
           job.bvid,
@@ -120,7 +111,10 @@ async function runJob(job: DownloadJob, controller: AbortController) {
             inputKey: keys[index]!,
             urls: input.urls,
             signal,
-            maxBytes: MAX_INPUT_BYTES - receivedBytes,
+            // This bounds arithmetic, not media size. Disk capacity is checked
+            // from server lengths and actual writes instead of bitrate guesses.
+            maxBytes: Number.MAX_SAFE_INTEGER - receivedBytes,
+            checkStorage: createMediaStorageBudget(receivedBytes),
             onProgress(received) {
               if (Date.now() - lastProgressAt < 500) {
                 return
@@ -149,12 +143,29 @@ async function runJob(job: DownloadJob, controller: AbortController) {
           receivedBytes,
           totalBytes: receivedBytes,
         })
-        const blob = await mergeMedia(media.kind, inputs, signal)
-        const filename = createFilename({ ...job, quality: media.quality })
-        await update({ status: 'saving', progress: 97, filename })
-        await saveFile(blob, filename, signal, downloadId =>
-          update({ downloadId }),
+        const output = await mergeBrowserMedia(
+          media.kind,
+          inputs,
+          signal,
+          bytes => {
+            update({
+              progress: 90 + Math.min(6, (bytes / receivedBytes) * 6),
+            }).catch(error => {
+              if (!signal.aborted) {
+                console.error(error)
+              }
+            })
+          },
         )
+        try {
+          const filename = createFilename({ ...job, quality: media.quality })
+          await update({ status: 'saving', progress: 97, filename })
+          await saveFile(output.blob, filename, signal, downloadId =>
+            update({ downloadId }),
+          )
+        } finally {
+          await output.dispose().catch(console.warn)
+        }
         await update({ status: 'completed', progress: 100 })
         // Cleanup errors must not turn a saved file into a failed task.
         await cache.clear().catch(console.warn)
