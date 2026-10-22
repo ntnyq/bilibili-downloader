@@ -29,7 +29,7 @@
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
-    "@lucide/vue": "^1.58.0",
+    "@lucide/vue": "^1.61.0",
     "@ntnyq/utils": "^0.23.0",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",
@@ -48,7 +48,7 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@ntnyq/eslint-config": "^7.0.0-beta.25",
+    "@ntnyq/eslint-config": "^7.0.0-beta.27",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.5",
     "@vitejs/plugin-vue": "^6.0.10",
@@ -59,8 +59,8 @@
     "eslint": "^10.13.0",
     "husky": "^9.1.7",
     "nano-staged": "^1.0.2",
-    "npm-run-all2": "^9.0.3",
-    "oxfmt": "^0.73.0",
+    "npm-run-all2": "^9.0.4",
+    "oxfmt": "^0.74.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
