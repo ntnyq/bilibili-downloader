@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { mergeBrowserMedia } from '../../utils/downloads/browserMerge'
 import type { TestContext } from 'node:test'
-import type { RemuxResponse } from '../../utils/downloads/remux.worker'
+import type {
+  RemuxRequest,
+  RemuxResponse,
+} from '../../utils/downloads/remux.worker'
 
 function installBrowser(
   context: TestContext,
@@ -10,25 +13,40 @@ function installBrowser(
     freeBytes?: number
     onPost?: () => void
     response?: RemuxResponse
+    removeLocks?: number
+    fileError?: Error
   } = {},
 ) {
   const removed: string[] = []
+  const directories: string[] = []
+  const messages: RemuxRequest[] = []
+  let removalAttempts = 0
   let workers = 0
   let terminated = 0
   let files = 0
   let respondToWorker: ((data: RemuxResponse) => void) | undefined
   const posted = Promise.withResolvers<void>()
   const directory = {
-    getDirectoryHandle: async () => directory,
+    async getDirectoryHandle(name: string) {
+      directories.push(name)
+      return directory
+    },
     async getFileHandle() {
       files++
+      if (options.fileError) {
+        throw options.fileError
+      }
       return {
         async getFile() {
           return new File(['media'], 'output.media', { type: 'text/plain' })
         },
       }
     },
-    async removeEntry(name: string) {
+    async removeEntry(name: string, optionsValue: { recursive: boolean }) {
+      assert.equal(optionsValue.recursive, true)
+      if (removalAttempts++ < (options.removeLocks ?? 0)) {
+        throw new DOMException('stream locked', 'NoModificationAllowedError')
+      }
       removed.push(name)
     },
   }
@@ -40,7 +58,9 @@ function installBrowser(
         this.dispatchEvent(new MessageEvent('message', { data }))
     }
 
-    postMessage() {
+    postMessage(message: RemuxRequest) {
+      messages.push(message)
+      assert.equal(message.directory, directory)
       options.onPost?.()
       posted.resolve()
       if (options.response) {
@@ -83,6 +103,9 @@ function installBrowser(
   }
   return {
     removed,
+    directories,
+    messages,
+    removalAttempts: () => removalAttempts,
     workers: () => workers,
     terminated: () => terminated,
     files: () => files,
@@ -112,6 +135,8 @@ test('keeps the disk output alive for saving and supplies the correct media MIME
     assert.equal(browser.removed.length, before)
     await output.dispose()
     assert.equal(browser.removed.length, before + 1)
+    assert.equal(browser.removed.at(-1), browser.directories.at(-1))
+    assert.equal(browser.messages.at(-1)?.kind, kind)
   }
   assert.equal(browser.workers(), 3)
   assert.equal(browser.terminated(), 3)
@@ -227,4 +252,37 @@ test('can cancel an acknowledged worker after a long period without progress', a
   await rejected
   assert.ok(browser.terminated() > 0)
   assert.equal(browser.removed.length, 1)
+})
+
+test('retries transient OPFS locks when removing the entire output/index directory', async context => {
+  const browser = installBrowser(context, {
+    response: { type: 'complete' },
+    removeLocks: 2,
+  })
+  const output = await mergeBrowserMedia(
+    'audio',
+    [new Blob(['input'])],
+    new AbortController().signal,
+    () => {},
+  )
+  await output.dispose()
+  assert.equal(browser.removalAttempts(), 3)
+  assert.equal(browser.removed.length, 1)
+})
+
+test('cleans the job directory when creating the output file fails', async context => {
+  const failure = new DOMException('disk full', 'QuotaExceededError')
+  const browser = installBrowser(context, { fileError: failure })
+  await assert.rejects(
+    mergeBrowserMedia(
+      'audio',
+      [new Blob(['input'])],
+      new AbortController().signal,
+      () => {},
+    ),
+    error => error === failure,
+  )
+  assert.equal(browser.workers(), 0)
+  assert.equal(browser.removed.length, 1)
+  assert.equal(browser.removed[0], browser.directories.at(-1))
 })

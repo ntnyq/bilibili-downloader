@@ -14,6 +14,8 @@ import {
   MP4,
 } from 'mediabunny'
 import { createRemuxOutput, remuxMedia } from '../../utils/downloads/remuxMedia'
+import { testFragmentIndex } from '../fixtures/downloads/fragmentIndex'
+import { testFragmentSamples } from '../fixtures/downloads/fragmentSamples'
 import type { StreamTargetChunk } from 'mediabunny'
 
 async function fixture(name: string) {
@@ -70,7 +72,7 @@ async function packets(blob: Blob, kind: 'video' | 'audio') {
   }
 }
 
-test('remuxes DASH without reencoding or reordering B frames and preserves track timing', async () => {
+test('remuxes DASH without reencoding or reordering B frames and preserves track timing', async context => {
   const video = await fixture('video.mp4')
   const audio = await fixture('audio.m4a')
   const target = memoryTarget()
@@ -80,6 +82,8 @@ test('remuxes DASH without reencoding or reordering B frames and preserves track
     [video, audio],
     target.writable,
     new AbortController().signal,
+    await testFragmentIndex(context),
+    await testFragmentSamples(context),
     bytes => progress.push(bytes),
   )
   const before = await packets(video, 'video')
@@ -102,7 +106,7 @@ test('remuxes DASH without reencoding or reordering B frames and preserves track
   assert.ok(target.writes.every(bytes => bytes <= 1024 * 1024))
 })
 
-test('exports AAC alone into a seekable M4A with no video track', async () => {
+test('exports AAC alone into a seekable M4A with no video track', async context => {
   const audio = await fixture('audio.m4a')
   const target = memoryTarget()
   await remuxMedia(
@@ -110,6 +114,8 @@ test('exports AAC alone into a seekable M4A with no video track', async () => {
     [audio],
     target.writable,
     new AbortController().signal,
+    await testFragmentIndex(context),
+    await testFragmentSamples(context),
   )
   assert.deepEqual(
     await packets(target.blob(), 'audio'),
@@ -123,7 +129,7 @@ test('exports AAC alone into a seekable M4A with no video track', async () => {
   input.dispose()
 })
 
-test('preserves keyframes and random access across fragments after the audio track ends', async () => {
+test('preserves keyframes and random access across fragments after the audio track ends', async context => {
   const input = new Input({
     formats: [MP4],
     source: new BlobSource(await fixture('video.mp4')),
@@ -138,7 +144,11 @@ test('preserves keyframes and random access across fragments after the audio tra
   }
   input.dispose()
   const generated = memoryTarget()
-  const output = createRemuxOutput(generated.writable)
+  const output = createRemuxOutput(
+    generated.writable,
+    await testFragmentIndex(context),
+    await testFragmentSamples(context),
+  )
   const source = new EncodedVideoPacketSource('avc')
   output.addVideoTrack(source, { decoderConfig: config })
   await output.start()
@@ -163,6 +173,8 @@ test('preserves keyframes and random access across fragments after the audio tra
     [generated.blob(), await fixture('audio.m4a')],
     target.writable,
     new AbortController().signal,
+    await testFragmentIndex(context),
+    await testFragmentSamples(context),
   )
   assert.deepEqual(
     await packets(target.blob(), 'video'),
@@ -196,7 +208,7 @@ test('preserves keyframes and random access across fragments after the audio tra
   }
 })
 
-test('does not publish an empty or missing track as a successful output', async () => {
+test('does not publish an empty or missing track as a successful output', async context => {
   const audio = await fixture('audio.m4a')
   await assert.rejects(
     remuxMedia(
@@ -204,6 +216,8 @@ test('does not publish an empty or missing track as a successful output', async 
       [audio],
       memoryTarget().writable,
       new AbortController().signal,
+      await testFragmentIndex(context),
+      await testFragmentSamples(context),
     ),
     /素材数量/,
   )
@@ -213,12 +227,14 @@ test('does not publish an empty or missing track as a successful output', async 
       [audio, audio],
       memoryTarget().writable,
       new AbortController().signal,
+      await testFragmentIndex(context),
+      await testFragmentSamples(context),
     ),
     /视频轨道/,
   )
 })
 
-test('propagates disk failures and honors cancellation while copying packets', async () => {
+test('propagates disk failures and honors cancellation while copying packets', async context => {
   const audio = await fixture('audio.m4a')
   const diskError = new DOMException('disk full', 'QuotaExceededError')
   await assert.rejects(
@@ -231,6 +247,8 @@ test('propagates disk failures and honors cancellation while copying packets', a
         },
       }),
       new AbortController().signal,
+      await testFragmentIndex(context),
+      await testFragmentSamples(context),
     ),
     error => error === diskError,
   )
@@ -241,6 +259,8 @@ test('propagates disk failures and honors cancellation while copying packets', a
       [audio],
       memoryTarget().writable,
       controller.signal,
+      await testFragmentIndex(context),
+      await testFragmentSamples(context),
       () => controller.abort(),
     ),
     { name: 'AbortError' },

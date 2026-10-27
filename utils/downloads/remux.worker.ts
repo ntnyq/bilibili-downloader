@@ -1,3 +1,5 @@
+import { createOpfsFragmentIndex } from './fragmentIndex'
+import { createOpfsFragmentSamples } from './fragmentSamples'
 import { mergeProgressiveMedia } from './progressiveMedia'
 import { remuxMedia } from './remuxMedia'
 import type { StreamTargetChunk } from 'mediabunny'
@@ -7,6 +9,7 @@ export interface RemuxRequest {
   kind: RemuxKind
   inputs: Blob[]
   handle: FileSystemFileHandle
+  directory: FileSystemDirectoryHandle
 }
 
 export type RemuxResponse =
@@ -19,6 +22,8 @@ self.addEventListener(
   'message',
   async ({ data }: MessageEvent<RemuxRequest>) => {
     let writer: FileSystemWritableFileStream | undefined
+    let index: ReturnType<typeof createOpfsFragmentIndex> | undefined
+    let samples: ReturnType<typeof createOpfsFragmentSamples> | undefined
     const post = (message: RemuxResponse) => self.postMessage(message)
     // Acknowledge startup before parsing indexes or entering synchronous WASM.
     // Neither phase guarantees packet progress or an available event loop.
@@ -37,6 +42,8 @@ self.addEventListener(
         return
       }
       writer = await data.handle.createWritable()
+      index = createOpfsFragmentIndex(data.directory)
+      samples = createOpfsFragmentSamples(data.directory)
       const fileWriter = writer
       const writable = new WritableStream<StreamTargetChunk>({
         write: chunk => fileWriter.write(chunk),
@@ -48,10 +55,16 @@ self.addEventListener(
         data.inputs,
         writable,
         new AbortController().signal,
+        index,
+        samples,
         onProgress,
       )
+      await samples.dispose()
+      await index.dispose()
       post({ type: 'complete' })
     } catch (error) {
+      await samples?.dispose().catch(() => {})
+      await index?.dispose().catch(() => {})
       await writer?.abort().catch(() => {})
       post({
         type: 'error',

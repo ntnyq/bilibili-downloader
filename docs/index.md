@@ -3,58 +3,62 @@ layout: home
 
 hero:
   name: Bilibili Downloader
-  text: Your videos, saved locally.
-  tagline: Download videos, audio, covers, subtitles, and danmaku from your browser.
+  text: Save videos and assets locally.
+  tagline: Choose quality, parts, and companion assets on Bilibili. Manage every save in the download center.
+  image:
+    src: /icon.png
+    alt: Bilibili Downloader
   actions:
     - theme: brand
-      text: Get started
-      link: '#install'
+      text: Install & get started
+      link: /getting-started
     - theme: alt
-      text: Usage guide
+      text: Explore the guides
       link: /usage
-    - theme: alt
-      text: GitHub
-      link: https://github.com/ntnyq/bilibili-downloader
 
 features:
   - title: Video and companion assets
-    details: Save MP4 videos, M4A audio, original covers, SRT subtitles, and danmaku XML, individually or as bundles.
+    details: Save MP4 video, M4A audio, original covers, SRT subtitles, or danmaku XML, individually or together.
+    link: /assets
+    linkText: Choose your output
   - title: Parts and batch imports
-    details: Pick video parts or import links, favorites, collections, series, and creator uploads.
-  - title: A download center that remembers
-    details: Pause and resume tasks, manage cached media, restore batch sessions, and organize your download history.
+    details: Keep selected parts in order. Preview favorites, collections, series, or creator uploads before queuing.
+    link: /batch-downloads
+    linkText: Import selected videos
+  - title: Tasks and download history
+    details: Pause, resume, retry, and reorder tasks. Organize saved content with filename templates and history.
+    link: /downloads
+    linkText: Manage your tasks
 ---
+
+## Start with your task
+
+| Task                                             | Documentation                                                 |
+| ------------------------------------------------ | ------------------------------------------------------------- |
+| Install the extension for the first time         | [Requirements, builds, and installation](getting-started.md)  |
+| Save a video or pick specific parts              | [Quality and task controls](downloads.md)                     |
+| Download favorites or creator uploads            | [Sources, previews, and session recovery](batch-downloads.md) |
+| Change filenames or find a past download         | [File templates and history](files-and-history.md)            |
+| Recover an interrupted download or missing asset | [Troubleshooting](troubleshooting.md)                         |
+| Develop or contribute                            | [Development guide](development.md)                           |
 
 ## Install
 
-Build the extension from the [source repository](https://github.com/ntnyq/bilibili-downloader) with the pnpm version pinned in `package.json`:
+Build from source, then load `dist/chrome-mv3/` in Chrome / Edge. See [installation and first download](getting-started.md) for full steps and Firefox instructions.
 
 ```sh
 pnpm install
 pnpm build
 ```
 
-In Chrome or Edge, open the extensions page, enable **Developer mode**, choose **Load unpacked**, and select `dist/chrome-mv3/`.
-
-For Firefox, run `pnpm build:firefox`, open `about:debugging#/runtime/this-firefox`, and load `dist/firefox-mv3/manifest.json` as a temporary add-on. Firefox 142 or later is required. Runtime verification is still pending; see the [verification records](verification.md).
-
 ## Quick start
 
-1. Open a video on [Bilibili](https://www.bilibili.com/) and use the download card below the player, or open the extension popup.
-2. Choose video, audio, another asset, or an asset bundle. For multi-part videos, select the current part, all parts, or specific parts.
-3. Choose a quality preference and start downloading. Manage tasks in the download center that opens automatically.
+Open an ordinary Bilibili video. Choose content, parts, and quality in the card below the player or the toolbar popup, then start downloading. Files default to `Bilibili/` in your browser's download folder.
 
-::: tip Keep the download center open
-Downloads run in that tab. Closing or refreshing it interrupts active work. Files are saved under `Bilibili/` in your browser's default download folder.
+::: warning Keep the download center open
+Closing or refreshing the center interrupts active tasks, including local-helper downloads. Available quality depends on your account. Live streams, bangumi, interactive videos, and protected content are unsupported.
 :::
 
-Available quality depends on your account and the streams returned by Bilibili. Live streams, bangumi, interactive videos, and protected content are currently unsupported.
+## Your data stays local
 
-## Explore the documentation
-
-- [Usage guide](usage.md): quality, task controls, batch imports, assets, filenames, and history.
-- [Local helper](native-helper.md) and [native integration](native-bridge.md): optional Python and FFmpeg downloads outside browser quotas.
-- [Development](development.md): setup, documentation, builds, and verification commands.
-- [Privacy policy](privacy-policy.md): data use, local storage, permissions, and deletion.
-
-Project code is licensed under [MIT](https://github.com/ntnyq/bilibili-downloader/blob/main/LICENSE). Bundled dependencies retain their own licenses, including GPL-2.0-or-later for `@ffmpeg/core` and MPL-2.0 for Mediabunny. See the [repository license notes](https://github.com/ntnyq/bilibili-downloader#license).
+No API key or developer-operated backend is required. Settings, queues, and history stay in extension local storage, and media processing runs on your computer. Read about [permissions and data](permissions.md), the [privacy policy](privacy-policy.md), or the optional [local FFmpeg helper](native-helper.md).

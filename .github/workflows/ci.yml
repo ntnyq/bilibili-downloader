@@ -21,6 +21,7 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm --dir docs install --frozen-lockfile
+      - run: pnpm docs:typecheck
       - run: pnpm docs:build
       - run: pnpm run format:check
       - run: pnpm test

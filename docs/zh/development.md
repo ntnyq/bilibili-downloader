@@ -22,7 +22,7 @@ Firefox 开发使用 `pnpm dev:firefox`。安装依赖时会运行 `wxt prepare`
 | `pnpm zip`           | Chromium 分发压缩包，位于 `dist/`      |
 | `pnpm zip:firefox`   | Firefox 分发压缩包，位于 `dist/`       |
 
-加载构建产物的方法见[安装说明](index.md#安装)。不要直接编辑 `dist/` 中的生成文件。
+加载构建产物的方法见[安装说明](getting-started.md#安装)。不要直接编辑 `dist/` 中的生成文件。
 
 ## 项目结构
 
@@ -60,6 +60,7 @@ VitePress 站点默认在 `/` 提供英文，`/zh/` 提供简体中文。`docs/`
 ```sh
 pnpm --dir docs install
 pnpm docs:dev
+pnpm docs:typecheck
 pnpm docs:build
 ```
 
@@ -73,3 +74,12 @@ pnpm docs:build
 - [实现方案](implementation.md)：组件、WBI、画质选择、队列与权限。
 - [扩展路线图](roadmap.md)：功能阶段与行为契约。
 - [验证记录](verification.md)：自动检查、浏览器验证与已知限制。
+
+## 文档维护约定
+
+- 用户文档按「操作步骤、结果、边界、下一步」组织，每页聚焦一个任务。
+- `usage.md` 是功能入口；具体操作分别放在下载、批量、素材、文件和排查页面。
+- `implementation.md`、`roadmap.md`、`verification.md` 保留架构背景、实施契约与历史证据，避免与当前产品说明混用。
+- 新增页面时同步中英文文件名、侧栏和关联链接，保持语言切换可达。
+- 主题样式在 `docs/.vitepress/theme/`，站点图标在 `docs/public/`；扩展图标变更后同步更新。
+- 文档修改后执行 `pnpm docs:build`，并检查桌面、移动端、深浅色、搜索与语言切换。

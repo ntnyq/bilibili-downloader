@@ -24,7 +24,7 @@ Use `pnpm dev:firefox` for Firefox development. Dependency installation runs
 | `pnpm zip`           | Chromium distribution archive in `dist/` |
 | `pnpm zip:firefox`   | Firefox distribution archive in `dist/`  |
 
-See the [installation instructions](index.md#install) to load a build.
+See the [installation instructions](getting-started.md#install) to load a build.
 Generated files in `dist/` should not be edited directly.
 
 ## Project structure
@@ -70,6 +70,7 @@ Run these commands from the repository root:
 ```sh
 pnpm --dir docs install
 pnpm docs:dev
+pnpm docs:typecheck
 pnpm docs:build
 ```
 
@@ -84,3 +85,12 @@ The static site is generated in `docs/.vitepress/dist/`. Preview it with
 - [Architecture](implementation.md): components, WBI, quality selection, queue behavior, and permissions.
 - [Roadmap](roadmap.md): feature milestones and behavior contracts.
 - [Verification records](verification.md): automated checks, browser verification, and known limits.
+
+## Documentation conventions
+
+- Organize user guides around steps, expected results, limits, and a next action; keep one task per page.
+- `usage.md` is the feature entry point; detailed tasks live in download, batch, asset, file, and troubleshooting pages.
+- `implementation.md`, `roadmap.md`, and `verification.md` retain architecture context, implementation contracts, and historical evidence, separately from current product guidance.
+- Add matching English and Chinese filenames, sidebar entries, and related links so language switching stays on the same topic.
+- Theme styles live in `docs/.vitepress/theme/`; the site icon lives in `docs/public/` and should follow extension icon changes.
+- Run `pnpm docs:build` after documentation edits and check desktop, mobile, both appearances, search, and language switching.

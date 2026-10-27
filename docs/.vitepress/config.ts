@@ -4,36 +4,73 @@ export default defineConfig({
   title: 'Bilibili Downloader',
   description: 'Download Bilibili videos, audio, and companion assets.',
   lang: 'en',
+  head: [['link', { rel: 'icon', type: 'image/png', href: '/icon.png' }]],
   locales: {
     root: {
       label: 'English',
       lang: 'en',
       themeConfig: {
         nav: [
-          { text: 'Guide', link: '/usage' },
+          { text: 'Get started', link: '/getting-started' },
+          { text: 'Features', link: '/usage' },
           { text: 'Development', link: '/development' },
+          { text: 'Help', link: '/troubleshooting' },
         ],
         sidebar: [
           {
-            text: 'Guide',
+            text: 'Start here',
             items: [
-              { text: 'Getting started', link: '/' },
-              { text: 'Usage', link: '/usage' },
-              { text: 'Local helper', link: '/native-helper' },
+              { text: 'Introduction', link: '/' },
+              {
+                text: 'Installation & first download',
+                link: '/getting-started',
+              },
+              { text: 'Feature overview', link: '/usage' },
+            ],
+          },
+          {
+            text: 'Feature guides',
+            items: [
+              { text: 'Video, quality & tasks', link: '/downloads' },
+              { text: 'Batch downloads', link: '/batch-downloads' },
+              { text: 'Audio & companion assets', link: '/assets' },
+              { text: 'Files & history', link: '/files-and-history' },
+            ],
+          },
+          {
+            text: 'Advanced',
+            collapsed: false,
+            items: [
+              { text: 'Cache & large downloads', link: '/cache-storage' },
+              { text: 'Local FFmpeg helper', link: '/native-helper' },
               { text: 'Native integration', link: '/native-bridge' },
             ],
           },
           {
-            text: 'Development',
+            text: 'Help & privacy',
+            collapsed: false,
             items: [
-              { text: 'Development guide', link: '/development' },
-              { text: 'Architecture', link: '/implementation' },
-              { text: 'Roadmap', link: '/roadmap' },
-              { text: 'Verification', link: '/verification' },
+              { text: 'Troubleshooting', link: '/troubleshooting' },
+              { text: 'Permissions & data', link: '/permissions' },
               { text: 'Privacy policy', link: '/privacy-policy' },
             ],
           },
+          {
+            text: 'Developer reference',
+            collapsed: true,
+            items: [
+              { text: 'Development guide', link: '/development' },
+              { text: 'Architecture', link: '/implementation' },
+              { text: 'Implementation milestones', link: '/roadmap' },
+              { text: 'Verification records', link: '/verification' },
+            ],
+          },
         ],
+        editLink: {
+          pattern:
+            'https://github.com/ntnyq/bilibili-downloader/edit/main/docs/:path',
+          text: 'Edit this page on GitHub',
+        },
         footer: {
           message: 'Project code released under the MIT License.',
         },
@@ -60,30 +97,63 @@ export default defineConfig({
       },
       themeConfig: {
         nav: [
-          { text: '使用指南', link: '/zh/usage' },
+          { text: '快速开始', link: '/zh/getting-started' },
+          { text: '功能指南', link: '/zh/usage' },
           { text: '开发文档', link: '/zh/development' },
+          { text: '常见问题', link: '/zh/troubleshooting' },
         ],
         sidebar: [
           {
-            text: '使用指南',
+            text: '开始使用',
             items: [
-              { text: '快速开始', link: '/zh/' },
-              { text: '使用说明', link: '/zh/usage' },
-              { text: '本地助手', link: '/zh/native-helper' },
+              { text: '产品介绍', link: '/zh/' },
+              { text: '安装与首次下载', link: '/zh/getting-started' },
+              { text: '功能概览', link: '/zh/usage' },
+            ],
+          },
+          {
+            text: '功能指南',
+            items: [
+              { text: '视频、画质与任务', link: '/zh/downloads' },
+              { text: '批量下载', link: '/zh/batch-downloads' },
+              { text: '音频与配套素材', link: '/zh/assets' },
+              { text: '文件与下载记录', link: '/zh/files-and-history' },
+            ],
+          },
+          {
+            text: '进阶配置',
+            collapsed: false,
+            items: [
+              { text: '缓存与大型下载', link: '/zh/cache-storage' },
+              { text: '本地 FFmpeg 助手', link: '/zh/native-helper' },
               { text: '原生助手集成', link: '/zh/native-bridge' },
             ],
           },
           {
-            text: '开发文档',
+            text: '帮助与隐私',
+            collapsed: false,
             items: [
-              { text: '开发指南', link: '/zh/development' },
-              { text: '实现方案', link: '/zh/implementation' },
-              { text: '扩展路线图', link: '/zh/roadmap' },
-              { text: '验证记录', link: '/zh/verification' },
+              { text: '故障排查', link: '/zh/troubleshooting' },
+              { text: '权限与本地数据', link: '/zh/permissions' },
               { text: '隐私政策', link: '/zh/privacy-policy' },
             ],
           },
+          {
+            text: '开发参考',
+            collapsed: true,
+            items: [
+              { text: '开发指南', link: '/zh/development' },
+              { text: '架构说明', link: '/zh/implementation' },
+              { text: '实现里程碑', link: '/zh/roadmap' },
+              { text: '验证记录', link: '/zh/verification' },
+            ],
+          },
         ],
+        editLink: {
+          pattern:
+            'https://github.com/ntnyq/bilibili-downloader/edit/main/docs/:path',
+          text: '在 GitHub 上编辑此页',
+        },
         outline: { label: '本页目录' },
         docFooter: { prev: '上一页', next: '下一页' },
         langMenuLabel: '切换语言',
@@ -107,6 +177,8 @@ export default defineConfig({
     },
   },
   themeConfig: {
+    logo: { src: '/icon.png', alt: 'Bilibili Downloader' },
+    outline: { level: [2, 3] },
     socialLinks: [
       { icon: 'github', link: 'https://github.com/ntnyq/bilibili-downloader' },
     ],

@@ -16,6 +16,7 @@
     "dev:firefox": "wxt -b firefox",
     "docs:build": "pnpm --dir docs build",
     "docs:dev": "pnpm --dir docs dev",
+    "docs:typecheck": "tsc --project docs/tsconfig.json",
     "format": "oxfmt",
     "format:check": "oxfmt --check",
     "lint": "eslint",

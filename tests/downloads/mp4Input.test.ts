@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import { CustomSource, EncodedPacketSink, Input, MP4 } from 'mediabunny'
 import { remuxMedia } from '../../utils/downloads/remuxMedia'
+import { testFragmentIndex } from '../fixtures/downloads/fragmentIndex'
+import { testFragmentSamples } from '../fixtures/downloads/fragmentSamples'
 import { indexedMp4 } from '../fixtures/downloads/mp4Index'
 import type { StreamTargetChunk } from 'mediabunny'
 
@@ -248,7 +250,7 @@ test('propagates cancellation while awaiting an index page', async () => {
   }
 })
 
-test('uses bounded Blob reads when remuxing an MP4 with a large padded moov', async () => {
+test('uses bounded Blob reads when remuxing an MP4 with a large padded moov', async context => {
   const fixture = await indexedMp4({ samples: 17003, padding: 8 * 1024 * 1024 })
   const original = fixture.blob()
   const reads: number[] = []
@@ -269,6 +271,8 @@ test('uses bounded Blob reads when remuxing an MP4 with a large padded moov', as
       },
     }),
     new AbortController().signal,
+    await testFragmentIndex(context),
+    await testFragmentSamples(context),
   )
   assert.ok(writtenBytes > 100000)
   assert.ok(

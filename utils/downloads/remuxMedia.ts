@@ -10,6 +10,8 @@ import {
   StreamTarget,
 } from 'mediabunny'
 import type { EncodedPacket, StreamTargetChunk } from 'mediabunny'
+import type { FragmentIndexStore } from './fragmentIndex'
+import type { FragmentSampleStore } from './fragmentSamples'
 
 export type RemuxKind = 'dash' | 'audio' | 'progressive'
 
@@ -21,14 +23,20 @@ interface PacketTrack {
 }
 
 /**
- * Bound output sample metadata to the active fragment and a compact seek index.
+ * Keep fragment payloads and completed-fragment indexes on disk.
  */
-export function createRemuxOutput(writable: WritableStream<StreamTargetChunk>) {
+export function createRemuxOutput(
+  writable: WritableStream<StreamTargetChunk>,
+  fragmentIndex: FragmentIndexStore,
+  fragmentSamples: FragmentSampleStore,
+) {
   return new Output({
-    // The pinned patch releases sample records after each fragment is written.
+    // The pinned patch spools TFRA records and streams the final MFRA in pages.
     format: new Mp4OutputFormat({
       fastStart: 'fragmented',
       minimumFragmentDuration: 2,
+      _fragmentIndexStore: fragmentIndex,
+      _fragmentSampleStore: fragmentSamples,
     }),
     target: new StreamTarget(writable, {
       chunked: true,
@@ -39,13 +47,15 @@ export function createRemuxOutput(writable: WritableStream<StreamTargetChunk>) {
 
 /**
  * Copies encoded packets in decode order, interleaving tracks to bound buffering.
- * The seekable target receives small writes; media bytes never accumulate in RAM.
+ * The target and disk spools receive bounded writes; GOP payloads stay on disk.
  */
 export async function remuxMedia(
   kind: Exclude<RemuxKind, 'progressive'>,
   blobs: Blob[],
   writable: WritableStream<StreamTargetChunk>,
   signal: AbortSignal,
+  fragmentIndex: FragmentIndexStore,
+  fragmentSamples: FragmentSampleStore,
   onProgress: (bytes: number) => void = () => {},
 ) {
   signal.throwIfAborted()
@@ -62,7 +72,48 @@ export async function remuxMedia(
         }),
       }),
   )
-  const output = createRemuxOutput(writable)
+  const guardStore = (store: FragmentIndexStore): FragmentIndexStore => ({
+    async append(trackId, data) {
+      signal.throwIfAborted()
+      await store.append(trackId, data)
+      signal.throwIfAborted()
+    },
+    async read(trackId, offset, length) {
+      signal.throwIfAborted()
+      const data = await store.read(trackId, offset, length)
+      signal.throwIfAborted()
+      return data
+    },
+  })
+  const check = async <Result>(
+    operation: () => Result | PromiseLike<Result>,
+  ) => {
+    signal.throwIfAborted()
+    const value = await operation()
+    signal.throwIfAborted()
+    return value
+  }
+  const output = createRemuxOutput(writable, guardStore(fragmentIndex), {
+    append(trackId, sample, data) {
+      return check(() => fragmentSamples.append(trackId, sample, data))
+    },
+    get: (trackId, id) => check(() => fragmentSamples.get(trackId, id)),
+    set(trackId, id, sample) {
+      return check(() => fragmentSamples.set(trackId, id, sample))
+    },
+    sort(trackId, start, count) {
+      return check(() => fragmentSamples.sort(trackId, start, count))
+    },
+    sorted(trackId, index) {
+      return check(() => fragmentSamples.sorted(trackId, index))
+    },
+    readMedia(trackId, offset, length) {
+      return check(() => fragmentSamples.readMedia(trackId, offset, length))
+    },
+    release(trackId, before) {
+      return check(() => fragmentSamples.release(trackId, before))
+    },
+  })
   const disposeInputs = () => inputs.forEach(input => input.dispose())
   signal.addEventListener('abort', disposeInputs, { once: true })
   try {

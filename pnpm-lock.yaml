@@ -166,7 +166,7 @@ overrides:
   esbuild: ^0.28.2
 
 patchedDependencies:
-  mediabunny@1.62.1: ef622e000ad370f521b1b0b4eb63893645d5c10e153e831481461cad7990c09f
+  mediabunny@1.62.1: 1bd043ad12a24f87fee849a567ad4292016c6d4e10775ad01a024cc8ba826bd9
 
 importers:
 
@@ -204,7 +204,7 @@ importers:
         version: 0.9.2
       mediabunny:
         specifier: 1.62.1
-        version: 1.62.1(patch_hash=ef622e000ad370f521b1b0b4eb63893645d5c10e153e831481461cad7990c09f)
+        version: 1.62.1(patch_hash=1bd043ad12a24f87fee849a567ad4292016c6d4e10775ad01a024cc8ba826bd9)
       ofetch:
         specifier: ^1.5.1
         version: 1.5.1
@@ -6001,7 +6001,7 @@ snapshots:
 
   mdn-data@2.37.2: {}
 
-  mediabunny@1.62.1(patch_hash=ef622e000ad370f521b1b0b4eb63893645d5c10e153e831481461cad7990c09f):
+  mediabunny@1.62.1(patch_hash=1bd043ad12a24f87fee849a567ad4292016c6d4e10775ad01a024cc8ba826bd9):
     dependencies:
       '@types/dom-mediacapture-transform': 0.1.12
       '@types/dom-webcodecs': 0.1.13

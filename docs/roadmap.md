@@ -1,5 +1,9 @@
 # Capability roadmap
 
+::: info Document scope
+This page preserves implementation contracts and completed milestones, rather than a list of upcoming features. For current behavior, see the [feature guide](usage.md); for test coverage, see [verification records](verification.md).
+:::
+
 > Update 2026-10-27: DASH, progressive FLV / MP4, and standalone AAC now remux to browser disk. Capacity follows available quota while reserving input and output. The historical 512 MB limits below no longer apply; see [architecture](implementation.md#mp4-remuxing-and-resource-cleanup) and [verification](verification.md).
 
 First planned: 2026-10-04; milestone update: 2026-10-05. Based on the video-download design discussion and implementation.

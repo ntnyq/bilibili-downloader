@@ -1,91 +1,161 @@
 # Bilibili Downloader
 
-Download Bilibili videos and their companion assets from your browser.
-Save a single video, pick parts, or queue a collection with a few clicks.
+<img src="assets/images/icon.png" width="80" height="80" alt="Bilibili Downloader icon" />
 
-English · [简体中文](README.zh-CN.md)
+> Save Bilibili videos and companion assets, with quality selection, multi-part downloads, and a download center.
 
-## Features
+Built with **WXT + Vue 3 + TypeScript + Tailwind CSS + shadcn-vue**.
 
-- **Video and audio** — Save videos as MP4 or audio as M4A, with a remembered quality preference.
-- **Companion assets** — Export original covers, SRT subtitles, and danmaku XML, individually or as an asset bundle.
-- **Multi-part and batch downloads** — Select parts or import video links, favorites, collections, series, and creator uploads.
-- **Download center** — Pause and resume tasks, reorder the queue, search downloads, and retry failures. Resume from cached data when supported.
-- **Organized files** — Customize filenames and folders, enable completion notifications, and export download records as JSON or CSV.
-- **Download history** — Restore the latest batch session and skip previously saved items. Use the optional local FFmpeg helper for larger downloads.
+English · [简体中文](README.zh-CN.md) · [Documentation](docs/index.md)
 
-Read the [documentation](docs/index.md) for installation, usage, and development guides.
+## 📦 Install
 
-## Install
-
-Build the extension from source using the pnpm version pinned in `package.json`:
+Build from source with Node.js LTS and the pnpm version pinned in `package.json`:
 
 ```sh
+git clone https://github.com/ntnyq/bilibili-downloader.git
+cd bilibili-downloader
 pnpm install
 pnpm build
 ```
 
-In Chrome or Edge, open the extensions page, enable **Developer mode**, choose
-**Load unpacked**, and select `dist/chrome-mv3/`.
+For **Chrome 120+ / Edge**, enable **Developer mode** on the extensions page,
+select **Load unpacked**, and choose `dist/chrome-mv3/`.
+Reload any open Bilibili pages after installing or updating.
 
 <details>
-<summary>Firefox installation</summary>
+<summary>Firefox installation and distribution archives</summary>
 
-Run `pnpm build:firefox`, open `about:debugging#/runtime/this-firefox`, and load
-`dist/firefox-mv3/manifest.json` as a temporary add-on.
+For **Firefox 142+**, run `pnpm build:firefox`, open
+`about:debugging#/runtime/this-firefox`, and load
+`dist/firefox-mv3/manifest.json` as a temporary add-on. Temporary installation
+is removed when Firefox restarts. Runtime verification is still pending;
+see the [verification records](docs/verification.md).
 
-Firefox requires version 142 or later. Runtime verification is still pending;
-see the [verification notes](docs/verification.md).
+Use `pnpm zip` or `pnpm zip:firefox` to create distributable archives in `dist/`.
+After changing the source, rebuild, reload the extension, and refresh Bilibili.
 
 </details>
 
-## Quick start
+## ✨ Features
 
-1. Open a video on [Bilibili](https://www.bilibili.com/) and use the download card below the player, or open the extension popup.
-2. Choose video, audio, another asset, or an asset bundle. For multi-part videos, select the current part, all parts, or specific parts.
-3. Choose your quality preference and start the download. Manage tasks in the download center that opens automatically.
+- **Download where you watch** — use the card below the Bilibili player or the toolbar popup; select current, all, or specific parts.
+- **Choose video or audio** — save MP4 video with a remembered quality preference, or an AAC audio track as M4A without re-encoding.
+- **Save companion assets** — export original covers, SRT subtitles, and danmaku XML, individually or as an asset bundle.
+- **Download in batches** — preview links, favorites, collections, series, or creator uploads, then queue selected videos.
+- **Manage your tasks** — pause and resume individual tasks, reorder waiting tasks, search the queue, and retry failures with validated cache when available.
+- **Keep files organized** — customize filenames and folders, restore the latest batch session, skip successful downloads, and export JSON / CSV records.
 
-**Keep the download center open while downloading.** Files are saved under
-`Bilibili/` in your browser's default download folder.
+## 🚀 Quick Start
+
+1. Open a video on [Bilibili](https://www.bilibili.com/).
+2. Use the download card below the player or open the toolbar popup.
+3. Choose the output, parts, and quality, then start downloading.
+4. Follow progress and manage tasks in the download center that opens automatically.
+
+**Keep the download center open while downloading**, including local-helper
+tasks. Files go to `Bilibili/` in the browser's default download folder.
 
 <details>
-<summary>Quality, pause behavior, and download limits</summary>
+<summary>Quality, pausing, and recovery</summary>
 
-- Available quality depends on your Bilibili account and the streams returned by Bilibili. A quality cap never selects a higher resolution.
-- Pausing the queue lets the current task finish. Pausing an individual task stops it and retains committed cache data for resuming.
-- Closing or refreshing the download center interrupts active work. Reopen it and retry; resuming depends on valid cached data and server support.
-- DASH video, progressive FLV/MP4, and AAC audio use disk-backed browser remuxing. Capacity is checked dynamically against available browser quota for both input and output, with no fixed 16 GiB input cap.
+- Quality depends on your Bilibili account and returned streams. A quality cap never selects a higher resolution; the extension does not bypass access restrictions.
+- **Pause queue** lets the current task finish. **Pause** beside a task stops that task and retains committed cache; saving tasks cannot be paused.
+- Closing or refreshing the download center interrupts active work. Reopen it and retry; resuming depends on valid cache and server support.
+- Video and audio use disk-backed remuxing with dynamic browser quota checks for input and output. There is no fixed 16 GiB input cap.
 - Live streams, bangumi, interactive videos, and protected content are currently unsupported.
 
 </details>
 
 <details>
-<summary>Batch imports, file settings, and the local helper</summary>
+<summary>Batch imports and large downloads</summary>
 
-Use **Batch import** in the download center to preview a source and queue selected
-videos. The latest session is saved so you can continue after reopening.
-File settings control naming and folders for newly queued tasks; download
-history helps avoid saving the same content again.
+In **Batch import**, preview a source and queue selected items. Online sources
+load one page at a time, with up to 500 items per preview and 1,000 active tasks.
+The latest session is restored locally; continue importing manually after reopening.
 
-For detailed instructions, see the [usage guide](docs/usage.md).
-For larger downloads, see the [local helper guide](docs/native-helper.md)
-or set up [native integration](docs/native-bridge.md) to hand off tasks
-directly from the extension.
+For large downloads, use the optional [Python / FFmpeg helper](docs/native-helper.md).
+Export a `.bili.json` task, or configure [native integration](docs/native-bridge.md)
+to hand off tasks and display progress in the extension. Task files contain
+temporary media URLs; keep them private.
 
 </details>
+
+## 📚 Documentation
+
+| I want to…                                 | Read                                           |
+| ------------------------------------------ | ---------------------------------------------- |
+| Install and save my first video            | [Getting started](docs/getting-started.md)     |
+| Choose parts, quality, or task controls    | [Video and tasks](docs/downloads.md)           |
+| Import favorites or creator uploads        | [Batch downloads](docs/batch-downloads.md)     |
+| Save audio, covers, subtitles, or danmaku  | [Companion assets](docs/assets.md)             |
+| Configure filenames or find past downloads | [Files and history](docs/files-and-history.md) |
+| Recover a failed download                  | [Troubleshooting](docs/troubleshooting.md)     |
+
+## 🔒 Privacy and Permissions
+
+No API key or developer-operated backend is required. Settings, queues, batch
+sessions, and history stay in local extension storage. Media processing runs on
+your computer; requests go directly to Bilibili and its media services.
+
+The browser attaches your existing Bilibili session to API requests. The
+extension does not read or export raw cookies. Notifications and native-helper
+communication request optional permissions only when enabled.
+
+Read [permissions](docs/permissions.md) and the [privacy policy](docs/privacy-policy.md)
+for storage, network, and deletion details.
+
+## 💡 Troubleshooting
+
+**Download card missing?** Reload the video page after loading or updating the
+extension, or try the toolbar popup on a supported video URL.
+
+**Download interrupted or out of space?** Keep the download center open. Retry
+the original task to validate retained cache. Pause the queue and wait for the
+current task to stop before clearing cache, or use the local helper.
+
+**Quality or subtitles missing?** Check that the content is available in your
+current Bilibili session. See [troubleshooting](docs/troubleshooting.md) for
+recovery steps and supported-content limits.
+
+## 🛠️ Development
 
 <details>
-<summary>Development and technical documentation</summary>
+<summary>Development commands and checks</summary>
 
-See the [development guide](docs/development.md) for setup, build, and verification
-commands. Architecture, roadmap, and verification records are linked there.
+```sh
+pnpm install
+pnpm dev
+pnpm dev:firefox
+```
+
+Before submitting changes, run:
+
+```sh
+pnpm test
+pnpm test:native
+pnpm format:check
+pnpm lint
+pnpm typecheck
+pnpm build
+pnpm build:firefox
+```
+
+TypeScript tests use `node:test`, `node:assert/strict`, and `tsx`. Native helper
+tests use Python `unittest`. Exercise affected browser contexts manually and
+distinguish fixture-based checks from real downloads and Firefox runtime checks.
+
+The [development guide](docs/development.md) covers project structure,
+documentation commands, architecture, and verification records.
 
 </details>
 
-## License
+## 📄 License
 
-Project code is licensed under [MIT](LICENSE). Third-party dependencies retain
-their own licenses; the bundled `@ffmpeg/core` is GPL-2.0-or-later, and Mediabunny is MPL-2.0.
-The Mediabunny license is included in `public/licenses/mediabunny.txt`; its source
-is available in the [Mediabunny repository](https://github.com/Vanilagy/mediabunny).
-See the [FFmpeg.wasm license notes](https://ffmpegwasm.netlify.app/docs/overview/#licenses).
+[MIT](LICENSE) License © 2026 to PRESENT [ntnyq](https://github.com/ntnyq).
+
+Third-party dependencies retain their own licenses. The bundled `@ffmpeg/core`
+is GPL-2.0-or-later; see the [FFmpeg.wasm license notes](https://ffmpegwasm.netlify.app/docs/overview/#licenses).
+Mediabunny is MPL-2.0, with its license included in
+[public/licenses/mediabunny.txt](public/licenses/mediabunny.txt) and source in the
+[Mediabunny repository](https://github.com/Vanilagy/mediabunny).

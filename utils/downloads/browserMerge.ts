@@ -29,11 +29,40 @@ export async function mergeBrowserMedia(
   const directory = await cache.getDirectoryHandle('merged-output', {
     create: true,
   })
-  const filename = `${crypto.randomUUID()}.${kind === 'audio' ? 'm4a' : 'mp4'}`
-  const dispose = () => directory.removeEntry(filename)
-  const handle = await directory.getFileHandle(filename, { create: true })
+  const jobId = crypto.randomUUID()
+  const dispose = async () => {
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await directory.removeEntry(jobId, { recursive: true })
+        return
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'NotFoundError') {
+          return
+        }
+        // Termination can briefly leave native OPFS streams locked.
+        if (
+          attempt >= 4
+          || !(error instanceof DOMException)
+          || ![
+            'NoModificationAllowedError',
+            'InvalidModificationError',
+          ].includes(error.name)
+        ) {
+          throw error
+        }
+        await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)))
+      }
+    }
+  }
   let worker: Worker | undefined
   try {
+    const jobDirectory = await directory.getDirectoryHandle(jobId, {
+      create: true,
+    })
+    const handle = await jobDirectory.getFileHandle(
+      `output.${kind === 'audio' ? 'm4a' : 'mp4'}`,
+      { create: true },
+    )
     signal.throwIfAborted()
     const remuxWorker = new Worker(
       new URL('./remux.worker.ts', import.meta.url),
@@ -95,7 +124,12 @@ export async function mergeBrowserMedia(
         reject(new Error('浏览器无法接收音视频封装结果。'))
       })
       try {
-        remuxWorker.postMessage({ kind, inputs, handle } satisfies RemuxRequest)
+        remuxWorker.postMessage({
+          kind,
+          inputs,
+          handle,
+          directory: jobDirectory,
+        } satisfies RemuxRequest)
       } catch (error) {
         cleanup()
         reject(error)
