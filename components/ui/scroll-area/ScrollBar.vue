@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import { ScrollAreaScrollbar, ScrollAreaThumb } from 'reka-ui'
-import { cn } from '~/lib/utils'
 import type { ScrollAreaScrollbarProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 
@@ -31,8 +31,8 @@ const delegatedProps = reactiveOmit(props, 'class')
     data-slot="scroll-area-scrollbar"
   >
     <ScrollAreaThumb
-      data-slot="scroll-area-thumb"
       class="bg-border relative flex-1 rounded-full"
+      data-slot="scroll-area-thumb"
     />
   </ScrollAreaScrollbar>
 </template>

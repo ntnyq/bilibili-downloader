@@ -29,6 +29,8 @@
   --color-ring: #c93669;
   --color-sidebar: #f6f7f9;
   --color-sidebar-foreground: #202024;
+  --color-sidebar-primary: var(--color-primary);
+  --color-sidebar-primary-foreground: var(--color-primary-foreground);
   --color-sidebar-accent: #fcecf2;
   --color-sidebar-accent-foreground: #c93669;
   --color-sidebar-border: #e4e4e9;

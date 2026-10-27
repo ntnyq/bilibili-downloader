@@ -41,6 +41,7 @@ skipped. Raw input cache prefetch/coalescing remains independent of these pages.
 
 Per-track timestamp hints and cumulative decode-time anchors are each bounded to
 128 records; the shared fragment-summary cache retains at most 128 records.
+These caches refresh on reuse and evict the least recently accessed record.
 Missing `tfdt` is recovered from an exact TFRA sample reference or by rescanning
 a contiguous prefix from a retained decode anchor (or the init boundary). Decode
 end time is kept separately from presentation end time, preserving B-frame and

@@ -1,8 +1,8 @@
-<script lang="ts" setup>
-import { CheckIcon, MinusIcon } from '@lucide/vue'
+<script setup lang="ts">
+import { Check } from '@lucide/vue'
+import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import { CheckboxIndicator, CheckboxRoot, useForwardPropsEmits } from 'reka-ui'
-import { computed } from 'vue'
-import { cn } from '~/lib/utils'
 import type { CheckboxRootEmits, CheckboxRootProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 
@@ -10,35 +10,31 @@ const props = defineProps<
   CheckboxRootProps & { class?: HTMLAttributes['class'] }
 >()
 const emit = defineEmits<CheckboxRootEmits>()
-const forwarded = useForwardPropsEmits(
-  computed(() => {
-    const { class: _, ...rest } = props
-    return rest
-  }),
-  emit,
-)
+
+const delegatedProps = reactiveOmit(props, 'class')
+
+const forwarded = useForwardPropsEmits(delegatedProps, emit)
 </script>
 
 <template>
   <CheckboxRoot
+    v-slot="slotProps"
     v-bind="forwarded"
     :class="
       cn(
-        'peer size-4 shrink-0 rounded border border-input bg-background outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 data-[state=checked]:border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=indeterminate]:border-primary data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground',
+        'peer border-input data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground data-[state=checked]:border-primary focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive size-4 shrink-0 rounded-[4px] border shadow-xs transition-shadow outline-none focus-visible:ring-3 disabled:cursor-not-allowed disabled:opacity-50',
         props.class,
       )
     "
     data-slot="checkbox"
   >
-    <CheckboxIndicator class="flex items-center justify-center text-current">
-      <MinusIcon
-        v-if="modelValue === 'indeterminate'"
-        class="size-3.5"
-      />
-      <CheckIcon
-        v-else
-        class="size-3.5"
-      />
+    <CheckboxIndicator
+      class="grid place-content-center text-current transition-none"
+      data-slot="checkbox-indicator"
+    >
+      <slot v-bind="slotProps">
+        <Check class="size-3.5" />
+      </slot>
     </CheckboxIndicator>
   </CheckboxRoot>
 </template>

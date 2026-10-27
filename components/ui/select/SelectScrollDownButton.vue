@@ -1,18 +1,14 @@
-<script lang="ts" setup>
+<script setup lang="ts">
 import { ChevronDown } from '@lucide/vue'
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import { SelectScrollDownButton, useForwardProps } from 'reka-ui'
-import { cn } from '~/lib/utils'
 import type { SelectScrollDownButtonProps } from 'reka-ui'
-import type { HTMLAttributes, VNode } from 'vue'
+import type { HTMLAttributes } from 'vue'
 
 const props = defineProps<
   SelectScrollDownButtonProps & { class?: HTMLAttributes['class'] }
 >()
-
-defineSlots<{
-  default?: () => VNode[]
-}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 
@@ -25,6 +21,7 @@ const forwardedProps = useForwardProps(delegatedProps)
     :class="
       cn('flex cursor-default items-center justify-center py-1', props.class)
     "
+    data-slot="select-scroll-down-button"
   >
     <slot>
       <ChevronDown class="size-4" />

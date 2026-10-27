@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import {
   DropdownMenuContent,
   DropdownMenuPortal,
   useForwardPropsEmits,
 } from 'reka-ui'
 import { useOverlayTarget } from '~/composables/useOverlayTarget'
-import { cn } from '~/lib/utils'
 import type {
   DropdownMenuContentEmits,
   DropdownMenuContentProps,
 } from 'reka-ui'
-import type { HTMLAttributes, VNode } from 'vue'
+import type { HTMLAttributes } from 'vue'
 
 const props = withDefaults(
   defineProps<DropdownMenuContentProps & { class?: HTMLAttributes['class'] }>(),
@@ -19,14 +19,15 @@ const props = withDefaults(
     sideOffset: 4,
   },
 )
+
 const emit = defineEmits<DropdownMenuContentEmits>()
+
 defineOptions({
   inheritAttrs: false,
 })
-defineSlots<{
-  default: () => VNode[]
-}>()
+
 const overlayTarget = useOverlayTarget()
+
 const delegatedProps = reactiveOmit(props, 'class')
 
 const forwarded = useForwardPropsEmits(delegatedProps, emit)

@@ -1,6 +1,6 @@
-<script lang="ts" setup>
-import { isNull } from '@ntnyq/utils'
+<script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import {
   injectSelectRootContext,
   SelectContent,
@@ -9,11 +9,9 @@ import {
   useForwardPropsEmits,
 } from 'reka-ui'
 import { useOverlayTarget } from '~/composables/useOverlayTarget'
-import { cn } from '~/lib/utils'
-import SelectScrollDownButton from './SelectScrollDownButton.vue'
-import SelectScrollUpButton from './SelectScrollUpButton.vue'
+import { SelectScrollDownButton, SelectScrollUpButton } from '.'
 import type { SelectContentEmits, SelectContentProps } from 'reka-ui'
-import type { HTMLAttributes, VNode } from 'vue'
+import type { HTMLAttributes } from 'vue'
 
 const props = withDefaults(
   defineProps<SelectContentProps & { class?: HTMLAttributes['class'] }>(),
@@ -31,10 +29,6 @@ const emit = defineEmits<SelectContentEmits>()
 defineOptions({
   inheritAttrs: false,
 })
-
-defineSlots<{
-  default: () => VNode[]
-}>()
 
 const overlayTarget = useOverlayTarget()
 const select = injectSelectRootContext()
@@ -54,23 +48,32 @@ function handleEscape(event: KeyboardEvent) {
 </script>
 
 <template>
-  <SelectPortal
-    :to="overlayTarget ?? undefined"
-    :disabled="isNull(overlayTarget)"
-  >
+  <SelectPortal :to="overlayTarget ?? undefined">
     <SelectContent
       @keydown.esc.stop="handleEscape"
-      v-bind="{ ...forwarded, ...$attrs }"
+      v-bind="{ ...$attrs, ...forwarded }"
       :class="
         cn(
-          'pointer-events-auto relative z-50 max-h-[min(24rem,var(--reka-select-content-available-height))] min-w-(--reka-select-trigger-width) max-w-[calc(100vw-1rem)] overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 motion-reduce:animate-none',
+          'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 pointer-events-auto max-h-[min(24rem,var(--reka-select-content-available-height))] min-w-(--reka-select-trigger-width) max-w-[calc(100vw-1rem)] motion-reduce:animate-none overflow-x-hidden overflow-y-auto rounded-md border shadow-md',
+          position === 'popper'
+            && 'data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1',
+          // Remove closed shadow-root layers without waiting for animation events.
+          overlayTarget && 'data-[state=closed]:animate-none!',
           props.class,
         )
       "
-      data-slot="select-content"
     >
       <SelectScrollUpButton />
-      <SelectViewport :class="cn('p-1', position === 'popper' && 'w-full')">
+      <SelectViewport
+        :class="
+          cn(
+            'p-1',
+            position === 'popper'
+              && 'h-(--reka-select-trigger-height) w-full min-w-(--reka-select-trigger-width) scroll-my-1',
+          )
+        "
+        data-slot="select-content"
+      >
         <slot />
       </SelectViewport>
       <SelectScrollDownButton />

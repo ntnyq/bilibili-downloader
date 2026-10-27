@@ -1,40 +1,63 @@
 <script setup lang="ts">
-import { Primitive } from 'reka-ui'
-import { cn } from '~/lib/utils'
-import { sidebarMenuButtonVariants } from '.'
-import type { PrimitiveProps } from 'reka-ui'
-import type { HTMLAttributes, VNode } from 'vue'
-import type { SidebarMenuButtonVariants } from '.'
+import { reactiveOmit } from '@vueuse/core'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '~/components/ui/tooltip'
+import SidebarMenuButtonChild from './SidebarMenuButtonChild.vue'
+import { useSidebar } from './utils'
+import type { Component } from 'vue'
+import type { SidebarMenuButtonProps } from './SidebarMenuButtonChild.vue'
 
-const props = withDefaults(defineProps<SidebarMenuButtonProps>(), {
-  as: 'button',
-  variant: 'default',
-  size: 'default',
+const props = withDefaults(
+  defineProps<
+    SidebarMenuButtonProps & {
+      tooltip?: string | Component
+    }
+  >(),
+  {
+    as: 'button',
+    variant: 'default',
+    size: 'default',
+  },
+)
+
+defineOptions({
+  inheritAttrs: false,
 })
 
-defineSlots<{
-  default: () => VNode[]
-}>()
+const { isMobile, state } = useSidebar()
 
-export interface SidebarMenuButtonProps extends PrimitiveProps {
-  variant?: SidebarMenuButtonVariants['variant']
-  size?: SidebarMenuButtonVariants['size']
-  isActive?: boolean
-  class?: HTMLAttributes['class']
-}
+const delegatedProps = reactiveOmit(props, 'tooltip')
 </script>
 
 <template>
-  <Primitive
-    :data-size="size"
-    :data-active="isActive"
-    :class="cn(sidebarMenuButtonVariants({ variant, size }), props.class)"
-    :as
-    :as-child
-    data-slot="sidebar-menu-button"
-    data-sidebar="menu-button"
-    v-bind="$attrs"
+  <Tooltip v-if="tooltip">
+    <TooltipTrigger as-child>
+      <SidebarMenuButtonChild v-bind="{ ...delegatedProps, ...$attrs }">
+        <slot />
+      </SidebarMenuButtonChild>
+    </TooltipTrigger>
+    <TooltipContent
+      :hidden="state !== 'collapsed' || isMobile"
+      side="right"
+      align="center"
+    >
+      <template v-if="typeof tooltip === 'string'">
+        {{ tooltip }}
+      </template>
+      <component
+        v-else
+        :is="tooltip"
+      />
+    </TooltipContent>
+  </Tooltip>
+
+  <SidebarMenuButtonChild
+    v-else
+    v-bind="{ ...delegatedProps, ...$attrs }"
   >
     <slot />
-  </Primitive>
+  </SidebarMenuButtonChild>
 </template>

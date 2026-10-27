@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import { DropdownMenuSeparator } from 'reka-ui'
-import { cn } from '~/lib/utils'
 import type { DropdownMenuSeparatorProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 

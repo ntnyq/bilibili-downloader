@@ -1,20 +1,15 @@
 <script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import { SwitchRoot, SwitchThumb, useForwardPropsEmits } from 'reka-ui'
-import { cn } from '~/lib/utils'
 import type { SwitchRootEmits, SwitchRootProps } from 'reka-ui'
-import type { HTMLAttributes, VNode } from 'vue'
+import type { HTMLAttributes } from 'vue'
 
 const props = defineProps<
   SwitchRootProps & { class?: HTMLAttributes['class'] }
 >()
 
 const emit = defineEmits<SwitchRootEmits>()
-
-defineSlots<{
-  default: () => VNode[]
-  thumb: () => VNode[]
-}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 

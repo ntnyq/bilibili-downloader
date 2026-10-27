@@ -6,7 +6,7 @@ Latest verification date: 2026-10-27. Earlier milestone records remain below. Th
 
 | Check                | Result                    |
 | -------------------- | ------------------------- |
-| `pnpm test`          | 195 tests passed          |
+| `pnpm test`          | 220 tests passed          |
 | `pnpm test:native`   | 38 tests passed           |
 | `pnpm format:check`  | Passed                    |
 | `pnpm lint`          | Passed                    |
@@ -16,6 +16,19 @@ Latest verification date: 2026-10-27. Earlier milestone records remain below. Th
 | `git diff --check`   | Passed                    |
 
 The production package is approximately 34 MB, including about 32 MB of bundled FFmpeg WASM. Chromium checks covered the download center, welcome, and options pages. Firefox was build-only in this round.
+
+## Bounded fragmented MP4 lookup indexes: 2026-10-27
+
+Fragmented inputs traverse `mfra` by file range, keep TFRA descriptors, and cache at most four copied 16 KiB TFRA pages per track. First index use validates ordering in a streaming pass; ordered indexes use binary lookup, and unordered indexes use streaming fallback without a sorted copy. Per-track seek hints and cumulative decode anchors each retain at most 128 records; the shared fragment-summary cache retains 128 records. Seek hints, anchors, raw pages and summaries reuse recent accesses before eviction.
+
+- Twenty-five new regressions brought the Node suite to 220 tests. Coverage includes both TFRA versions, all 1/2/3/4-byte reference widths, page boundaries, offsets beyond 4 GiB, skipped 8 MiB index padding, multiple runs, referenced samples inside later runs, B frames/composition offsets, key/next-key lookup, tracks ending early, concurrent tracks, caller-held old packets, init-only/fragment-only inputs, unordered/duplicate/invalid references, faulty-hint backoff, truncated/unsafe fields, I/O retries, cancellation, and eviction/reread. Nearby backward seeks must reuse the newly visited hint instead of rescanning the prefix. Both CommonJS entrypoints and ESM execute real parsing.
+- Isolated Node processes generate input fragments/index entries on demand and disable read logging. With and without TFRA, they read all packets for 2,000 / 40,000 fragments, then seek backward and forward after eviction. Assertions bound retained heap (4 MiB), buffers (1 MiB), and growth between sizes (2 MiB / 512 KiB). At 40,000 fragments, observed retained heap is about 1–3 MiB and buffers about 0.13–0.20 MiB.
+- The previous implementation retained about 19 MiB with TFRA and 15 MiB without TFRA for the same 40,000-fragment workload, failing the new heap assertion. Its parser/source request-size assertions alone were relaxed to permit the old whole-`mfra` read. A separate regression returns TFRA pages as views into 8 MiB Node Buffers; cached pages must copy bytes and retain less than 1 MiB of buffers, rather than pinning large backing stores.
+- Missing `tfdt` uses an exact TFRA sample/run reference or rebuilds contiguous decode time from a retained anchor/init boundary. Decode end is distinct from presentation end, so eviction does not shift B-frame or composition-offset timelines. Parsing, time recovery and publication share a lock; failures do not publish a partial fragment.
+- Local HTTP and an isolated loaded Chromium extension ran the production Worker on real encoded AAC/video clips repeated into 200 fragments per track, with 8 MiB `mfra` padding per input. AAC and DASH outputs completed in OPFS and played after seeks near one second and near 400 seconds. Video decoded without media errors. The instrumented HTTP Worker recorded maximum Blob reads of 192 KiB; extension-origin checks directly used its packaged Worker. This did not exercise the complete runner/download API or a real Bilibili CDN. Firefox remains build-only.
+- All 220 Node tests, 38 Python tests, formatting, lint, typecheck, both production builds, frozen-lockfile installation and diff checks passed. Memory support is `tests/fixtures/downloads/mp4FragmentMemory.ts`; ignored logs, comparison scripts, real repeated media and browser results are under `output/size-audit/`.
+
+These bounds cover retained input lookup indexes, independently of fragment count. First-use validation and unordered lookup still scan index entries; eviction can require additional index I/O or a prefix rescan. A single `moof` and its samples are parsed together, caller-held packets can retain their fragment, output indexes still grow with fragments, and codec/encryption metadata have separate costs. These measurements exclude source media and do not promise constant whole-task or peak memory.
 
 ## On-demand ordinary MP4 sample tables: 2026-10-27
 

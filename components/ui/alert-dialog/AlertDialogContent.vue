@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import {
   AlertDialogContent,
   AlertDialogOverlay,
@@ -7,22 +8,21 @@ import {
   useForwardPropsEmits,
 } from 'reka-ui'
 import { useOverlayTarget } from '~/composables/useOverlayTarget'
-import { cn } from '~/lib/utils'
 import type { AlertDialogContentEmits, AlertDialogContentProps } from 'reka-ui'
-import type { HTMLAttributes, VNode } from 'vue'
+import type { HTMLAttributes } from 'vue'
 
 const props = defineProps<
   AlertDialogContentProps & { class?: HTMLAttributes['class'] }
 >()
+
 const emit = defineEmits<AlertDialogContentEmits>()
+
 defineOptions({
   inheritAttrs: false,
 })
-defineSlots<{
-  default: () => VNode[]
-}>()
 
 const overlayTarget = useOverlayTarget()
+
 const delegatedProps = reactiveOmit(props, 'class')
 
 const forwarded = useForwardPropsEmits(delegatedProps, emit)
@@ -31,8 +31,8 @@ const forwarded = useForwardPropsEmits(delegatedProps, emit)
 <template>
   <AlertDialogPortal :to="overlayTarget ?? undefined">
     <AlertDialogOverlay
-      data-slot="alert-dialog-overlay"
       class="data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-black/80"
+      data-slot="alert-dialog-overlay"
     />
     <AlertDialogContent
       v-bind="{ ...$attrs, ...forwarded }"

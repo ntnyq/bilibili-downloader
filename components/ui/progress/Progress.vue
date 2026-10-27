@@ -1,27 +1,26 @@
-<script lang="ts" setup>
+<script setup lang="ts">
+import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import { ProgressIndicator, ProgressRoot } from 'reka-ui'
-import { cn } from '~/lib/utils'
+import type { ProgressRootProps } from 'reka-ui'
 import type { HTMLAttributes } from 'vue'
 
-const props = defineProps<{
-  /**
-   * Percentage complete, or null when the total size is unknown.
-   */
-  modelValue?: number | null
-  /**
-   * Additional classes for the track.
-   */
-  class?: HTMLAttributes['class']
-}>()
+const props = withDefaults(
+  defineProps<ProgressRootProps & { class?: HTMLAttributes['class'] }>(),
+  {
+    modelValue: 0,
+  },
+)
+
+const delegatedProps = reactiveOmit(props, 'class')
 </script>
 
 <template>
   <ProgressRoot
-    :model-value="modelValue ?? null"
-    :max="100"
+    v-bind="delegatedProps"
     :class="
       cn(
-        'relative h-2 w-full overflow-hidden rounded-full bg-secondary',
+        'bg-primary/20 relative h-2 w-full overflow-hidden rounded-full',
         props.class,
       )
     "
@@ -38,7 +37,8 @@ const props = defineProps<{
           ? undefined
           : { transform: `translateX(-${100 - modelValue}%)` }
       "
-      class="h-full rounded-full bg-primary transition-transform motion-reduce:transition-none"
+      class="bg-primary h-full flex-1 transition-all motion-reduce:transition-none"
+      data-slot="progress-indicator"
     />
   </ProgressRoot>
 </template>

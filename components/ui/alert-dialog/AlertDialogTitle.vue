@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import { AlertDialogTitle } from 'reka-ui'
-import { cn } from '~/lib/utils'
 import type { AlertDialogTitleProps } from 'reka-ui'
-import type { HTMLAttributes, VNode } from 'vue'
+import type { HTMLAttributes } from 'vue'
 
 const props = defineProps<
   AlertDialogTitleProps & { class?: HTMLAttributes['class'] }
 >()
-
-defineSlots<{
-  default: () => VNode[]
-}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 </script>

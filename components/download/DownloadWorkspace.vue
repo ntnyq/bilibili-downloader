@@ -10,6 +10,7 @@ import {
   PlusIcon,
   Settings2Icon,
 } from '@lucide/vue'
+import SidebarMenuButton from '~/components/ui/sidebar/SidebarMenuButtonChild.vue'
 import { useDownloadQueue } from '~/composables/useDownloadQueue'
 import DownloadBatchImport from './batch/DownloadBatchImport.vue'
 

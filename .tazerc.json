@@ -1,3 +1,4 @@
 {
-  "exclude": ["typescript"]
+  "exclude": ["typescript"],
+  "ignorePaths": ["output"]
 }

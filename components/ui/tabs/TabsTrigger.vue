@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { reactiveOmit } from '@vueuse/core'
+import { cn } from 'cn'
 import { TabsTrigger, useForwardProps } from 'reka-ui'
-import { cn } from '~/lib/utils'
 import type { TabsTriggerProps } from 'reka-ui'
-import type { HTMLAttributes, VNode } from 'vue'
+import type { HTMLAttributes } from 'vue'
 
 const props = defineProps<
   TabsTriggerProps & { class?: HTMLAttributes['class'] }
 >()
-
-defineSlots<{
-  default: () => VNode[]
-}>()
 
 const delegatedProps = reactiveOmit(props, 'class')
 
@@ -26,8 +22,8 @@ const forwardedProps = useForwardProps(delegatedProps)
         props.class,
       )
     "
-    data-slot="tabs-trigger"
     v-bind="forwardedProps"
+    data-slot="tabs-trigger"
   >
     <slot />
   </TabsTrigger>

@@ -9,6 +9,9 @@
     "source.organizeImports": "never",
     "source.sortImports": "never"
   },
+  "files.associations": {
+    "*.css": "tailwindcss"
+  },
   "eslint.validate": [
     "vue",
     "xml",
@@ -62,6 +65,7 @@
     "unplugin",
     "unrs",
     "VITE",
+    "vitepress",
     "vueuse",
     "WORKERFS"
   ]
