@@ -1,84 +1,84 @@
-# 使用指南
+# Usage guide
 
-[返回首页](../README-zh.md) · [English homepage](../README.md)
+[Documentation home](index.md) · [简体中文](zh/usage.md)
 
-详细说明下载、队列、批量导入、素材导出和文件管理。首次使用请先查看首页的安装与快速开始。
+This guide covers downloads, queues, batch imports, assets, and file management. Start with the installation and quick start on the homepage.
 
-## 下载视频与任务管理
+## Downloading and managing tasks
 
-打开 `https://www.bilibili.com/video/...` 页面，在播放器下方点击「下载视频」。多 P 视频默认下载当前分 P，可切换「全部分 P」或「自选分 P」。自选支持勾选、全选、反选和清空，显示所选数量和总时长，并始终按视频原始顺序下载。也可以通过扩展弹窗发起下载。
+Open `https://www.bilibili.com/video/...` and click **Download video** below the player. Multi-part videos default to the current part; choose all parts or a custom selection. The picker supports selecting, selecting all, inverting, and clearing, shows the count and total duration, and always preserves the original part order. You can also start downloads from the extension popup.
 
-画质偏好自动保存并在各界面同步，已入队任务保留提交时的设置，重试沿用原设置。「最高 720P」表示在实际可用流中选择不超过 720P 的最高画质；账号只返回 480P 时会下载 480P。没有符合上限的流时提示失败，不会偷偷提高画质。
+Quality preferences are saved and synchronized across interfaces. Queued tasks keep their submitted settings, including on retry. “Up to 720P” selects the highest available stream at or below 720P; if your account only receives 480P, that is what downloads. A task fails when no stream meets the cap rather than selecting a higher resolution.
 
-下载中心可按标题、BV 号、分 P 搜索，筛选失败任务并「重试全部失败」。批量重试跳过已有活跃任务与重复分 P；取消项仍可单独重试。「暂停队列」让当前任务继续完成，其余任务等待恢复；暂停状态刷新后保留，它不暂停当前任务的网络传输。改变默认画质后需要重新添加任务才能应用新设置。
+Search the download center by title, BV ID, or part, filter failures, and retry all failed tasks. Bulk retry skips active duplicates and repeated parts; cancelled tasks can still be retried individually. Pausing the queue lets the current task finish and stops the next task from starting. This state survives refresh and does not pause the current network transfer. Changing the default quality only affects newly added tasks.
 
-任务旁的「暂停」会停止该任务的解析、传输或合并，并保留已提交的音视频缓存；文件已经进入保存阶段时不能暂停。「继续」重新取流并校验缓存，满足续传条件时从断点开始。单任务暂停不阻塞其他等待项，刷新后仍保持暂停；取消才会清理浏览器缓存。等待任务可上移、下移，界面顺序就是领取顺序。
+**Pause** beside a task stops its resolution, transfer, or remuxing and keeps committed media cache. Tasks already saving cannot be paused. **Resume** resolves fresh streams and validates cached data before continuing. A paused task does not block other queued tasks and remains paused after refresh; cancellation clears its browser cache. Move waiting tasks up or down to change their execution order.
 
-任务在自动打开的后台「下载中心」标签页中执行，**下载期间请保持下载中心打开**。每个分 P 保存为独立文件，位置为浏览器默认下载目录下的 `Bilibili/`。关闭或刷新下载中心会中断正在处理的任务，可以重新打开后重试。音视频已提交到磁盘的片段会保留；重试时重新获取媒体地址并校验缓存，服务器支持时从断点继续。
+Tasks run in the download center tab that opens in the background. **Keep the download center open while downloading.** Each part is saved separately under `Bilibili/` in the default download folder. Closing or refreshing the tab interrupts active work. Reopen it and retry: committed media fragments remain on disk, and fresh media URLs and cache validation determine whether the server allows resuming.
 
-## 下载缓存与大型任务
+## Cache and large downloads
 
-视频和音频按不超过 1 MiB 的块写入浏览器私有磁盘空间（OPFS），合并时按需读取这些文件。网络失败、页面关闭或刷新会保留已提交的片段；点击原任务的「重试」即可重新解析链接。仅相同资源、强 ETag 和合法 Range 响应允许续传；服务器不支持续传、改变资源或切换 CDN 时安全重下。已完整缓存的轨道也会向服务器确认有效后才复用。过期媒体地址最多自动刷新一次，不绕过账号权限。
+Video and audio are written to browser-private disk storage (OPFS) in chunks of at most 1 MiB and read on demand for remuxing. Network failures, tab closure, and refresh retain committed chunks. Retry the original task to resolve fresh links. Resuming requires the same resource, a strong ETag, and a valid Range response. Unsupported ranges, changed resources, or CDN changes safely restart that resource. Even complete cached tracks are revalidated with the server. Expired media URLs are refreshed automatically at most once, within your account permissions.
 
-保存成功或主动取消后清理该任务缓存；清除失败记录、历史淘汰后的残留缓存会在下载中心空闲时清理。失败记录仍在时保留缓存，可在「下载缓存与大型任务」查看用量并手动清理。正在下载或合并时禁止清理，先暂停队列并等待当前任务结束即可。浏览器可能回收缓存；磁盘或配额不足会明确报错，不保证永久保留。素材导出仍使用原有 16 MB 内存流程。
+Successful saves and explicit cancellation clear the task cache. Orphaned cache from removed or evicted records is cleaned while the download center is idle. Cache for retained failed tasks remains available; inspect usage or clear it manually in the cache section. Cleanup is blocked while downloading or merging: pause the queue and wait for the current task to finish. Browsers may reclaim cache; insufficient space or quota produces an explicit error. Retention is not guaranteed. Asset exports retain their existing 16 MB in-memory flow.
 
-常见 DASH 视频和独立 AAC 音轨在独立 Worker 内按编码数据包无损封装，输出直接写入 OPFS，再从磁盘文件保存到下载目录，不再把完整输出读进 WASM / JavaScript 内存。输入容量按浏览器剩余配额动态判断，不再设固定 16 GiB 上限。检查使用服务器文件长度、有效缓存和实际写入量，码率估算仅用于显示进度。封装期间需要同时容纳输入与输出，保存时还需要最终下载文件的空间。输出为分片 MP4 / M4A，索引分段写出以减少长视频内存占用；部分旧播放器和编辑器对这种封装的兼容性较低。旧格式 progressive FLV / MP4 使用浏览器内 FFmpeg 拼接，输入通过 WORKERFS 只读挂载，输出通过同步文件接口直接定位写入 OPFS，同样使用动态磁盘预算，不再有 512 MiB 限制。
+Common DASH video and standalone AAC tracks are remuxed without re-encoding in a dedicated Worker. Output goes directly to OPFS and is saved from its disk file, without loading the complete output into WASM or JavaScript memory. Capacity follows available browser quota, with no fixed 16 GiB input cap. Checks use server lengths, valid cache, and actual writes; bitrate estimates only inform progress. Remuxing needs space for both input and output, plus the final download copy when saving. Fragmented MP4 / M4A output writes indexes incrementally to reduce long-video memory use; some older players and editors have lower compatibility. Legacy progressive FLV / MP4 uses browser FFmpeg with read-only WORKERFS inputs and synchronous random-access OPFS output, sharing the dynamic disk budget without the former 512 MiB limit.
 
-服务器限制单次 Range 响应大小时，只要续传响应有效且持续向前，就会继续下载。封装只保留 Worker 启动超时；开始工作后，长时间解析 / 写入索引不再因为没有字节进度或超过 30 分钟而失败，仍可通过暂停或取消停止任务。
+When a server limits each Range response, downloads continue as long as validated responses make forward progress. Remuxing retains only the Worker startup timeout: after startup, long index parsing or writing does not fail merely because byte progress stops or 30 minutes elapse. Pause and cancel remain available.
 
-容量判断预留「尚未缓存的输入 + 约 105% 的封装输出 + 64 MiB 安全余量」。全新任务的输入参考容量约为浏览器剩余配额的一半；续传已缓存的数据不会重复计费。浏览器估算不是系统实际剩余磁盘空间，配额可能变化，下载中会重新检查。空间不足会保留有效输入缓存，清理其他缓存或释放空间后可以重试。
+The budget reserves missing input + approximately 105% of remuxed output + a 64 MiB safety margin. For a fresh task, the indicative input capacity is roughly half the available browser quota; already cached data is not reserved twice. Browser estimates are not actual system free space and may change, so checks repeat during downloading. Insufficient space retains valid input cache for a later retry after freeing space.
 
-本地助手是可选方案。对于已失败、已取消或已完成的视频 / 音频任务，点击「导出本地任务」，下载 `.bili.json` 文件后，使用 Python 3 和本机 FFmpeg 执行：
+The local helper is optional. Export a `.bili.json` from a failed, cancelled, or completed video/audio task, then run it with Python 3 and installed FFmpeg:
 
 ```sh
 python3 scripts/native-downloader.py /path/to/task.bili.json --output-dir ./downloads
 ```
 
-助手按流写入磁盘、校验断点，再调用 FFmpeg 无损封装，不受浏览器磁盘配额约束。任务文件包含临时 CDN 地址，请勿分享；过期后在扩展重新导出并再次运行。助手不会读取 Cookie，不提供本地网络服务，也不会同步浏览器队列的状态。安装、续传、磁盘清理和平台边界见 [本地助手说明](native-helper.md)。
+The helper streams to disk, validates resume checkpoints, and remuxes without re-encoding outside browser quota limits. Task files contain temporary CDN URLs: keep them private and re-export after expiration. The standalone helper does not read cookies, run a local network service, or synchronize completion to the browser queue. See the [local helper guide](native-helper.md) for setup, resume, cleanup, and platform limits.
 
-如需自动交接，按 [原生助手集成说明](native-bridge.md) 注册本机宿主，然后在已暂停、失败、取消或完成的音视频任务旁点击本地助手按钮。首次使用申请可选 `nativeMessaging` 权限。下载中心显示本地进度与最终路径，成功回写队列和长期记录；过期地址由浏览器按原任务设置重新解析，仍受当前账号权限约束。原生下载也须保持下载中心打开，关闭后可重新交接以校验本地缓存并继续。浏览器 OPFS 缓存与本地助手缓存独立，不会互相搬运。
+For automatic handoff, register the host using the [native integration guide](native-bridge.md), then hand off a paused or terminal video/audio task. First use requests optional `nativeMessaging` permission. The download center displays native progress and the final path, updating the queue and long-term history on success. Expired URLs are resolved by the browser using the original settings and current account permissions. Keep the download center open for native downloads too; after closure, hand off again to validate and resume local cache. Browser OPFS and native caches are separate and are not transferred between them.
 
-## 批量来源
+## Batch sources
 
-在下载中心的「批量导入」中选择来源，先读取列表，再勾选视频并加入队列：
+In the download center, choose a batch source, load a preview, then select videos to queue:
 
-- 链接列表：每行一个 BV / av 号或完整的 HTTPS 视频链接，保留链接的 `p` 参数；无效行会单独提示，重复行只保留一次。短链接需先在浏览器中打开并复制完整地址。
-- 收藏夹：粘贴带 `fid` 的收藏夹地址，或输入收藏夹 ID。
-- 合集 / 系列：粘贴 UP 主空间中的合集或系列地址，需要同时包含 UP 主 ID 和合集 / 系列 ID。
-- UP 投稿：粘贴 UP 主空间地址，或输入 UID，按投稿时间从新到旧读取普通视频。
+- **Link list:** one BV/av ID or complete HTTPS video URL per line. The `p` parameter is retained, invalid lines are reported separately, and duplicates are removed. Open short links in your browser first and copy the full destination URL.
+- **Favorites:** paste a favorites URL containing `fid`, or enter its ID.
+- **Collections / series:** paste a creator-space collection or series URL containing both the creator UID and collection/series ID.
+- **Creator uploads:** paste a creator-space URL or UID to load ordinary videos from newest to oldest.
 
-在线来源每次读取一页，点击「读取下一页」继续；每份预览最多 500 条。只导入已读取并勾选的条目，不会自动抓取整个账号。空列表、失效条目、隐藏内容和接口错误会显示提示；无法访问的私密收藏夹需要先在 B 站网页登录，并具有相应访问权限。扩展沿用浏览器会话，不读取或导出 Cookie。
+Online sources load one page at a time. Load the next page manually, up to 500 items per preview. Only loaded and selected items are imported; the extension does not automatically crawl an entire account. Empty lists, unavailable items, hidden content, and API failures have explicit feedback. Private favorites require login on Bilibili and appropriate access. The extension uses the browser session without reading or exporting cookies.
 
-可选择只下载链接指定分 P（没有 `p` 时为 P1），或展开全部分 P；封面始终每个视频一份。类型、字幕语言、画质和已保存的文件设置在首次点击入队时生成快照，恢复会话后继续沿用。入队前后台重新读取元数据，按原顺序创建任务，始终跳过活跃的重复任务；默认也跳过独立成功历史中相同的内容，可以关闭此选项以重新下载。此检查不扫描磁盘，按 BV / CID / 素材类型 / 字幕语言识别，封面按 BV 识别，不以画质区分。
+Choose only the linked part (P1 when `p` is absent), or expand all parts. Covers are always one per video. Asset type, subtitle language, quality, and saved file settings are snapshotted when first queuing and retained after session recovery. The background rechecks metadata, preserves source order, and always skips active duplicates. By default it also skips matching successful history; disable that option to download again. This does not scan disk: identity uses BV / CID / asset type / subtitle language, or BV alone for covers, irrespective of quality.
 
-列表读取和入队元数据请求串行执行，批量操作之间至少间隔 1 秒。每个视频的失败原因单独显示；遇到登录、风控、网络或队列容量问题会停止本次导入，已入队任务保留。停止入队会等待当前请求结束，不会取消已入队下载。单次展开视频若会超过 1000 个活跃任务，整条视频不入队。
+Source reads and enqueue metadata requests run serially with at least one second between batch operations. Failures are reported per video. Login, anti-abuse, network, or queue-capacity errors stop the import and retain already queued tasks. Stopping enqueue waits for the current request and does not cancel queued downloads. A video that would exceed 1,000 active tasks is rejected as a whole.
 
-最近一次批量会话会保存在此浏览器，包括来源输入、已读取的页码、预览、勾选与逐项导入结果。刷新或重新打开后恢复已保存的状态，点击继续读取或加入所选即可继续，不会自动请求下一页或继续入队。修改来源后须重新预览；开始导入后选项快照固定，重新预览可开始新的会话。多个下载中心同时修改会话时会提示冲突，须载入最新会话后继续。已入队的结果与队列一同保存，即使入队后页面未收到回执，也不会重复提交同一会话的已完成条目。已入队任务仍按下载中心原有恢复规则处理。
+The latest batch session is saved locally, including source input, pages, preview, selection, and item results. Refreshing or reopening restores it and waits for you to continue reading or enqueueing; it does not automatically request pages or resume enqueueing. Changed sources require a new preview. Once import starts, options remain fixed; a new preview starts a new session. Conflicting edits from another download center require loading its latest session. Queue results and receipts are saved together, preventing duplicate submission if a response is lost. Queued tasks still follow the download center's normal recovery behavior.
 
-## 素材导出
+## Asset exports
 
-在视频页或弹窗的「下载内容」中选择输出：
+Choose an output in the video-page panel or popup:
 
-| 内容 | 输出与边界                                                                                      |
-| ---- | ----------------------------------------------------------------------------------------------- |
-| 视频 | 按画质偏好合并为 MP4，默认行为不变                                                              |
-| 音频 | 只下载实际返回的最高码率 AAC 音轨，无损封装为 M4A；无独立 AAC 时提示失败                        |
-| 封面 | 每个 BV 保存一份原图，按真实图片格式保存为 JPG / PNG / WebP / GIF；不随分 P 重复                |
-| 字幕 | 每个分 P 保存一份 SRT；自动模式优先中文，同语言优先人工字幕，也可指定中文或英文；自动字幕会标注 |
-| 弹幕 | 当前接口返回的 XML 快照，不保证包含全部历史，不烧录到视频                                       |
+| Content   | Output and limits                                                                                                                                                           |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Video     | MP4 using the quality preference; the default behavior                                                                                                                      |
+| Audio     | Highest-bitrate returned AAC track, remuxed to M4A without re-encoding; fails without standalone AAC                                                                        |
+| Cover     | One original per BV, saved as JPG / PNG / WebP / GIF according to its actual format, independent of parts                                                                   |
+| Subtitles | One SRT per part; automatic selection prefers Chinese and human subtitles within a language; Chinese or English can be requested explicitly; automatic subtitles are marked |
+| Danmaku   | XML snapshot returned by the current API; not a complete historical archive and not burned into video                                                                       |
 
-字幕、弹幕缺失或字幕需登录时会显示原因。封面、字幕和弹幕输入上限各为 16 MB。音频、字幕和弹幕也支持当前 / 全部 / 自选分 P。视频和音频可独立入队；字幕按所选语言去重。重试会沿用任务原设置，不能改变该任务的输出类型或字幕语言。
+Missing subtitles/danmaku and login requirements have explicit reasons. Cover, subtitle, and danmaku inputs are each limited to 16 MB. Audio, subtitles, and danmaku support current / all / selected parts. Video and audio queue independently; subtitles deduplicate by selected language. Retrying preserves the original output type and subtitle language.
 
-切换到「素材组合」可一次勾选多种输出，沿用当前 / 全部 / 自选分 P、画质和字幕语言。封面每个视频一份，其他素材每分 P 一份。组合强制按视频建目录，原先按 UP 主的设置会使用 UP 主 / 视频两层目录；已有活跃素材跳过并显示数量。整组校验容量后一次入队，不会因容量不足只加入半组。下载中心按组合显示已保存、失败、取消与尚待完成的数量；缺少字幕等失败不会被算作整组成功，失败素材可以独立重试。
+Asset bundles select multiple outputs at once using the existing part range, quality, and subtitle settings. Covers remain one per video, other assets one per selected part. Bundles force video directories; creator-based settings become creator/video directories. Active assets are skipped with a count. Capacity is validated for the entire bundle before one atomic enqueue, so capacity failure cannot add half a bundle. The download center reports saved, failed, cancelled, and remaining members. Missing subtitles do not count as bundle success, and failed assets can be retried independently.
 
-## 文件设置与记录
+## File settings and history
 
-在下载中心或设置页展开「文件设置与完成通知」。目录可选择平铺、按 UP 主、按视频或按 UP 主 / 视频建立子目录。文件名支持 `{title}`、`{bvid}`、`{page}`、`{part}`、`{partSuffix}`、`{owner}`、`{quality}` 和 `{type}`，界面提供实时预览，扩展名自动添加。非法文件字符会被替换，超长文件名会被截短，重名交给浏览器自动增加后缀。
+Open file settings and completion notifications in the download center or options page. Directory modes are flat, creator, video, or creator/video. Filename templates support `{title}`, `{bvid}`, `{page}`, `{part}`, `{partSuffix}`, `{owner}`, `{quality}`, and `{type}`, with live preview and automatic extensions. Invalid characters are replaced, long names truncated, and duplicate names receive browser-generated suffixes.
 
-文件设置在入队时保存到任务中，后续更改只影响新任务。完成通知默认关闭，开启时申请现有的可选 `notifications` 权限；仅在浏览器确认文件保存成功后发送，通知失败不会把已保存任务标为失败。
+File settings are snapshotted when queuing; changes affect new tasks. Completion notifications default to off and request existing optional `notifications` permission when enabled. They fire only after the browser confirms saving; notification failures cannot turn a saved task into a failed task.
 
-队列中的「导出 JSON / CSV」只导出当前搜索和筛选结果，包含标题、BV、分 P、类型、状态及保存路径，不含 Cookie、临时 CDN 地址或视频二进制。浏览器任务显示请求路径，实际文件可通过「打开文件夹」查看；本地助手显示实际保存路径。普通终态历史保留最近约 100 条，活动组合保留全部成员，终态组合按整组淘汰（最新组合最多 1000 项）；不支持从记录文件导入任务。
+Queue JSON / CSV exports include only the current search and filter results: title, BV, part, type, state, and saved path, without cookies, temporary CDN URLs, or media bytes. Browser tasks show the requested path; use **Open folder** to inspect the actual file. Native tasks show the actual saved path. Ordinary terminal history retains roughly 100 records. Active bundles retain all members; terminal bundles are evicted as complete groups, with the newest group allowed up to 1,000 members. Record-file import is unsupported.
 
-「长期下载记录」独立保存已成功下载的内容，支持搜索、按素材类型筛选、分页、导出和重新入队。相同内容保留最近一次记录，最多 5000 条且总大小不超过 3 MiB，超出时移除最早记录；不会存储媒体数据或临时 CDN 地址。升级时只迁移当时仍保留的成功队列记录，无法找回此前已淘汰的历史。清除队列不会清除此历史；删除或清空成功历史后相应内容不再参与成功去重，也不会删除已下载的文件。重新入队沿用记录的画质与文件设置，创建新的任务并重新取流，仍受当前账号权限和活跃任务去重约束。
+Long-term history independently records successful downloads with search, asset filters, pagination, exports, and requeue. The latest success replaces matching content; limits are 5,000 records and 3 MiB, evicting the oldest when exceeded. It stores neither media nor temporary CDN URLs. Upgrades migrate only successful queue records still retained at that moment. Clearing the queue keeps long-term history; deleting history stops its duplicate checks without deleting downloaded files. Requeue preserves quality and file settings but creates a fresh task and resolves current streams, subject to account permissions and active-task deduplication.
 
-实际画质取决于当前 B 站账号权限和接口返回的流；同分辨率和帧率下优先 SDR，同画质优先兼容性较好的编码。浏览器磁盘封装按可用磁盘配额动态预留输入与输出空间，暂不支持直播、番剧、互动视频和受保护内容。
+Actual quality depends on the account and returned streams. Equal resolution and frame rate favor SDR; equal quality favors compatible codecs. Browser remuxing dynamically reserves input/output disk space. Live streams, bangumi, interactive videos, and protected content are unsupported.

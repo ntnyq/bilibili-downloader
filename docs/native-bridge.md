@@ -1,86 +1,56 @@
-# 本地助手直连
+# Native helper integration
 
-下载中心的「交给本地助手」使用浏览器 Native Messaging 启动 Python / FFmpeg，
-直接显示素材下载、封装、保存结果。完成任务会写入下载历史；输出文件位于安装时
-指定的目录。浏览器不需要把整个视频放入 WASM 内存。
+The download center can launch Python / FFmpeg through Native Messaging and display media transfer, remuxing, and saved results. Completed tasks enter download history; files go to the directory chosen during installation. The browser does not need to hold the whole video in WASM memory.
 
-## 安装
+## Installation
 
-需要 Python 3.10+ 和可执行的 FFmpeg。安装器不会下载依赖；请先安装这些工具。
-在仓库根目录运行以下命令，替换扩展 ID。这里只提供安装脚本，构建扩展不会自动安装。
+Install Python 3.10+ and an executable FFmpeg first. The installer does not download dependencies. Run from the repository root, replacing the extension ID. Building the extension does not install the helper.
 
-Chrome：从 `chrome://extensions` 的开发者模式界面复制当前扩展 ID。
+For Chrome, copy the current extension ID from developer mode at `chrome://extensions`:
 
 ```sh
-python3 scripts/install-native-host.py --browser chrome --extension-id 扩展ID
+python3 scripts/install-native-host.py --browser chrome --extension-id YOUR_EXTENSION_ID
 ```
 
-Chromium 使用 `--browser chromium`。Firefox 使用扩展清单
-`browser_specific_settings.gecko.id` 的固定 ID：
+Use `--browser chromium` for Chromium. For Firefox, use the fixed `browser_specific_settings.gecko.id` from the built manifest:
 
 ```sh
 python3 scripts/install-native-host.py --browser firefox --extension-id bilibili-downloader@ntnyq
 ```
 
-请以实际构建清单的 ID 为准，不要使用 Firefox 为网页分配的临时 UUID。
-若扩展 ID 因重新加载或更名而改变，重新运行对应浏览器的安装命令以更新精确的允许列表。
+Check the actual built manifest; do not use Firefox's temporary web-page UUID. If reloading or renaming changes the extension ID, rerun installation to update the exact allowlist.
 
-默认输出目录为用户的 `Downloads`。可通过 `--output-dir` 设置其他目录，或通过
-`--ffmpeg` 指定 FFmpeg 的绝对路径。安装器记录当前 Python 和 FFmpeg 的绝对路径，
-浏览器无需继承终端 PATH。路径含空格时请加引号。
+Output defaults to your `Downloads` directory. Choose another with `--output-dir`, or an absolute FFmpeg path with `--ffmpeg`. The installer records absolute Python and FFmpeg paths, so the browser need not inherit your terminal's PATH. Quote paths with spaces.
 
 ```sh
-python3 scripts/install-native-host.py --browser chrome --extension-id 扩展ID --output-dir "$HOME/Movies" --ffmpeg /opt/homebrew/bin/ffmpeg
+python3 scripts/install-native-host.py --browser chrome --extension-id YOUR_EXTENSION_ID --output-dir "$HOME/Movies" --ffmpeg /path/to/ffmpeg
 ```
 
-Windows 使用 `py -3` 替代 `python3`。安装器生成 `.cmd` 启动器、启用 UTF-8 和二进制
-消息流，并在当前用户 `HKCU\Software\Google\Chrome\NativeMessagingHosts`、
-`HKCU\Software\Chromium\NativeMessagingHosts` 或
-`HKCU\Software\Mozilla\NativeMessagingHosts` 注册对应浏览器；不需要管理员权限。
-Windows 安装路径不能包含 `%`、`!` 或双引号。Windows 实机验证需在 Windows 环境完成。
+On Windows, replace `python3` with `py -3`. The installer creates a `.cmd` launcher, enables UTF-8 and binary message streams, and registers the selected browser under the current user's `HKCU\Software\Google\Chrome\NativeMessagingHosts`, `HKCU\Software\Chromium\NativeMessagingHosts`, or `HKCU\Software\Mozilla\NativeMessagingHosts`. Administrator access is unnecessary. Windows install paths cannot contain `%`, `!`, or double quotes. Actual Windows runtime verification still requires a Windows environment.
 
-macOS / Linux 会将清单写入对应浏览器的当前用户目录。助手程序默认复制到
-`~/.local/share/bilibili-downloader/native`，之后移动源码仓库不影响已安装助手。
-升级助手时重新运行安装命令。`--install-dir` 和 `--manifest-dir` 可用于自定义安装或
-隔离测试；不要把测试清单目录误当作浏览器实际注册位置。
+On macOS / Linux, the manifest goes into the selected browser's per-user directory. Helper programs default to `~/.local/share/bilibili-downloader/native`; moving the source repository afterward does not affect the installation. Rerun installation to upgrade. `--install-dir` and `--manifest-dir` support customization or isolated tests; a test manifest directory is not automatically a real browser registration location.
 
-## 使用与恢复
+## Usage and recovery
 
-1. 在下载中心暂停视频 / 音频任务，或选择失败、已取消、已完成的任务。
-2. 点击「交给本地助手」，按浏览器提示授予可选的本地通信权限。
-3. 保持下载中心打开。切换队列筛选不会中断任务，关闭页面会停止当前任务。
-4. 查看素材字节数、封装阶段和最终文件路径。完成记录也可在下载历史中查看。
+1. Pause a video/audio task, or choose a failed, cancelled, or completed task.
+2. Hand it to the local helper and grant the optional native communication permission when prompted.
+3. Keep the download center open. Filtering does not interrupt the task; closing the page stops it.
+4. Inspect downloaded bytes, remuxing state, and the final path. Completed tasks also appear in history.
 
-签名链接返回 401 / 403 / 410 且备用线路也失败时，助手会要求浏览器按原任务重新
-取流，最多刷新两次。浏览器和助手都校验视频、分 P、画质、媒体身份和输出名没有
-变化；只续传通过哈希、强 ETag、资源身份和 Range 校验的缓存。画质改变、身份不符
-或反复过期时停止并保留缓存，不拼接未经验证的媒体。网络暂时断开时可再次交接同一
-任务恢复；如果服务器不能证明原资源未变，则重新下载对应素材。
+If signed links return 401 / 403 / 410 and alternate URLs also fail, the helper asks the browser to resolve the original task again, at most twice. Browser and helper both require unchanged video, part, quality, media identity, and output name. Resume requires valid hashes, strong ETags, resource identity, and Range responses. Quality/identity changes or repeated expiration stop the task while preserving cache. After a temporary outage, hand off the same task again; when the server cannot prove resource continuity, that resource restarts.
 
-主动取消会请求助手保存检查点、停止 FFmpeg 并释放任务锁。网络读取最多等待约
-30 秒才能响应取消。浏览器崩溃或系统强制终止可能来不及清理锁；此时先确认助手及
-FFmpeg 已退出，再删除错误消息对应缓存任务下的 `.lock` 目录，然后重试。
+Explicit cancellation requests a checkpoint, stops FFmpeg, and releases the lock. Network reads may take about 30 seconds to respond. Browser crashes or forced termination can leave locks; confirm the helper and FFmpeg have exited before deleting `.lock` under the task cache directory identified in the error, then retry.
 
-## 通信与权限
+## Communication and permissions
 
-只有扩展页面申请的 `nativeMessaging` 可选权限可连接助手；内容脚本不能直连。
-浏览器清单精确限制扩展 ID，不使用通配符。后台通过任务 ID 与本次运行 token 验证
-进度和完成消息，取消后的旧运行无法覆盖新状态。助手不接收 Cookie、任意请求头、
-任意输出目录或任意 FFmpeg 命令，也不启动 HTTP 服务。
+Only extension pages with optional `nativeMessaging` permission can connect; content scripts cannot connect directly. Host manifests allow exact extension IDs without wildcards. The background validates task ID and run token on progress/completion, so cancelled runs cannot overwrite fresh state. The helper accepts no cookies, arbitrary headers, arbitrary output directories, or arbitrary FFmpeg commands, and runs no HTTP service.
 
-消息通过 stdin / stdout 传递，以原生字节序的 32 位长度加 UTF-8 JSON 编码，单条
-限制 1 MiB。stdout 只写协议消息，诊断输出到 stderr。下载沿用手动助手对 HTTPS
-CDN、重定向、路径穿越、符号链接、缓存哈希和原子保存的校验。
+Messages use stdin/stdout with a native-endian 32-bit length prefix and UTF-8 JSON, limited to 1 MiB per message. stdout carries only protocol messages; diagnostics go to stderr. Downloads retain the manual helper's HTTPS CDN, redirect, traversal, symbolic-link, cache-hash, and atomic-save validation.
 
-协议依据 [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)
-及 [Firefox Native Messaging](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging)。
+See [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) and [Firefox Native Messaging](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging).
 
-## 卸载
+## Uninstall
 
-移除浏览器用户目录中名为 `com.ntnyq.bilibili_downloader.json` 的清单，并删除安装
-目录中的助手文件。Windows 同时删除对应浏览器 HKCU 注册表下的
-`com.ntnyq.bilibili_downloader` 键。卸载不会删除已下载的文件；缓存目录是安装时
-输出目录中的 `.bilibili-cache`，可在没有运行任务时自行清理。
+Remove `com.ntnyq.bilibili_downloader.json` from the browser's per-user manifest directory and delete installed helper files. On Windows, also remove the `com.ntnyq.bilibili_downloader` key under that browser's HKCU registration. Downloaded files remain. Cache lives in `.bilibili-cache` under the chosen output directory and may be removed when no tasks are running.
 
-开发验证命令：`pnpm test:native`、`pnpm test`、`pnpm typecheck`。
-原生协议和安装路径测试使用临时目录，不会注册到开发者正在使用的浏览器。
+Development checks: `pnpm test:native`, `pnpm test`, and `pnpm typecheck`. Protocol and installation-path tests use temporary directories and do not register with the developer's active browser.

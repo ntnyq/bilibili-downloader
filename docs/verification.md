@@ -1,304 +1,297 @@
-# 验证记录
+# Verification records
 
-最近验证日期：2026-10-27。早期阶段记录保留在下方；其中 512 MB / WASM 输出已由磁盘封装替代，后续的固定 16 GiB 输入上限也已改为动态磁盘预算。
+Latest verification date: 2026-10-27. Earlier milestone records remain below. Their 512 MB / WASM-output limits were replaced by disk remuxing, and the subsequent fixed 16 GiB input limit was replaced by dynamic disk budgeting.
 
-## 自动检查
+## Automated checks
 
-| 项目                 | 结果                  |
-| -------------------- | --------------------- |
-| `pnpm test`          | 195 个测试通过        |
-| `pnpm test:native`   | 38 个测试通过         |
-| `pnpm format:check`  | 通过                  |
-| `pnpm lint`          | 通过                  |
-| `pnpm typecheck`     | 通过                  |
-| `pnpm build`         | Chromium MV3 构建通过 |
-| `pnpm build:firefox` | Firefox MV3 构建通过  |
-| `git diff --check`   | 通过                  |
+| Check                | Result                    |
+| -------------------- | ------------------------- |
+| `pnpm test`          | 195 tests passed          |
+| `pnpm test:native`   | 38 tests passed           |
+| `pnpm format:check`  | Passed                    |
+| `pnpm lint`          | Passed                    |
+| `pnpm typecheck`     | Passed                    |
+| `pnpm build`         | Chromium MV3 build passed |
+| `pnpm build:firefox` | Firefox MV3 build passed  |
+| `git diff --check`   | Passed                    |
 
-生产包约 34 MB，其中约 32 MB 是随扩展打包的 FFmpeg WASM。Chromium 已检查下载中心、欢迎页和设置页；Firefox 本轮仅确认构建通过。
+The production package is approximately 34 MB, including about 32 MB of bundled FFmpeg WASM. Chromium checks covered the download center, welcome, and options pages. Firefox was build-only in this round.
 
-## 普通 MP4 样本表按需访问验证（2026-10-27）
+## On-demand ordinary MP4 sample tables: 2026-10-27
 
-在上一轮 `moov` 分页补丁上，八张普通 MP4 样本表保留在输入源中；每轨道最多保留 8 个 16 KiB 原始页，`stts` / `ctts` / `stsc` 各最多 128 个前缀检查点和 256 条解码记录，外加少量顺序读取游标。移除了全量样本大小、chunk 偏移、同步样本、累计大小和显示时间排序数组。首次访问扫描游程表建立检查点，大小 / 偏移 / 同步样本条目按需分页，缓存淘汰后可重新读取；PCM 按需把 chunk 合并为包。
+Building on paged `moov` parsing, eight ordinary MP4 tables remain in the source. Each track retains at most eight 16 KiB raw pages, up to 128 prefix checkpoints and 256 decoded records each for `stts` / `ctts` / `stsc`, plus small sequential cursors. Full sample-size, chunk-offset, sync-sample, cumulative-size, and presentation-sorted arrays were removed. First access scans run tables for checkpoints; entries page on demand and can be reread after eviction. PCM groups chunks on demand.
 
-- 新增 15 项回归测试，总计 195 项 Node 测试通过。覆盖 16 KiB 边界、带符号 CTTS、大正偏移、时间戳重排和重复、关键帧 seek、四种大小编码、大 chunk 内的可变样本大小、PCM 分组、惰性读取、缓存淘汰后回读、页 I/O 失败重试、样本计数截断及损坏 / 不安全的字段。既有跨轨道并发、取消、64 位偏移、真实封装和双 CommonJS 入口测试仍通过。
-- 独立 Node 进程固定输入、禁用读取日志，首次和最终测量都经过 GC 与事件循环回合；执行 256 次分散 seek 和 2,048 次顺序访问。2 万 / 40 万样本的保留 JS 堆分别约 1.71 / 1.74 MiB，buffer 增量约 0.28 / 0.27 MiB。回归同时限制堆、buffer 绝对值与增长，避免把线性数组换成线性 typed array。
-- 同样的 40 万样本操作在上一轮解析实现上保留约 106 MiB JS 堆，并触发新增内存断言；对照仅放宽旧实现的 64 KiB 页断言，未改变其解析行为。测试测量的是输入解析相关保留内存，不包括输入素材本身，不代表进程峰值或完整下载任务内存。
-- Chromium 中运行本次构建的生产 Worker，带 8 MiB `moov` 填充区的真实 AAC / DASH 均完成 OPFS 封装；最大单次 Blob 读取仍为 128 KiB。输出可播放并跳转到 1 秒后继续播放，DASH 解码 42 帧，无媒体错误。验证从本地 HTTP 页面调用 Worker，未覆盖本轮完整下载 runner、真实 B 站 CDN 或 Firefox 运行。
-- 格式、lint、类型检查、Chromium / Firefox 构建、冻结锁文件安装与 `git diff --check` 通过。复现数据与浏览器结果位于忽略提交的 `output/size-audit/`，内存测试入口为 `tests/fixtures/downloads/mp4TableMemory.ts`。
+- Fifteen new regressions brought Node tests to 195. Coverage includes page boundaries, signed CTTS, large positive offsets, reordered/repeated timestamps, keyframe seek, four size encodings, variable sizes within large chunks, PCM grouping, lazy reads, eviction/reread, I/O retries, truncated counts, and corrupt/unsafe fields. Existing concurrent-track, cancellation, 64-bit-offset, real-remux, and both CommonJS-entry tests passed.
+- Separate Node processes used fixed input, disabled read logging, GC, and event-loop turns before both measurements; each performed 256 scattered seeks and 2,048 sequential accesses. Retained JS heap for 20,000 / 400,000 samples was about 1.71 / 1.74 MiB, and buffer growth 0.28 / 0.27 MiB. Regressions bound absolute values and growth for both heap and buffers, preventing replacement with linear typed arrays.
+- The previous parser retained about 106 MiB heap for the same 400,000-sample workload and failed the new memory assertion. Only its old 64 KiB page assertion was relaxed for comparison, without changing parsing. Measurements isolate retained input-parser memory, exclude source media, and do not represent process peaks or full-task memory.
+- Chromium ran the production Worker with real AAC / DASH containing 8 MiB `moov` padding. Both remuxed to OPFS, with maximum Blob reads still 128 KiB. Outputs played and sought past one second; DASH decoded 42 frames without media errors. This invoked the Worker from local HTTP, without the full runner, real CDN, or Firefox runtime.
+- Formatting, lint, types, both builds, frozen-lockfile install, and diff checks passed. Reproduction artifacts are ignored under `output/size-audit/`; the memory fixture is `tests/fixtures/downloads/mp4TableMemory.ts`.
 
-普通样本表的保留索引不再随样本数线性增长；初始化时间仍随游程条目数增长，随机访问可能从固定检查点重扫，极宽 CTTS 偏移范围也可能增加候选样本扫描量。输出片段索引、输入碎片索引、加密辅助信息、编解码 / 元数据叶子 box 及当前 GOP 媒体仍有各自内存开销，整个任务不承诺恒定内存。
+Retained ordinary-table indexes no longer grow linearly with samples. Initialization still scales with run entries; random access may rescan checkpoints, and wide CTTS ranges increase candidates. Output/input fragment indexes, encryption metadata, codec/metadata leaf boxes, and current GOP media retain other memory costs. Whole-task constant memory is not promised.
 
-## 输入 MP4 索引分页验证（2026-10-27）
+## Paged input MP4 indexes: 2026-10-27
 
-第一阶段固定版本 Mediabunny 补丁不再完整读取 / 保留原始 `moov`：按 box 遍历，样本表延迟到首次数据包访问，并以最大 64 KiB 的解析器请求分页读取。底层源仍可能合并请求或预读；编解码配置、标签等其他叶子 box 仍按 box 读取，该阶段解析后的样本表仍随样本数增长，后续优化见上节。
+The first pinned Mediabunny patch stopped reading/retaining raw `moov` wholesale: box traversal and lazy sample tables used parser requests of at most 64 KiB. Sources can coalesce/prefetch, and other codec/tag leaf boxes still read per box. At this stage decoded tables still grew with sample count; the next optimization is above.
 
-- 新增 13 项测试：覆盖八种样本表的跨页边界、定长 `stsz`、4/8/16 位 `stz2`（含奇数样本）、`co64`、逐包字节 / 时间戳、前后跳转、并发轨道与同轨道共享初始化、损坏表、输入 I/O 失败重试和取消。Node / browser CommonJS 入口与正常 ESM 入口都执行真实解析。
-- 稀疏源在 `moov` 内放置 5 GiB 的扩展尺寸填充 box，真实索引与媒体位于 4 GiB 之后；不分配完整文件，断言解析器请求不超过 64 KiB、实际源读取不超过 256 KiB，并跳过填充区。
-- 生产 `remuxMedia` 路径使用带 8 MiB 填充区的真实 Blob，记录每次 `Blob.slice`，断言单次读取不超过 256 KiB，并完成音频封装。这些边界用于回归测试，不代表所有输入文件的 I/O 或总内存硬上限。
-- 隔离 Chromium 中执行构建产物的生产 Worker，带 8 MiB 填充区的有效 AAC 与 DASH 素材均成功写出 OPFS；Worker 内记录的最大 Blob 读取为 128 KiB。输出分别加载音频 / 视频元素播放、跳转到 1 秒后继续播放，DASH 解码 42 帧，无媒体错误。该验证在本地 HTTP 页面调用生产 Worker，未覆盖完整下载 runner 或真实 B 站 CDN。
-- 全部 180 项 Node 测试、格式、lint、类型检查和 Chromium / Firefox 生产构建通过；Firefox 未进行运行验证。
+- Thirteen tests cover all eight tables across pages, fixed `stsz`, 4/8/16-bit `stz2` including odd counts, `co64`, packet bytes/timestamps, forward/backward seek, concurrent tracks/shared initialization, corrupt tables, I/O retry, and cancellation. ESM and Node/browser CommonJS entries execute actual parsing.
+- A sparse source places a 5 GiB extended-size padding box inside `moov`, with indexes/media after 4 GiB. Without allocating the full file, assertions require parser requests at most 64 KiB, actual source reads at most 256 KiB, and skipped padding.
+- Production `remuxMedia` processes a real Blob with 8 MiB padding, records `Blob.slice`, bounds each read to 256 KiB, and completes audio output. These are regression bounds, not universal I/O/memory limits.
+- Isolated Chromium ran the built production Worker for valid AAC/DASH with 8 MiB padding. OPFS outputs played and sought past one second, DASH decoded 42 frames, and maximum recorded Blob read was 128 KiB without media errors. Local HTTP invocation did not cover the full runner or real CDN.
+- All 180 Node tests, formatting, lint, types, and both production builds passed. Firefox runtime was untested.
 
-## 大文件流程与索引内存优化验证（2026-10-27）
+## Large-file flow and index memory: 2026-10-27
 
-有效 Range 续传不再受每条线路 32 次请求限制；缓存统计只读取已提交清单，恢复缓存时仍逐块校验。封装 Worker 保留 120 秒启动握手超时，启动后取消无字节进度超时和 FFmpeg 的固定 30 分钟总时限，暂停 / 取消仍终止 Worker。
+Valid Range resume no longer stops after 32 requests per URL. Usage polling reads committed manifests while recovery still checks every chunk. Worker startup retains a 120-second handshake timeout; afterward no byte-progress or fixed 30-minute FFmpeg limit applies. Pause/cancel still terminates the Worker.
 
-- 新增 8 项回归测试，覆盖连续 99 个有效 Range、无进展响应、统计不打开媒体块且复用仍拒绝损坏缓存、Worker 启动失败、长时间解析 / 最终写入无字节进度、长任务取消、多片段关键帧与随机访问、长音频输出的保留堆内存。原有真实 WASM 测试增加禁用固定超时、逐包时间戳与轨道起始偏移校验。
-- DASH / AAC 输出改为最小 2 秒片段的 fMP4；固定版本 Mediabunny 补丁释放已写片段的样本后缀，保留 `tfra` 所需的首个同步样本与原序号，并修复同片段多个关键帧的标记压缩。progressive 同样分片输出，使用 `delay_moov` 保留 AAC / 视频起始偏移。
-- 独立 Node 进程强制 GC、丢弃已写出的媒体，50 万个 AAC 包（约 3 小时逻辑时长、约 90 MiB 输出）的保留 JS 堆由原普通 MP4 约 76 MiB 降至约 2 MiB。回归上限设为 16 MiB，为不同运行时留余量；这是输出索引测试，不代表完整任务总内存只有 2 MiB，也没有实际等待 3 小时传输。
-- 隔离 Chromium 生产扩展中，模拟 CDN 首次中断后连续返回 46 个有效 Range，真实 runner、缓存、Worker 和下载 API 完成约 12 秒 DASH 文件保存；独立 M4A 和两个 FLV 分段也分别完成保存。元数据与 CDN 响应为测试数据，未下载真实 B 站内容。
-- 三份保存结果用 Chromium 媒体元素实际播放，分别向后、向前拖动并继续播放；视频产生解码帧，没有媒体错误。自动数据包测试进一步确认编码字节、B 帧解码顺序、关键帧、轨道偏移和跨片段查找。
-- 通过格式、lint、类型检查、Chromium / Firefox 构建、冻结锁文件安装与 `git diff --check`。复现脚本、保存结果与检查日志位于忽略提交的 `output/size-audit/`。Firefox 仍仅确认构建通过。
+- Eight regressions cover 99 consecutive valid ranges, no-progress responses, usage without media-file reads plus corrupt-cache rejection on reuse, startup failure, long quiet parsing/finalization, cancellation, multi-fragment keyframes/random access, and long-audio retained heap. Real WASM tests also check disabled fixed timeout, packet timestamps, and track offsets.
+- DASH/AAC output uses fMP4 with minimum two-second fragments. The pinned patch releases written-fragment samples except the first sync entry/original index needed by `tfra`, fixing multi-keyframe flag compression. Progressive also fragments and preserves AAC/video offsets with `delay_moov`.
+- Separate Node processes with forced GC discard written media. For 500,000 AAC packets (about three logical hours / 90 MiB output), retained heap fell from about 76 MiB with ordinary MP4 to about 2 MiB. The regression ceiling is 16 MiB for runtime variance. This isolates output indexing; it is not full-task memory or an actual three-hour transfer.
+- In isolated Chromium production, a simulated CDN interrupted once and then served 46 valid ranges. Real runner/cache/Worker/downloads saved an approximately 12-second DASH file; standalone M4A and two FLV segments also saved. Metadata/CDN content were fixtures, not Bilibili downloads.
+- All three outputs played in Chromium and resumed after forward/backward seeks; videos decoded without media errors. Packet tests additionally verify encoded bytes, B-frame decode order, keyframes, offsets, and cross-fragment lookup.
+- Formatting, lint, types, both builds, frozen install, and diff checks passed. Scripts/files/logs are ignored in `output/size-audit/`. Firefox remained build-only.
 
-输出元数据仍随片段数缓慢增长；输入普通 MP4 解析后的样本表、超长 GOP 的当前片段以及 WASM 工作内存仍是剩余边界。fMP4 对部分旧播放器 / 编辑器的兼容性低于普通 MP4。此次未进行真实超 16 GiB 完整传输或封装测试。
+At this milestone, output indexes still grew with fragments, ordinary-MP4 decoded tables and long-GOP buffering remained, and WASM needed working memory. Some older players/editors have lower fMP4 compatibility. No full transfer/remux above 16 GiB was performed.
 
-## 动态配额预算与压缩清单验证（2026-10-27）
+## Dynamic quota and compressed manifests: 2026-10-27
 
-固定 16 GiB 输入上限已移除，容量改由尚未缓存的输入、约 105% 的封装输出和 64 MiB 安全余量动态判断。服务器长度 / 实际增长决定容量检查，码率估算只显示进度。配额 API 只是估算；最终下载目录的空间不包含在 origin 配额中。
+The fixed 16 GiB input limit was removed. Capacity now uses missing input + approximately 105% output + 64 MiB margin, based on server lengths/actual growth; bitrate only drives progress. Quota is estimated and excludes final download-directory space.
 
-- 配额预算测试使用 100 GiB 可用配额，允许 20 GiB 输入；覆盖空间缩小 / 增长、未知长度响应、已缓存数据不重复预留、已完成轨道的输出预算、配额 API 不可用与封装前重新检查。
-- 缓存清单 v2 用连续块计数取代每块一个数组项。通过共享小 Blob 构造超过 16 GiB 的逻辑缓存，验证加载、追加、完成、文件引用和紧凑清单；这是元数据 / 引用测试，没有实际写入或封装超过 16 GiB 的媒体。旧 v1 清单可保留前缀并继续提交为 v2。
-- 真实 Chromium 生产扩展下载 64 MiB 的有效 MP4（小媒体加合法 padding box），将配额估算从 1 GiB 动态缩小到 1 KiB。输入在 8 MiB 处停止，任务明确失败，有效前缀保留为 v2 清单，没有创建最终下载。
-- 恢复真实配额后重试，通过强 ETag 与 HTTP Range 从已缓存字节继续，完成浏览器内封装和文件保存。配额决定为模拟，OPFS、队列通信、续传、Worker 和下载 API 均执行真实代码。
-- 下载缓存面板显示当前浏览器剩余配额估算，并说明输入与输出的双份空间需求。Firefox 本轮仅验证构建，真实 CDN 长时间传输、超 16 GiB 完整下载 / 封装仍未实测。
+- With 100 GiB available, budgeting permits 20 GiB input. Tests cover shrinking/growing space, unknown lengths, cached-input accounting, completed-track output, unavailable quota APIs, and a fresh pre-remux check.
+- Manifest v2 replaces per-chunk array entries with consecutive-size counts. Shared small Blobs construct logical cache above 16 GiB to test load/append/completion/file references/compact metadata, without physically writing/remuxing that much media. v1 preserves its prefix and commits as v2.
+- Real Chromium production downloaded a valid 64 MiB MP4 (small media plus padding). Simulated quota shrank from 1 GiB to 1 KiB; input stopped at 8 MiB, explicitly failed, preserved a v2 prefix, and created no final download.
+- Restoring real quota and retrying used strong ETag/Range from cached bytes, then real remux/save. Only quota decisions were mocked; OPFS, messaging, resume, Worker, and downloads ran real code.
+- The cache panel shows available-quota estimates and explains input/output space. Firefox was build-only. Real long CDN transfers and complete downloads/remux above 16 GiB remain untested.
 
-## Progressive 磁盘封装验证（2026-10-27）
+## Progressive disk remuxing: 2026-10-27
 
-在上一阶段的 DASH / AAC 磁盘封装基础上，把旧格式 FFmpeg 输出改为 OPFS 同步文件，移除旧的 512 MiB 分支。没有重新实现 FLV 解析或时间戳拼接，所有分段继续交给随扩展打包的 FFmpeg。
+Legacy FFmpeg output moved to synchronous OPFS files after DASH/AAC disk output, removing the 512 MiB branch. Bundled FFmpeg still parses/concatenates segments; FLV/timestamp logic was not reimplemented.
 
-- 真实 Chromium 生产扩展从本地 HTTP 服务器流式读取两个 FLV 分段，总输入 1,450,828,932 字节（约 1.35 GiB），经 WORKERFS、FFmpeg WASM 和同步磁盘输出，保存 MP4 为 1,450,825,099 字节。队列和浏览器下载 API 均完成，最终 MIME / 扩展名为 `video/mp4` / `.mp4`。
-- `ffprobe` 确认 H.264 视频 360 帧及 AAC 音轨，输出约 12.06 秒。本机 FFmpeg 仅用于素材生成和结果检查：逐帧解码校验输出等于原 180 帧序列重复两次，没有漏帧、换序或画质变化。
-- 封装进度约 91% 时取消同一大任务，实际终止同步写盘 Worker；任务保留取消状态，OPFS 输入与输出清理为空，没有泄漏同步文件锁。
-- 新增 7 项真实 FFmpeg WASM 测试，覆盖 FLV / MP4 分段拼接、编码图像及 AAC 数据包一致性、分段音画偏移一致、无音轨视频、损坏素材、配额错误和稀疏文件超过 4 GiB 的定位、短写、截断。定位测试确认 MEMFS 没有分配媒体文件内容。
-- 16 GiB 仍是缓存容量保护，并非 16 GiB 实测承诺。FFmpeg 仍需 WASM 工作内存和索引；真实 B 站 CDN 长时间传输和 Firefox 运行验证尚未补测。
+- Chromium production streamed two FLV segments from local HTTP: 1,450,828,932 input bytes (about 1.35 GiB), saved through WORKERFS/WASM/synchronous disk as 1,450,825,099-byte MP4. Queue/downloads completed with `video/mp4` and `.mp4`.
+- `ffprobe` confirmed 360 H.264 frames and AAC, about 12.06 seconds. Local FFmpeg only generated/inspected fixtures. Frame-by-frame decoding matched the original 180-frame sequence repeated twice, with no missing/reordered frames or quality change.
+- Cancelling around 91% remux terminated the synchronous-disk Worker, kept cancellation, cleared OPFS input/output, and leaked no file locks.
+- Seven real WASM tests cover FLV/MP4 concatenation, encoded images/AAC bytes, segment offsets, silent video, corrupt media, quota errors, sparse seeks beyond 4 GiB, short writes, and truncation. Seek tests confirm MEMFS does not allocate media content.
+- The then-current 16 GiB guard was not a 16 GiB test claim. WASM working memory/indexes remain; long real-CDN transfer and Firefox runtime were untested.
 
-## 浏览器磁盘封装验证（2026-10-27）
+## Browser disk remuxing: 2026-10-27
 
-使用隔离的 Chrome for Testing 156 加载 Chromium 生产扩展，播放接口返回固定测试元数据，媒体请求转发到本地流式 HTTP 服务器。真实执行 runner、OPFS 缓存、封装 Worker、浏览器下载 API 和文件保存；未使用本地助手处理下载任务。本机 FFmpeg 仅用于生成测试素材和检查保存文件。
+Isolated Chrome for Testing 156 loaded the production extension. Playback metadata was fixed and media forwarded to a local streaming HTTP server. Runner, OPFS, Worker, downloads, and file saving were real. No native helper processed downloads; local FFmpeg only generated/inspected fixtures.
 
-- 随机噪声 H.264 视频加 AAC 输入共 998,260,771 字节（约 952 MiB），输出 MP4 为 998,259,482 字节。任务与浏览器下载状态均为完成，最终扩展名 `.mp4`、MIME `video/mp4`。
-- `ffprobe` 确认输出 H.264 视频轨 8 秒、AAC 音轨 1.8 秒，分别保留原轨道长度。视频数据在封装前后的 SHA-256 一致，确认无损复制。
-- 在同一大文件的封装进度超过 91% 时取消，任务保持 `cancelled`，没有创建新的下载；随后确认 OPFS 缓存目录没有遗留输入或临时输出。
-- 独立 AAC 从同一 runner 路径保存为 `.m4a`；使用明确的 M4A MIME，避免 Chromium 将 `audio/mp4` 归为视频并替换后缀。
-- 新增数据包级回归测试比较 B 帧顺序、时间戳、时长和每个编码包字节；覆盖独立 AAC、缺失轨道、写盘失败、取消、配额不足、输出保留到保存结束和 MIME。
-- 页面关闭残留的 `merged-output` 使用缓存清理机制移除。磁盘输出仍需配额，16 GiB 是容量上限，未完成 16 GiB 实测；真实 B 站 CDN 长时间传输和 Firefox 运行验证尚未补测。
+- Random-noise H.264 plus AAC totaled 998,260,771 input bytes (about 952 MiB); MP4 output was 998,259,482 bytes. Task/download both completed with `.mp4` and `video/mp4`.
+- `ffprobe` confirmed eight-second H.264 and 1.8-second AAC, retaining individual track durations. Video SHA-256 matched before/after remuxing.
+- Cancelling after 91% kept `cancelled`, created no new download, and left no OPFS input/output.
+- Standalone AAC saved as `.m4a` with explicit M4A MIME, preventing Chromium's `audio/mp4` video classification from changing the suffix.
+- Packet regressions compare B-frame order, timestamps, durations, and every encoded byte, plus AAC-only, missing tracks, disk failure, cancellation, quota, save-lifetime, and MIME.
+- Cleanup removes abandoned `merged-output`. At that milestone disk output still had the 16 GiB guard, without a full-size test; real-CDN long transfers and Firefox runtime were untested.
 
-## 全项目审查修复验证（2026-10-13）
+## Review fixes: 2026-10-13
 
-修复原生进度中的 `undefined` 覆盖队列必填字段、压缩素材的传输长度与解压长度混用、设置 / 帮助导航中断下载中心，以及已结束原生会话保留页面监听器和媒体清单的问题。新增 3 项回归测试，合计 121 项 JavaScript / TypeScript 测试与 38 项 Python 测试通过；格式、ESLint、类型检查、Chromium / Firefox 生产构建和 `git diff --check` 通过。
+Fixed native `undefined` progress overwriting required fields, compressed-wire versus decoded-length confusion, settings/help navigation interrupting downloads, and retired native sessions retaining listeners/manifests. Three regressions brought JS/TS to 121; 38 Python tests, formatting, ESLint, types, both builds, and diff checks passed.
 
-- 使用 structured clone 保留显式 `undefined`，验证合并 / 保存进度不会擦除已接收字节，完成后的队列仍可解析；非法进度被拒绝且不修改原任务。
-- 本地 HTTP 服务器返回真实 gzip 响应，验证解压素材正常读取、微小素材不被压缩开销误判超限，解压后的实际字节仍受预算限制。
-- 隔离 Chromium 加载生产扩展，验证设置和帮助在新标签页打开，点击当前下载中心标题不刷新页面；原生任务与等待任务保持原状态。
-- 30 条未启动的历史任务不注册页面监听器。原生任务筛选隐藏 / 恢复后继续运行且不重复注册；隐藏期间完成后会话退役，取消、失败、权限拒绝和清空历史后均不遗留页面监听器。
+- Structured-clone tests retain explicit `undefined`: merge/save progress cannot erase received bytes, completed queues still parse, and invalid progress leaves tasks unchanged.
+- A local server returns real gzip to test decoded reads, small compressed-overhead handling, and decoded-byte budgets.
+- Chromium production opens settings/help in new tabs and does not reload when clicking the current download-center title. Native/queued tasks keep state.
+- Thirty unstarted historical tasks add no listeners. Native tasks survive filter hiding/showing without duplicate listeners; completion while hidden retires the session. Cancel/failure/permission denial/history cleanup leave no listeners.
 
-原生联调模拟权限决定、Native Port 和 B 站元数据，执行真实扩展 UI、后台消息与存储，没有连接已安装宿主或保存真实原生文件。脚本与截图位于忽略提交的 `output/playwright/`：`review-fixes-setup.js`、`review-fixes-check.js`、`review-fixes-resume.js` 和 `review-fixes-running.png`。
+Native integration tests mocked permission decisions, Native Port, and metadata while using real UI/background/storage. They neither connected an installed host nor saved native files. Ignored artifacts under `output/playwright/`: `review-fixes-setup.js`, `review-fixes-check.js`, `review-fixes-resume.js`, `review-fixes-running.png`.
 
-Firefox 本轮使用新的隔离配置，仍在启动阶段报 `Could not find profile folder.`，未加载扩展。Firefox 仅确认构建通过；structured-clone 回归测试不能替代 Firefox 实机验收。
+Fresh isolated Firefox still failed at startup with `Could not find profile folder.` before extension loading. Build success and structured-clone regressions do not replace runtime acceptance.
 
-## Chromium 浏览器验证
+## Initial Chromium browser verification
 
-使用单独的 Chrome for Testing 配置目录加载真实生产扩展。页面与 API 元数据使用固定测试数据，CDN 返回本地生成的两秒 H.264 / AAC 音视频。FFmpeg Worker、WASM、任务通信、持久化和浏览器下载 API 均执行真实代码，没有模拟“下载成功”。
+A separate Chrome for Testing profile loaded production output. Pages/API metadata were fixtures; CDN responses were local two-second H.264/AAC. FFmpeg/WASM, messaging, persistence, and downloads ran real code rather than faking success.
 
-已验证：
+Verified:
 
-- 单视频没有范围切换控件，点击「下载视频」可以保存 MP4。
-- 多 P 从 URL 的 `p=2` 识别 P2；切换「全部分 P」后依次生成 P1、P2、P3 三个文件。
-- 同时提交两次相同分 P，只新增一个任务，第二次返回新增数 0。
-- 下载中取消并立即重试可以完成，新执行使用不同 `runId`。
-- `history.pushState` 切换到 P3 后按钮更新为「下载当前 P3」，页面始终只有一个下载面板。
-- 同时打开两个下载中心，第二个显示已有执行窗口，不重复处理队列。
-- 弹窗能读取当前视频；单视频弹窗与页面下载卡片展示一致。
-- 关闭下载中心会把处理中与等待中的任务标为中断失败。
-- 生成文件经 `ffprobe` 检查，包含 H.264 视频轨、AAC 音轨，时长 2 秒。
+- Single-video MP4 saves without a scope picker.
+- URL `p=2` selects P2; all-parts creates P1/P2/P3 files in order.
+- Duplicate simultaneous submissions create one task; the second adds zero.
+- Cancellation followed by immediate retry completes with a fresh `runId`.
+- `history.pushState` to P3 updates the button with exactly one panel.
+- A second download center recognizes the existing executor and does not duplicate work.
+- Popup reads the active video and matches single-video page behavior.
+- Closing the center marks processing/waiting work interrupted.
+- `ffprobe` confirms two-second H.264/AAC output.
 
-测试发现并修复了两处仅构建检查不易发现的问题：WXT `autoMount` 需要选择器锚点；Navigation API 的地址变化事件先于 `window.location` 更新，必须使用事件中的 `newUrl`。
+Browser testing found two issues invisible to builds: WXT `autoMount` needs an anchor selector, and Navigation API events precede `window.location` updates, requiring event `newUrl`.
 
-本地截图位于忽略提交的 `output/playwright/`：`single-video.png`、`popup-single.png`、`multipart-current.png`、`multipart-all.png`、`download-center.png`。截图使用测试视频标题，不是实际 B 站内容的下载证明。
+Ignored screenshots: `output/playwright/single-video.png`, `popup-single.png`, `multipart-current.png`, `multipart-all.png`, `download-center.png`. Fixture titles are not evidence of real Bilibili downloads.
 
-## 真实接口检查
+## Real API check
 
-直接运行项目的 `getVideoInfo` / `getVideoMedia`，使用未登录请求检查普通多 P 视频：成功解析 23 个分 P，获取两条 DASH 轨道，选择实际返回的 `480P 标清`，视频、音频各有 3 个主/备用地址。
+Direct anonymous `getVideoInfo` / `getVideoMedia` calls parsed 23 parts and two DASH tracks, selected actual returned 480P, and obtained three primary/backup URLs per track.
 
-该检查验证元数据、WBI 签名、实际流解析与选择；没有使用用户 Cookie，也没有验证登录后的会员高画质。完整 B 站站点中的布局版本、账号状态及真实 CDN 长时间传输仍需要日常使用验证。
+This checks metadata, WBI, parsing, and selection without user cookies. It does not verify authenticated premium quality. Site layouts, account states, and long real-CDN transfers still require everyday validation.
 
-## Firefox 验证边界
+## Firefox verification limits
 
-Firefox 生产构建通过。`web-ext lint` 为 0 errors、7 warnings，提示来自依赖打包代码中的动态 import、Function 构造器和 Vue DOM 操作；不等同于商店审核已通过。
+Production builds passed. `web-ext lint` reported zero errors/seven warnings from bundled dynamic imports, Function constructors, and Vue DOM operations; this is not store approval.
 
-本机 Firefox 测试运行时未能启动：有界面模式出现 macOS sandbox / GPU helper 错误，无界面模式报告无法找到配置目录。因此 Firefox 的注入、Referer、WASM 和文件下载**尚未完成运行验证**。可通过 `about:debugging#/runtime/this-firefox` 临时加载 `dist/firefox-mv3/manifest.json` 后，按 Chromium 的上述步骤补测。声明的最低版本为 Firefox 142。
+Local Firefox could not start: headed runs hit macOS sandbox/GPU-helper errors and headless runs could not find profiles. Injection, Referer, WASM, and saving **have not completed runtime verification**. Temporarily load `dist/firefox-mv3/manifest.json` at `about:debugging#/runtime/this-firefox` and repeat Chromium scenarios. Declared minimum version is Firefox 142.
 
-## 当前限制
+## Initial-stage limits
 
-- 下载时保持下载中心标签页打开；没有断点续传。
-- 每个分 P 音视频输入总计最多 512 MB，峰值内存会高于输入大小。
-- 实际画质受账号和服务端返回限制；同分辨率、同帧率优先 SDR，同画质优先 AVC。
-- 直播、番剧、互动视频、试看和 DRM 内容不在当前支持范围。
+These are historical limits, superseded where indicated at the top of this page:
 
-## 本轮能力扩展验证
+- Keep the download center open; the initial version lacked resume.
+- Initially each part had a 512 MB combined-input cap, with peak memory above input size.
+- Quality depends on account/server streams; equal resolution/frame rate prefers SDR, equal quality prefers AVC.
+- Live streams, bangumi, interactive videos, previews, and DRM were unsupported.
 
-同日增量验证，计划见 `roadmap.md`。新增 8 个单元测试，合计 21 个通过。覆盖自选页码完整校验、源顺序、去重、旧任务迁移、设置局部更新、暂停调度、重试容量及状态重置、画质上限、竖屏和 progressive 回退。
+## P0 expansion verification
 
-Chromium 使用新的隔离配置加载生产扩展，已验证：
+Eight new tests brought the same-day total to 21, covering complete custom-page validation, source order, duplicates, old-task migration, partial settings updates, pause scheduling, retry capacity/state reset, quality caps, portrait video, and progressive fallback.
 
-- 当前 P2 切换自选后默认勾选 P2；反选得到 P1、P3，按 P1 / P3 顺序入队。
-- 全选、单项取消、清空可用；空选择禁用提交；后台拒绝失效 P99。
-- 720P 偏好提交后改变默认值到 480P，已有任务仍保留并实际选择 720P；弹窗改为 1080P 后页面同步更新；刷新后偏好保留。
-- 先暂停再入队，任务保持 queued；刷新下载中心后仍暂停。
-- 网络读取中暂停，当前任务继续保存成功，下一项经过调度周期后仍 queued；恢复后两项均 completed。
-- 两份输出用 ffprobe 检查，均包含 H.264 视频与 AAC 音频，时长 2 秒。
-- 搜索 `p3` 只显示 P3；失败筛选只显示失败记录。
-- 在隔离测试存储中构造三条失败记录（含重复分 P）和一条取消记录，批量重试只重新排队两个不同分 P，取消项保持取消，重复历史保持失败，旧执行信息被清除。
-- 单视频隐藏范围选择器；多 P 弹窗和页面共用选择器；380 px 弹窗和 390 px 下载中心无横向溢出；使用说明页面内容已检查。
+A fresh isolated Chromium production profile verified:
 
-验证素材沿用本地两秒视频，元数据和播放接口是模拟响应。模拟的 1080P / 720P / 480P 地址返回相同小视频，用于验证选择策略和传递路径，不代表输出素材具有这些分辨率。本轮没有进行登录账号、高画质权限或真实 B 站 CDN 验证。
+- Current P2 initially selects P2 in custom mode; inversion queues P1/P3 in order.
+- Select-all, uncheck, and clear work; empty selections disable submission; background rejects P99.
+- Queued 720P tasks retain/select 720P after defaults change to 480P. Popup 1080P changes synchronize to the page and survive refresh.
+- Pausing before enqueue keeps tasks queued across refresh. Pausing during transfer lets current saving finish while the next stays queued; resume completes both.
+- Two outputs contain H.264/AAC and last two seconds.
+- `p3` search and failure filters show matching tasks only.
+- Three constructed failures including a repeated part plus a cancelled record bulk-retry as two unique parts; cancellation and duplicate history remain, with old run state cleared.
+- Single videos hide scope, multi-part popup/page share it, and 380px popup / 390px download center have no horizontal overflow. Usage content was checked.
 
-截图位于 `output/playwright/`：`extensions-custom-parts.png`、`extensions-popup.png`、`extensions-single.png`、`extensions-paused-search.png`、`extensions-failed-filter.png`、`extensions-queue-mobile.png`、`extensions-options.png`。测试脚本与截图均为忽略提交的本地产物。
+Metadata/playback were mocked. 1080P/720P/480P URLs returned the same small clip to verify selection/propagation, not actual resolution. No authenticated permissions or real-CDN checks were performed. Ignored `output/playwright/` artifacts include `extensions-custom-parts.png`, `extensions-popup.png`, `extensions-single.png`, `extensions-paused-search.png`, `extensions-failed-filter.png`, `extensions-queue-mobile.png`, and `extensions-options.png`.
 
-本轮再次尝试 Firefox 运行验证，分别使用项目目录和系统临时目录下的新配置，均在浏览器启动阶段报 `Could not find profile folder` 并退出；尚未进入扩展运行阶段。Firefox 构建通过，但上述新增交互仍需在可运行的 Firefox 中补测。
+## P1 assets and file organization
 
-## P1 素材与文件组织验证
+Eleven new tests brought the total to 32. They cover AAC selection, subtitle language/human-auto ordering, SRT millisecond carry and invalid times, image signatures, asset identities/migration, file snapshots, traversal/reserved names/extensions, export allowlists, and CSV formula escaping. Formatting, lint, types, and both builds passed.
 
-同日继续实现 P1，新增 11 项测试，总计 32 项通过。覆盖独立 AAC 选择、字幕语言 / 人工与自动字幕排序、SRT 毫秒进位与无效时间、图片签名、素材去重和旧队列迁移、文件设置快照、路径注入与保留文件名、扩展名、记录字段白名单和 CSV 公式转义。格式、Lint、类型检查和 Chromium / Firefox 构建均通过。
+Isolated Chromium with mocked APIs and real local two-second media verified:
 
-在隔离的 Chromium 生产扩展中，使用模拟 B 站接口和本地两秒音视频验证：
+- MP4/M4A/SRT/XML for three parts plus one cover create 13 independent tasks; cover deduplicates. All save through the real browser.
+- M4A contains only AAC; MP4 retains H.264/AAC. PNG matches response bytes; SRT has correct timing/Chinese; XML retains danmaku.
+- Invalid templates disable save. Queued tasks retain creator/video folders and templates after defaults reset.
+- Audio-filtered JSON/CSV exports contain three records with expected fields/columns/encoding.
+- HTML covers, login-required subtitles, and empty danmaku fail explicitly without fake files; restored responses permit bulk retry.
+- Cancelling before cover response creates no browser download ID; retry saves.
+- 390px center and 380px subtitle popup do not overflow. Directory settings synchronize and persist.
+- Mock permission denial leaves notifications disabled. Mock notification APIs fire once after actual task/download completion, without duplicates. **Native permission prompts and desktop notification display were not verified.**
 
-- 全部 3 个分 P 分别添加 MP4、M4A、SRT、XML，再添加封面，共 13 个任务。封面只入队一份，重复按钮禁用；五种输出独立去重。全部任务经过真实浏览器保存并标记 completed。
-- 三份 M4A 经 `ffprobe` 检查仅有 AAC 音轨，时长 2 秒；三份 MP4 仍含 H.264 和 AAC。封面 PNG 与原始响应逐字节相同；SRT 包含两段正确时间轴与中文；XML 保留原弹幕文本。
-- 非法模板禁用保存，选择按 UP 主 / 视频建目录，入队后恢复默认模板和目录，既有 13 个任务仍使用提交时的设置。
-- 将队列筛选为「音频 M4A」，JSON 和 CSV 各导出 3 条记录；检查 JSON 字段及 CSV 列数与中文编码。
-- 封面响应为 HTML、字幕需登录、弹幕为空时分别显示对应错误，不生成伪素材文件；恢复接口后批量重试成功。
-- 封面请求等待响应时取消，没有生成浏览器下载 ID；单项重试后保存成功。
-- 390px 下载中心、380px 字幕弹窗没有横向溢出。设置页修改目录后下载中心同步更新，刷新设置页仍保留选择。
-- 通过模拟权限拒绝检查 UI 错误反馈，通知开关保持关闭；通过模拟通知 API 验证保存完成后触发一次，回调时任务已 completed 且浏览器下载已 complete，重复终态更新不重复通知，关闭开关成功。**原生权限弹窗和系统桌面通知显示尚未验证**。
+Playwright redirected files to temporary storage, so this checks snapshots/requested relative paths rather than actual user folders or duplicate suffixes. Asset APIs were simulated, without real-account subtitle permissions or danmaku completeness. Firefox again failed before extension loading with `Could not find profile folder`; build-only.
 
-Playwright 会把文件重定向到隔离的临时下载目录；文件设置验证了任务快照和传给浏览器的相对路径，尚未验证真实用户下载目录中的文件夹和重名后缀。新素材接口本轮使用模拟响应，未验证登录账号的字幕权限或真实弹幕内容完整性。
+Ignored artifacts under `output/playwright/`: `p1-cover-panel.png`, `p1-queue.png`, `p1-queue-mobile.png`, `p1-failures.png`, `p1-popup-subtitle.png`, `p1-options.png`, plus `p1-video-*`, `p1-audio-*`, `p1-subtitle-*`, `p1-danmaku-*`, `p1-cover-*`, and `p1-history.*` outputs.
 
-P1 再次尝试用新建临时配置启动本机 Firefox，仍在启动阶段报 `Could not find profile folder`，未进入扩展运行阶段；Firefox 仅确认构建通过。
+## P2 batch sources: 2026-10-05
 
-截图和检查脚本位于忽略提交的 `output/playwright/`：`p1-cover-panel.png`、`p1-queue.png`、`p1-queue-mobile.png`、`p1-failures.png`、`p1-popup-subtitle.png`、`p1-options.png`，输出样例以 `p1-video-*`、`p1-audio-*`、`p1-subtitle-*`、`p1-danmaku-*`、`p1-cover-*` 和 `p1-history.*` 命名。
+Twenty-one tests brought the total to 53, covering links/IDs, schemes/hosts, parts/line errors, pagination schemas, duplicate/empty pages, unavailable items, WBI, business/HTTP/non-JSON errors, success skips, type/language identities, capacity, and per-video atomic enqueue. Static checks, both builds, and diff checks passed without new permissions/dependencies.
 
-## P2 批量来源验证（2026-10-05）
+Fresh isolated Chromium with mocked list/metadata/playback APIs and real two-second media verified:
 
-新增 21 项测试，合计 53 项通过。覆盖完整链接 / ID 识别、协议和主机限制、保留分 P 与逐行错误、分页 schema、重复 / 空分页、不可用条目、WBI 查询、业务 / HTTP / 非 JSON 错误分类、成功记录跳过、不同素材与语言身份、1000 个活跃任务容量及单视频原子入队。格式、Lint、类型检查、Chromium / Firefox 构建和 `git diff --check` 通过，无新增权限或运行依赖。
+- Links retain `p=2`, report invalid lines, deduplicate, and continue after invalid videos/P99.
+- Favorites deduplicate across pages, continue after unavailable-only pages, stop repeated pages, and report empty/login errors.
+- Collections/series use distinct pagination; uploads use WBI. Hidden collection items skip while later pages remain readable. These successes used fixtures.
+- Stopped/stale responses cannot replace new previews; changed input disables enqueue until re-preview, including invalid replacements.
+- All-parts preserves order and aliases deduplicate. Active tasks always skip; success skips default on and can be disabled. Success records were constructed in isolated storage.
+- Mid-import changes to default quality/templates/folders do not alter batch snapshots. Five metadata calls had four gaps of 1010–1012 ms, satisfying local one-second throttling.
+- Stop completes the current video's parts and retains later selection. `-352` stops further calls; background rejects batch requests outside download-center pages.
+- Closing the initiating tab prevents in-flight or throttle-waiting metadata from enqueueing/continuing; other centers remain usable.
+- Real runner/WASM/downloads save a 22,110-byte, two-second H.264/AAC MP4 with completed task/download states.
+- 1280px desktop and 390px mobile layouts have no horizontal overflow.
 
-Chromium 在新的隔离配置中加载本轮生产扩展，使用模拟列表 / 元数据 / 播放接口和本地两秒音视频，验证：
+Fixtures verify behavior, not actual account access, and quality labels return the same two-second clip. Real saving reused the existing chain without altering user history/profile.
 
-- 链接列表保留 `p=2`，逐行提示无效地址，重复链接只保留一次；失效视频与不存在的 P99 单项报错后继续处理其他视频。
-- 收藏夹跨页去重，整页失效视频仍可翻到后续有效页；重复页停止继续读取；空收藏夹和未登录错误明确显示。
-- 合集与系列采用各自分页结构；UP 投稿带 WBI 签名，隐藏合集条目跳过，后续页可继续读取。这三项成功场景使用模拟响应。
-- 停止读取后切换为链接列表，旧响应不会覆盖新预览。修改输入或来源后旧预览禁用入队，重新输入无效内容也不会重新激活旧结果。
-- 「全部 P」按原页序入队；av 与 BV 解析后按相同任务身份去重。活跃项始终跳过，成功项默认跳过；关闭成功跳过可重新入队。历史场景在隔离存储中构造成功记录验证。
-- 导入期间把默认画质从 720P 改为 480P、改命名和目录，已开始的整个批次仍使用原快照。5 次元数据请求之间的 4 个间隔为 1010–1012 ms，符合本地 1 秒限速策略。
-- 停止入队等待当前视频的全部 P 提交后结束，后续视频保留勾选；风控 `-352` 停止后续请求。非下载中心页面提交批量消息被后台拒绝。
-- 关闭发起导入的下载中心后，正在请求的条目不再入队，尚在后台等待限速的条目不会继续发起元数据请求；其他下载中心保持可用。
-- 从批量导入进入真实 runner 的视频，经过 FFmpeg WASM 合并和浏览器下载保存，任务状态 `completed`，浏览器下载状态 `complete`，文件 22110 字节。`ffprobe` 确认 H.264 视频轨、AAC 音轨，时长 2 秒。
-- 1280px 桌面与 390px 窄屏布局已查看；窄屏文档宽度为 390px，没有横向溢出。
+### Anonymous real APIs
 
-模拟接口用于验证分页、权限错误和入队行为，不代表真实账号能访问这些资源；模拟画质地址仍返回同一个两秒测试视频。真实保存验证沿用原有下载链路，不修改用户下载记录或真实配置。
+`getBatchPage` used no cookies, the extension-equivalent Referer, and at least one second between calls, stopping on anti-abuse without retry:
 
-### 匿名真实接口抽查
+| Source                               | Result                                                       |
+| ------------------------------------ | ------------------------------------------------------------ |
+| Favorites `1103407912`               | Parsed a real empty list                                     |
+| Series UID `1958703906`, ID `547718` | Parsed 30 first-page items, total 564, next page 2           |
+| Uploads UID `3985676`                | Preserved `-352` and stopped; real success unverified        |
+| Collections                          | Research spot-check returned `-352`; no real successful read |
 
-对实现本身的 `getBatchPage` 使用无 Cookie 请求，并设置与扩展规则相同的 Referer；请求之间至少间隔 1 秒，遇到风控不重试：
+Source contracts reference the [upstream yt-dlp extractor](https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/extractor/bilibili.py). Internal APIs have no relied-upon stability/rate promise. One second is a local conservative policy, not protection from anti-abuse. Authenticated private favorites and successful collection/upload reads remain to verify.
 
-| 来源                                | 结果                                                  |
-| ----------------------------------- | ----------------------------------------------------- |
-| 收藏夹 `1103407912`                 | 成功解析真实空列表，0 项                              |
-| 系列 UID `1958703906` / ID `547718` | 成功解析第一页 30 项，总计 564 项，下一页为 2         |
-| UP 投稿 UID `3985676`               | 返回 `-352`，保留业务错误并停止；真实成功读取尚未验证 |
-| 合集                                | 研究时直接接口抽查返回 `-352`；本轮未完成真实成功读取 |
+Firefox again failed at startup before loading; build-only. Ignored `output/playwright/` scripts/screenshots include `p2-fixture.js`, `p2-links-check.js`, `p2-sources-check.js`, `p2-enqueue-check.js`, `p2-save-check.js`, `p2-visual-check.js`, `p2-close-check.js`, `p2-links.png`, `p2-import-desktop.png`, `p2-import-mobile.png`, and saved `p2-imported.mp4`.
 
-来源契约参考 [yt-dlp 上游 Bilibili 提取器](https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/extractor/bilibili.py)。这些站点内部接口没有在本项目中获得可依赖的官方稳定性或限速承诺；1 秒是本地保守策略，不能保证消除风控。UP 请求复用现有 WBI 和浏览器会话，真实登录后的私密收藏权限、合集 / UP 成功读取仍待日常使用验证。
+## P2 large tasks: 2026-10-05
 
-本轮 Firefox 使用新隔离配置再次启动，仍报 `Could not find profile folder` 后退出，未进入扩展运行阶段；仅确认生产构建通过。
+### Automated checks
 
-本地验证脚本和截图位于忽略提交的 `output/playwright/`：`p2-fixture.js`、`p2-links-check.js`、`p2-sources-check.js`、`p2-enqueue-check.js`、`p2-save-check.js`、`p2-visual-check.js`、`p2-close-check.js`、`p2-links.png`、`p2-import-desktop.png`、`p2-import-mobile.png`，真实输出样例为 `p2-imported.mp4`。
+Seventy-seven JS/TS tests passed, including 24 additions: 20 cache/resume, three native-export, and one representation-identity test. Coverage includes ETags, Range bounds/total/length, ignored Range (`200`), `304`, `416` bounded recovery, missing lengths, truncated/oversized/compressed responses, redirects, CDN changes, signed refresh, budgets, cancellation, quota, corrupt metadata, orphan chunks, and concurrent usage/cleanup.
 
-## P2 大型任务验证（2026-10-05）
+Twenty-five Python tests covered simulated HTTPS resume, SHA-256, forced-exit recovery, malicious manifests/paths/URLs, redirects, symbolic/hard links, duplicate names, atomic publication, unsupported publication filesystems, and cleanup failures after success. Real local FFmpeg/ffprobe covered DASH/M4A/progressive; CDN responses were mocked. See the [helper guide](native-helper.md).
 
-### 自动化检查
+Formatting, ESLint, types, both builds, and diff checks passed. CI added native tests without new JS dependencies/permissions. Media smoke tests explicitly skip without FFmpeg/ffprobe, while other Python tests continue.
 
-JavaScript / TypeScript 共 77 项测试通过。本轮新增 24 项：20 项缓存与续传测试、3 项本地任务导出契约测试、1 项媒体表示身份测试。涵盖强 / 弱 ETag、Range 起止 / 总大小 / 响应长度校验、200 忽略 Range、304 完整缓存重验证、416 完成或有界重试、缺失 Content-Length、截断 / 超长 / 压缩响应、资源重定向隔离、跨 CDN 重下、签名 URL 刷新、预算、取消、配额、元数据损坏、孤立块、清理与统计并发。
+### Chromium production extension
 
-Python 助手 25 项测试通过，包括模拟 HTTPS 响应中的断点续传、缓存 SHA-256 校验、强制退出后尾部恢复、恶意清单 / 路径 / URL、重定向、符号链接与硬链接、输出重名、临时文件原子发布、不支持原子发布的文件系统明确失败，以及保存成功后缓存清理失败仍返回成功。真实本机 FFmpeg / ffprobe 覆盖 DASH 音视频、M4A 和 progressive 拼接；测试 CDN 为模拟响应。详见 [助手说明](native-helper.md)。
+A fresh profile with mocked APIs/CDN used real OPFS, queue messaging, WBI, FFmpeg WASM, and browser saves:
 
-格式、ESLint、类型检查、Chromium / Firefox 生产构建和 `git diff --check` 通过。CI 新增 `pnpm test:native`，不新增 JavaScript 依赖或扩展权限。CI 缺少 FFmpeg / ffprobe 时原生媒体烟雾测试会明确跳过，其余 Python 边界测试继续执行。
+- Interrupted media committed 1466/2932 bytes. One fresh-resolution retry still failed and retained cache. After refresh, retry sent `Range: bytes=1466-` and matching `If-Range`, continuing on valid `206`.
+- Actual WORKERFS/remux/save completed. `p2-cached-output.mp4` was 22,110 bytes with H.264/AAC and two-second duration; cache then cleared.
+- One failed progress message did not block subsequent updates or successful completion.
+- Standalone M4A/progressive MP4 also saved. Estimated-over-budget tasks failed before media transfer with native-export guidance.
+- Cleanup during active work reported the lock; cancel released it and cleared task cache. Manual cleanup reached 0 B. Mock streams explicitly honored AbortSignal.
+- Export from a completed task produced version 1 with both tracks, 720P, and submitted naming/folders, without cookies/runId/download ID.
+- The browser-exported manifest ran through Python with the same local clip replacing CDN responses and real local FFmpeg. Its 22,109-byte MP4 differed slightly from WASM output size but matched tracks/duration.
+- 1280px/390px layouts and wrapped commands/export feedback were checked without overflow.
 
-### Chromium 生产扩展
+Ignored artifacts: `output/playwright/p2-cache-check.js`, `p2-cache-formats-check.js`, `p2-progress-recovery-check.js`, `p2-cache-desktop.png`, `p2-cache-mobile.png`, and `p2-native-task.bili.json`. Simulations do not prove real ETag/Range support or GB-scale throughput/capacity.
 
-使用新隔离配置加载生产扩展；B 站 API 与 CDN 由 Playwright 模拟，执行真实 OPFS、队列消息、WBI、FFmpeg WASM 和浏览器下载保存：
+### Limits at this stage
 
-- 模拟视频网络中断，磁盘元数据记录 1466 / 2932 字节。自动重新取流尝试一次后仍失败，缓存保留。刷新页面再点击原任务的「重试」，请求带 `Range: bytes=1466-` 和匹配的 `If-Range`；服务器返回合法 206 后继续下载。
-- 真正通过 WORKERFS 挂载磁盘输入并合并，浏览器确认任务 `completed`、下载状态 `complete`。输出 `p2-cached-output.mp4` 为 22110 字节，ffprobe 检测到 H.264 视频、AAC 音频和 2 秒时长。保存完成自动清理任务缓存。
-- 模拟一次进度消息发送失败后，后续状态更新仍继续，任务正常合并并保存为 completed；串行更新队列不会被单次进度错误永久阻断。
-- 独立 M4A 与 progressive MP4 也通过真实 WORKERFS / FFmpeg 保存；估算超限任务在媒体下载前失败并提示导出本地任务。
-- 活跃下载持锁时点击清理显示等待当前任务结束的提示；主动取消后释放锁、清理该任务缓存；手动清理可执行并显示 0 B。测试流的取消行为显式跟随 AbortSignal。
-- 从已完成任务点击「导出本地任务」，生成版本 1 清单，含完整两轨、720P 画质、提交时的目录和文件命名；输出文件没有 Cookie、队列 runId 或浏览器下载 ID。
-- 将这一份浏览器实际导出的清单交给 Python 助手，以相同本地两秒媒体代替 CDN 响应，实际调用本机 FFmpeg 并保存 22109 字节 MP4；本机与 WASM 的封装结果大小略有差异，媒体轨道与时长一致。
-- 桌面 1280px 和窄屏 390px 页面已查看；窄屏文档宽度 390px，无横向溢出。缓存、说明、命令换行与导出反馈可见。
+- Browser input still had the historical 512 MB limit and WASM output; OPFS alone did not remove remux memory limits.
+- Real Windows paths, CDN resume, browser reclamation, and quota exhaustion were simulated rather than field-tested. Real large-file duration/throughput remained unverified.
+- Firefox tried fresh absolute profiles under the project and `/tmp`; both exited 1 with `Could not find profile folder.` before extension runtime. Builds do not prove OPFS/WORKERFS compatibility.
 
-本地检查脚本：`output/playwright/p2-cache-check.js`、`p2-cache-formats-check.js`、`p2-progress-recovery-check.js`；截图：`p2-cache-desktop.png`、`p2-cache-mobile.png`；导出清单：`p2-native-task.bili.json`。这些模拟接口和本地媒体不代表真实账号、真实 CDN 都支持 ETag / Range，也不证明 GB 级资源的性能或磁盘容量。
+## P3 sessions and long-term history: 2026-10-05
 
-### 边界
+### Automated checks
 
-- 浏览器仍限制单任务输入 512 MB，输出仍经过 WASM 内存。OPFS 缓存不能消除合并的内存边界；实际大文件应使用本地助手。
-- Windows 助手路径、真实 CDN 的续传、浏览器磁盘回收与真实配额不足没有现场实测；相应失败分支通过自动化模拟验证。真实大型资源的长时间运行和吞吐性能尚待验证。
-- Firefox 本轮分别尝试项目下绝对路径和 `/tmp` 的新隔离 profile，进程均报 `Could not find profile folder.` 并退出 1，未进入扩展运行。仅确认 Firefox 构建通过，尚不能确认该环境的 OPFS / WORKERFS 运行兼容性。
+Seventeen additions brought JS/TS to 94. Seven session tests cover source/pages/selection/snapshots, conflicts, replacement, lost-response receipts, retry, option/receipt protection, aliases, and UTF-8 budgets. Ten history tests cover one-time migration, completion transitions, deletion without resurrection, latest success, 5,000 / 3 MiB eviction, corruption, requeue, deduplication past 100 records, search, and safe export.
 
-## P3 会话恢复与长期历史（2026-10-05）
+Twenty-five native tests, static checks, both builds, and diff checks passed without new dependencies/permissions. Ordinary progress does not parse/re-encode all history; migration/new completions archive it.
 
-### 自动检查
+### Chromium production extension
 
-新增 17 项测试，JavaScript / TypeScript 合计 94 项通过。7 项会话测试覆盖来源 / 分页 / 勾选 / 快照恢复、版本冲突、新会话替换、失去响应后的回执重放、失败重试、选项与回执保护、BV / av 别名及 UTF-8 大小限制。10 项长期历史测试覆盖一次性迁移、完成状态转移、删除不复活、最近成功替换、5000 条与 3 MiB 淘汰、损坏数据、重新入队、超过 100 条后的去重、检索与安全导出。
+An isolated profile used metadata/history fixtures with real messages, `storage.local`, UI, and record saves. New completion archival constructed `saving` tasks and used real `runner.update`; this round did not re-claim real media download coverage from P2.
 
-本地助手 25 项测试通过。format:check、ESLint、typecheck、Chromium / Firefox 构建和 git diff --check 通过，无新增依赖或扩展权限。普通进度更新不会解析和重新编码整个长期历史；迁移或新任务完成时才处理历史归档。
+- A 125-task old queue migrated all 123 successful records before pruning, without fabricating completion times or retaining execution/download IDs.
+- Deleted history stayed deleted after updates/refresh; clearing the queue retained 122 remaining successes. Requeue created a fresh ID with language, 720P, template, and directories, while rejecting active duplicates.
+- Real saving-to-completed updates archived time exactly once; late terminal messages did not resurrect deleted records.
+- Twenty-item pages, search/type filtering, and page reset worked. JSON/CSV each exported two filtered records; 390px layout did not overflow.
+- Source drafts, selection, 480P/all-parts/disabled-success-skip options, and pagination cursor survived refresh without new API reads.
+- Late stopped-page responses could not overwrite saved pages/cursors. Stop-enqueue finished one video's three tasks; refresh kept one receipt/two pending videos, locked options, and manual continue added only six remaining tasks.
+- Changed-source previews remained stale across refresh; re-preview created a new session/unlocked options. Narrow batch layout did not overflow.
+- Two real tabs rejected stale writes. After clearing queue/history, replaying old `batch.add` with success skipping disabled returned the original receipt without new tasks/API calls. Latest-version saves could not erase receipts/change frozen options.
+- Duplicate all-parts sources and av/BV aliases respected receipts even without success skipping. Independent history controlled skips; removing it allowed requeue.
+- Fresh-profile final-build testing showed concise corrupt-session errors; explicit reset restored editing without affecting 100 test tasks. Valid sessions could not be reset by stale pages. Corrupt history could be cleared after UI confirmation. Final console had no errors/warnings.
 
-### Chromium 生产扩展
+Ignored `output/playwright/` artifacts: `p3-fixture.js`, `p3-library-check.js`, `p3-library-ui-check.js`, `p3-completion-check.js`, `p3-session-ui-check.js`, `p3-receipt-cas-check.js`, desktop/mobile library/session screenshots, and `p3-library.json` / `p3-library.csv`.
 
-使用独立 Chrome for Testing 配置加载生产扩展，B 站元数据 API 和历史数据使用测试 fixture；真实执行扩展消息、storage.local、页面交互与下载记录文件保存。本轮不重复声称测试了真实媒体下载：新增完成归档用构造的 saving 任务经真实 runner.update 消息验证，媒体保存的既有验收见上方 P2。
+### Limits
 
-- 125 条旧队列包含 123 条成功记录；全部成功项在队列裁剪前迁移到独立历史，不伪造旧记录的完成时间，也不保留 runId / 浏览器下载 ID。
-- 删除单条历史后，队列更新与刷新不会恢复该记录。清空队列仍保留其余 122 条成功记录。重新入队生成新 ID，沿用字幕语言、720P 偏好、命名模板与目录；重复添加活跃素材被拒绝。
-- 构造 saving → completed 转移，真实 runner.update 将成功记录及完成时间归档；重复终态消息不重复写入，删除记录后迟到消息不会使其复活。
-- 20 条分页、搜索与素材筛选、筛选后回到第一页正常。实际导出 JSON / CSV 文件均只含 2 条筛选结果。390px 页面无横向溢出。
-- 收藏夹来源、其他来源草稿、勾选、480P / 全部 P / 关闭成功跳过及下一页游标均在刷新后恢复；刷新本身没有发起来源 API 请求。
-- 停止分页后刷新，迟到响应不会覆盖已保存的条目和游标。停止入队仅完成当前视频的 3 个任务；刷新保留 1 条回执与 2 条待处理视频，恢复后选项保持锁定，手动继续只新增剩余 6 个任务。
-- 修改来源产生的过期预览在刷新后仍禁止入队；重新预览创建新会话并解锁选项。390px 批量导入布局无横向溢出。
-- 两个真实下载中心标签页的旧版本写入被拒绝。清除队列与成功历史后，以旧版本和 skipCompleted=false 重放同一 batch.add，返回原回执，不新增任务、不请求 API。使用最新版本保存也不能擦除回执或修改已固定的选项。
-- 全部 P 模式的重复来源和 BV / av 别名不会重复加入，关闭成功跳过后仍遵守本会话的回执；独立长期历史参与批量跳过，删除对应记录后可重新加入。
-- 新建独立配置加载最后一次构建，损坏会话显示简洁错误；显式清除后可编辑，100 条测试队列不受影响。重置有效会话被拒绝，避免旧页面覆盖其他窗口的新会话。损坏历史可通过界面确认清空，刷新后正常使用。最终控制台无错误或警告。
+- Bounded history is not a complete archive and cannot recover pre-upgrade evictions or inspect whether disk files remain.
+- Source fixtures do not prove authenticated/anti-abuse/CDN behavior; previous real-API/large-task limits remain.
+- Chromium ran the extension. Two fresh Firefox starts, including a precreated absolute profile, still exited 1 with the missing-profile error before loading; build-only.
 
-本地脚本与产物在忽略目录 `output/playwright/`：`p3-fixture.js`、`p3-library-check.js`、`p3-library-ui-check.js`、`p3-completion-check.js`、`p3-session-ui-check.js`、`p3-receipt-cas-check.js`；截图为 `p3-library-desktop.png` / `p3-library-mobile.png`、`p3-session-restored-desktop.png` / `p3-session-restored-mobile.png`。JSON / CSV 导出保留为 `p3-library.json` / `p3-library.csv`。
+## P3 task controls, P4 native integration, P5 bundles: 2026-10-05
 
-### 边界
+The remaining three planned features passed 118 JS/TS tests, 38 Python tests, static checks, both builds, and diff checks. Optional `nativeMessaging` was added without runtime dependencies; registration remains user-run.
 
-- 长期记录按数量与大小有界，不是全量下载档案；无法找回升级前已经淘汰的旧记录，也不检查磁盘文件是否仍存在。
-- 本轮来源接口为模拟数据，不证明真实登录、风控或 CDN 行为；既有真实接口和大型任务边界继续适用。
-- Chromium 已进行扩展运行验证。Firefox 本轮再次用隔离配置启动两次，第二次预先创建目录并传入绝对 profile 路径，仍均在启动阶段报 `Could not find profile folder.`、退出码 1，未加载扩展；确认构建通过，尚未完成 Firefox 实机验收。
+New tests cover pause/cache, rapid pause/resume run isolation, saving boundaries, late storage events, ordering, atomic bundle capacity, complete member retention, and storage budgets. Completed active-bundle members count toward 1,000 slots. New tasks reserve future progress/filename growth; complete-group eviction respects 4 MiB, preventing repeated pause on large bundles from exhausting storage.
 
-## P3 任务控制、P4 助手直连与 P5 素材组合（2026-10-05）
+Python protocol tests cover framing/identity, expiration refresh, disconnect/cancel, FFmpeg exit, cancellation before publication, configuration, and temporary installation paths. Real subprocess tests confirm Python exits after completion even when browser stdin remains open, fixing a daemon BufferedReader shutdown crash. Real FFmpeg/ffprobe checks still passed. Windows path/registry functions were tested without registering on a Windows host.
 
-原规划聊天中剩余的三项功能已实现。自动检查为 118 项 JavaScript / TypeScript 测试、38 项 Python 测试全部通过，格式、ESLint、类型、Chromium / Firefox 生产构建和 `git diff --check` 通过。增加的是可选 `nativeMessaging` 权限，没有新增运行依赖；宿主注册由用户运行安装脚本。
+### Chromium runtime evidence
 
-新增测试覆盖单任务暂停与缓存保留、快速暂停 / 继续的旧执行隔离、保存阶段边界、迟到 storage 事件、排序、组合原子容量校验、完整成员保留及存储预算。活动组合的已完成成员同样计入 1000 个保留名额，新增任务为后续进度与文件名预留空间；历史以完整组在 4 MiB 预算内淘汰，避免反复暂停大组合撑满存储。
+An isolated production extension used fixed metadata/playback/asset APIs and local two-second media:
 
-Python 原生协议测试覆盖帧长度与身份、过期链接刷新、断开 / 取消、FFmpeg 子进程结束、输出发布前取消、配置与安装路径，安装测试只写临时目录。真实子进程测试确认：即使浏览器保持 stdin 打开，任务完成后 Python 也正常退出，修复了守护线程读取 BufferedReader 导致的退出崩溃。已有真实 FFmpeg / ffprobe 封装检查继续通过；Windows 路径与注册函数在测试中验证，未在 Windows 主机执行注册。
+- Selecting five types across three parts queued 13 members with one cover, shared bundle ID, video-folder snapshots, and retained queue pause.
+- Individual queued pause survived refresh; resume permitted moving down, and execution followed the new order.
+- All 13 assets saved through real WASM/downloads/files, showing 13/13 success and history entries. `ffprobe` confirmed H.264/AAC MP4 and AAC-only M4A, both two seconds. Quality labels tested strategy, not fixture resolution.
+- Pausing transfer retained 1466/2932 video bytes while another cover completed. After refresh, resume sent the correct Range/strong If-Range and really remuxed/saved.
+- Desktop bundle picker/completion and 390px center were checked without overflow.
+- Native UI tests covered permission denial without queue changes, exclusive handoff, progress, hidden-row continuity, expired refresh, completion history, cancel messages, and rejected late completion. Only Native Port/permissions were mocked; UI/background/storage were real. No installed host or native file save was exercised, so this is not post-registration end-to-end proof.
 
-### Chromium 运行证据
+Ignored `output/playwright/` artifacts include `pnext-bundle-panel.png`, `pnext-bundle-completed.png`, `pnext-mobile.png`, `pnext-bundle-setup.js`, `pnext-pause-check.js`, `pnext-native-check.js`, and `pnext-native-result.png`. Actual outputs include `pnext-video-*.mp4`, `pnext-audio-*.m4a`, `pnext-cover-1.png`, `pnext-subtitle-*.srt`, `pnext-danmaku-*.xml`, and `pnext-resumed.mp4`.
 
-使用独立 Chrome for Testing 配置与真实生产扩展，B 站元数据 / 播放 / 素材接口为固定响应，媒体为本地两秒样例：
+### Still requiring real environments
 
-- 页面勾选五种素材与全部 3 个分 P，一次新增 13 个成员，只含一份封面。任务共享组合 ID，快照目录为视频目录，队列暂停状态保持。
-- 等待任务单项暂停，刷新后仍为暂停；继续后可以下移，队列按调整后的顺序执行。
-- 全部 13 个素材经过真实 WASM、浏览器下载 API 与文件保存，组合显示已保存 13 / 13，长期记录包含 13 份素材。MP4 经 ffprobe 确认为 H.264 + AAC，M4A 仅 AAC，时长均 2 秒。样例的画质标签用于验证选择策略，不代表实际测试媒体分辨率。
-- 网络传输中暂停，OPFS 保留 1466 / 2932 字节的视频前缀；暂停期间另一份封面正常完成。刷新后继续发送 `Range: bytes=1466-` 与对应强 ETag 的 `If-Range`，最终真实合并并保存 MP4。
-- 桌面组合选择与完成卡片已查看；390px 下载中心没有横向溢出。
-- 原生助手界面联调验证权限拒绝不改变队列、独占交接、进度回传、筛选隐藏行后仍继续运行、过期地址重新取流、完成写入长期记录、取消发送及迟到完成结果被拒绝。此测试仅模拟 Native Port 和权限决定，执行真实扩展 UI / 后台 / 存储；没有连接已安装宿主或实际保存原生文件，不能视为系统注册后的端到端证明。
-
-截图与临时脚本位于忽略提交的 `output/playwright/`：`pnext-bundle-panel.png`、`pnext-bundle-completed.png`、`pnext-mobile.png`、`pnext-bundle-setup.js`、`pnext-pause-check.js`、`pnext-native-check.js` 与 `pnext-native-result.png`。真实输出为 `pnext-video-*.mp4`、`pnext-audio-*.m4a`、`pnext-cover-1.png`、`pnext-subtitle-*.srt`、`pnext-danmaku-*.xml` 与 `pnext-resumed.mp4`。
-
-### 尚需真实环境验收
-
-- 本轮再次启动 Firefox 隔离配置，仍在加载扩展前报 `Could not find profile folder.` 并退出。Firefox 构建通过，运行验收尚未完成。
-- 没有把宿主安装到用户正在使用的浏览器，实际注册后的浏览器与宿主连接、系统权限弹窗，以及 Windows / Linux 实机仍待验证。
-- 真实登录权限、真实 CDN 长时间续传与 GB 级磁盘 / 内存压力尚未补验；模拟响应、短媒体与协议测试不能替代这些项目。
+- Firefox again failed before loading with the missing-profile error. Runtime acceptance remains incomplete despite successful builds.
+- No host was installed into the user's active browser. Registered browser/host connections, real system permission prompts, and Windows/Linux hosts remain to verify.
+- Authenticated permissions, long real-CDN resume, and GB-scale disk/memory stress were not covered by those short-media/protocol simulations.
