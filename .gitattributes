@@ -1,0 +1,2 @@
+# Unified diffs preserve upstream context, including spaces before tabs.
+patches/*.patch -whitespace

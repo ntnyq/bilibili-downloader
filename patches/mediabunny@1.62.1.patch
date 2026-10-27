@@ -1,8 +1,8 @@
 diff --git a/dist/bundles/mediabunny.cjs b/dist/bundles/mediabunny.cjs
-index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f0920d720c6 100644
+index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..8f037fe5b4fdb6acf6f2ceabd22c1d5ee7d610c8 100644
 --- a/dist/bundles/mediabunny.cjs
 +++ b/dist/bundles/mediabunny.cjs
-@@ -6619,11 +6619,21 @@ var Mediabunny = (() => {
+@@ -6619,11 +6619,24 @@ var Mediabunny = (() => {
    };
  
    // src/isobmff/isobmff-demuxer.ts
@@ -16,6 +16,9 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
    var MAX_BOX_NESTING_DEPTH = 64;
 -  var IsobmffDemuxer = class _IsobmffDemuxer extends Demuxer {
 +  var MOVIE_LEAF_BOXES = /* @__PURE__ */ new Set(["mdia", "minf", "dinf", "mfra", "edts", "sinf", "schi", "mvhd", "trak", "tkhd", "elst", "mdhd", "hdlr", "stbl", "stsd", "frma", "schm", "tenc", "avcC", "hvcC", "vpcC", "av1C", "colr", "pasp", "btrt", "wave", "esds", "enda", "pcmC", "dOps", "dfLa", "dac3", "dec3", "ddts", "stts", "ctts", "stsz", "stz2", "stss", "stsc", "stco", "co64", "mvex", "mehd", "trex", "tfra", "moof", "traf", "pssh", "tfhd", "tfdt", "trun", "saiz", "saio", "senc", "udta", "meta", "keys", "ilst"]);
++  var MAX_FRAGMENT_CACHE_ENTRIES = 128;
++  var FRAGMENT_INDEX_PAGE_SIZE = 16 * 1024;
++  var MAX_FRAGMENT_INDEX_PAGES = 4;
 +  var IsobmffDemuxer = class extends Demuxer {
      constructor(input) {
        super(input);
@@ -26,16 +29,18 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        this.currentTrack = null;
        this.tracks = [];
        this.idToTrack = /* @__PURE__ */ new Map();
-@@ -6645,7 +6655,7 @@ var Mediabunny = (() => {
+@@ -6644,8 +6657,9 @@ var Mediabunny = (() => {
+        * same fragment in quick succession.
         */
        this.lastReadFragment = null;
++      this.fragmentCacheAccess = 0;
        this.fragmentSummaries = /* @__PURE__ */ new Map();
 -      // Keyed by moof offset
 +      // At most 128 entries, keyed by moof offset
        this.decryptionKeyCache = /* @__PURE__ */ new Map();
        this.boxNestingDepth = 0;
        this.reader = input._reader;
-@@ -6672,7 +6682,7 @@ var Mediabunny = (() => {
+@@ -6672,7 +6686,7 @@ var Mediabunny = (() => {
        return this.metadataTags;
      }
      readMetadata() {
@@ -44,7 +49,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          let currentPos = 0;
          let lookForMfraBox = false;
          let foundMovieBoxes = false;
-@@ -6689,11 +6699,18 @@ var Mediabunny = (() => {
+@@ -6689,11 +6703,18 @@ var Mediabunny = (() => {
              const majorBrand = readAscii(slice, 4);
              this.isQuickTime = majorBrand === "qt  ";
            } else if (boxInfo.name === "moov") {
@@ -68,7 +73,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              if (this.movieTimescale === -1) {
                throw new Error("Invalid moov box: missing mvhd box.");
              }
-@@ -6737,31 +6754,27 @@ var Mediabunny = (() => {
+@@ -6737,31 +6758,27 @@ var Mediabunny = (() => {
              if (mfraHeaderSlice) {
                const boxInfo = readBoxHeader(mfraHeaderSlice);
                if (boxInfo && boxInfo.name === "mfra") {
@@ -113,7 +118,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          throw new Error("Init input must match the input's format.");
        }
        await initDemuxer.readMetadata();
-@@ -6787,9 +6800,10 @@ var Mediabunny = (() => {
+@@ -6787,9 +6804,10 @@ var Mediabunny = (() => {
            languageCode: foreignTrack.languageCode,
            sampleTableByteOffset: null,
            sampleTable: null,
@@ -125,7 +130,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
            editListPreviousSegmentDurations: foreignTrack.editListPreviousSegmentDurations,
            editListOffset: foreignTrack.editListOffset,
            encryptionInfo: foreignTrack.encryptionInfo,
-@@ -6816,234 +6830,182 @@ var Mediabunny = (() => {
+@@ -6816,234 +6834,199 @@ var Mediabunny = (() => {
          }
        }
      }
@@ -399,23 +404,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 -              offsetFragmentTrackDataByTimestamp(trackData, lastCache.endTimestamp);
 -            } else {
 -            }
--          }
--          trackData.startTimestampIsFinal = true;
--        }
--        const insertionIndex = binarySearchLessOrEqual(
--          fragmentPositionCache,
--          trackData.startTimestamp,
--          (x) => x.startTimestamp
--        );
--        const previousEntry = fragmentPositionCache[insertionIndex];
--        const nextEntry = fragmentPositionCache[insertionIndex + 1];
--        if ((!previousEntry || previousEntry.moofOffset < fragment.moofOffset) && (!nextEntry || nextEntry.moofOffset > fragment.moofOffset)) {
--          fragmentPositionCache.splice(insertionIndex + 1, 0, {
--            moofOffset: fragment.moofOffset,
--            startTimestamp: trackData.startTimestamp,
--            endTimestamp: trackData.endTimestamp
--          });
-+      while (this.fragmentSummaries.size > 128) {
++      while (this.fragmentSummaries.size > MAX_FRAGMENT_CACHE_ENTRIES) {
 +        this.fragmentSummaries.delete(this.fragmentSummaries.keys().next().value);
 +      }
 +      return fragment;
@@ -434,29 +423,55 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 +        afterMoofOffset: fragment.moofOffset + fragment.moofSize,
 +        endDecodeTimestamp: data.currentTimestamp
 +      });
-+      while (track.fragmentDecodeCache.size > 128) {
++      while (track.fragmentDecodeCache.size > MAX_FRAGMENT_CACHE_ENTRIES) {
 +        track.fragmentDecodeCache.delete(track.fragmentDecodeCache.keys().next().value);
 +      }
 +      const cache = track.fragmentPositionCache;
++      const existing = cache.find((entry) => entry.moofOffset === fragment.moofOffset);
++      if (existing) {
++        existing.lastAccess = ++this.fragmentCacheAccess;
++        return;
++      }
 +      const index = binarySearchLessOrEqual(cache, data.startTimestamp, (x) => x.startTimestamp);
 +      if ((!cache[index] || cache[index].moofOffset < fragment.moofOffset) && (!cache[index + 1] || cache[index + 1].moofOffset > fragment.moofOffset)) {
 +        cache.splice(index + 1, 0, {
 +          moofOffset: fragment.moofOffset,
 +          startTimestamp: data.startTimestamp,
-+          endTimestamp: data.endTimestamp
++          endTimestamp: data.endTimestamp,
++          lastAccess: ++this.fragmentCacheAccess
 +        });
-+        if (cache.length > 128) cache.shift();
++        if (cache.length > MAX_FRAGMENT_CACHE_ENTRIES) {
++          let oldest = 0;
++          for (let i = 1; i < cache.length; i++) {
++            if (cache[i].lastAccess < cache[oldest].lastAccess) oldest = i;
+           }
+-          trackData.startTimestampIsFinal = true;
++          cache.splice(oldest, 1);
+         }
+-        const insertionIndex = binarySearchLessOrEqual(
+-          fragmentPositionCache,
+-          trackData.startTimestamp,
+-          (x) => x.startTimestamp
+-        );
+-        const previousEntry = fragmentPositionCache[insertionIndex];
+-        const nextEntry = fragmentPositionCache[insertionIndex + 1];
+-        if ((!previousEntry || previousEntry.moofOffset < fragment.moofOffset) && (!nextEntry || nextEntry.moofOffset > fragment.moofOffset)) {
+-          fragmentPositionCache.splice(insertionIndex + 1, 0, {
+-            moofOffset: fragment.moofOffset,
+-            startTimestamp: trackData.startTimestamp,
+-            endTimestamp: trackData.endTimestamp
+-          });
 +      }
 +    }
 +    async getDecodeTimeBefore(track, targetOffset) {
 +      let position = this.moovEnd ?? 0;
 +      let timestamp = 0;
 +      let anchorOffset = -1;
-+      for (const [offset, anchor] of track.fragmentDecodeCache) {
++      for (const [offset, anchor2] of track.fragmentDecodeCache) {
 +        if (offset < targetOffset && offset > anchorOffset) {
 +          anchorOffset = offset;
-+          position = anchor.afterMoofOffset;
-+          timestamp = anchor.endDecodeTimestamp;
++          position = anchor2.afterMoofOffset;
++          timestamp = anchor2.endDecodeTimestamp;
          }
 -        if (trackData.encryptionAuxInfo && track.encryptionInfo) {
 -          const entries = await resolveEncryptionAuxInfo(
@@ -467,6 +482,11 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 -          for (let i = 0; i < Math.min(trackData.samples.length, entries.length); i++) {
 -            const entry = entries[i];
 -            trackData.samples[i].encryption = entry;
++      }
++      const anchor = track.fragmentDecodeCache.get(anchorOffset);
++      if (anchor) {
++        track.fragmentDecodeCache.delete(anchorOffset);
++        track.fragmentDecodeCache.set(anchorOffset, anchor);
 +      }
 +      while (position < targetOffset) {
 +        const slice = await this.reader.requestSliceRange(position, MIN_BOX_HEADER_SIZE, MAX_BOX_HEADER_SIZE);
@@ -491,20 +511,20 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        }
 -      return fragment;
 +      return timestamp;
-     }
--    readContiguousBoxes(slice) {
++    }
 +    async readMovieSlice(start, end, maxLength = 64 * 1024) {
 +      const length = Math.min(maxLength, end - start);
 +      if (length <= 0) throw new RangeError("Truncated movie box payload.");
 +      const slice = await this.reader.requestSlice(start, length);
 +      if (!slice) throw new RangeError("Truncated movie box payload.");
 +      return slice;
-+    }
+     }
+-    readContiguousBoxes(slice) {
 +    async readContiguousBoxes(slice, fromFile = false) {
        if (this.boxNestingDepth === MAX_BOX_NESTING_DEPTH) {
          throw new Error("Invalid file: boxes are nested too deeply.");
        }
-@@ -7051,7 +7013,7 @@ var Mediabunny = (() => {
+@@ -7051,7 +7034,7 @@ var Mediabunny = (() => {
        this.boxNestingDepth++;
        try {
          while (slice.filePos - startIndex <= slice.length - MIN_BOX_HEADER_SIZE) {
@@ -513,7 +533,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
            if (!foundBox) {
              break;
            }
-@@ -7073,14 +7035,59 @@ var Mediabunny = (() => {
+@@ -7073,14 +7056,59 @@ var Mediabunny = (() => {
          slice.filePos = startPos + boxInfo.totalSize;
        }
      }
@@ -578,7 +598,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        switch (boxInfo.name) {
          case "mdia":
          case "minf":
-@@ -7090,7 +7097,7 @@ var Mediabunny = (() => {
+@@ -7090,7 +7118,7 @@ var Mediabunny = (() => {
          case "sinf":
          case "schi":
            {
@@ -587,7 +607,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
            }
            ;
            break;
-@@ -7138,9 +7145,10 @@ var Mediabunny = (() => {
+@@ -7138,9 +7166,10 @@ var Mediabunny = (() => {
                languageCode: UNDETERMINED_LANGUAGE,
                sampleTableByteOffset: -1,
                sampleTable: null,
@@ -599,7 +619,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                editListPreviousSegmentDurations: 0,
                editListOffset: 0,
                encryptionInfo: null,
-@@ -7150,7 +7158,7 @@ var Mediabunny = (() => {
+@@ -7150,7 +7179,7 @@ var Mediabunny = (() => {
                avgBitrate: null
              };
              this.currentTrack = track;
@@ -608,7 +628,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              if (track.id !== -1 && track.timescale !== -1 && track.info !== null && track.sampleTableByteOffset !== -1) {
                if (track.info.type === "video" && track.info.width !== -1) {
                  const videoTrack = track;
-@@ -7316,7 +7324,7 @@ var Mediabunny = (() => {
+@@ -7316,7 +7345,7 @@ var Mediabunny = (() => {
                break;
              }
              track.sampleTableByteOffset = startPos;
@@ -617,7 +637,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
            }
            ;
            break;
-@@ -7348,7 +7356,7 @@ var Mediabunny = (() => {
+@@ -7348,7 +7377,7 @@ var Mediabunny = (() => {
                  track.info.squarePixelHeight = track.info.height;
                  slice.skip(4 + 4 + 4 + 2 + 32 + 2 + 2);
                  track.frmaCodecString = null;
@@ -626,7 +646,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                    slice.slice(
                      slice.filePos,
                      sampleBoxStartPos + sampleBoxInfo.totalSize - slice.filePos
-@@ -7402,7 +7410,7 @@ var Mediabunny = (() => {
+@@ -7402,7 +7431,7 @@ var Mediabunny = (() => {
                  track.info.numberOfChannels = channelCount;
                  track.info.sampleRate = sampleRate;
                  track.frmaCodecString = null;
@@ -635,7 +655,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                    slice.slice(
                      slice.filePos,
                      sampleBoxStartPos + sampleBoxInfo.totalSize - slice.filePos
-@@ -7642,7 +7650,7 @@ var Mediabunny = (() => {
+@@ -7642,7 +7671,7 @@ var Mediabunny = (() => {
                break;
              }
              track.info.codecDescription = readBytes(slice, boxInfo.contentSize);
@@ -644,7 +664,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              const spsInfo = sps && parseHevcSps(sps);
              if (spsInfo) {
                applySpsPixelAspectRatio(track, spsInfo.pixelAspectRatio);
-@@ -7780,7 +7788,7 @@ var Mediabunny = (() => {
+@@ -7780,7 +7809,7 @@ var Mediabunny = (() => {
            break;
          case "wave":
            {
@@ -653,7 +673,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
            }
            ;
            break;
-@@ -7866,15 +7874,15 @@ var Mediabunny = (() => {
+@@ -7866,15 +7895,15 @@ var Mediabunny = (() => {
                channelMappingTable = new Uint8Array(0);
              }
              const description = new Uint8Array(8 + 1 + 1 + 2 + 4 + 2 + 1 + channelMappingTable.byteLength);
@@ -678,7 +698,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              description.set(channelMappingTable, 19);
              track.info.codecDescription = description;
              track.info.numberOfChannels = outputChannelCount;
-@@ -7895,7 +7903,7 @@ var Mediabunny = (() => {
+@@ -7895,7 +7924,7 @@ var Mediabunny = (() => {
                const flagAndType = readU8(slice);
                const metadataBlockLength = readU24Be(slice);
                const type = flagAndType & BLOCK_TYPE_MASK;
@@ -687,7 +707,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                  slice.skip(10);
                  const word = readU32Be(slice);
                  const sampleRate = word >>> 12;
-@@ -7912,11 +7920,11 @@ var Mediabunny = (() => {
+@@ -7912,11 +7941,11 @@ var Mediabunny = (() => {
              }
              const endPos = slice.filePos;
              slice.filePos = startPos2;
@@ -704,7 +724,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              track.info.codecDescription = description;
            }
            ;
-@@ -7927,8 +7935,8 @@ var Mediabunny = (() => {
+@@ -7927,8 +7956,8 @@ var Mediabunny = (() => {
              if (!track || track.info?.type !== "audio") {
                break;
              }
@@ -715,7 +735,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              const fscod = bitstream.readBits(2);
              bitstream.skipBits(5 + 3);
              const acmod = bitstream.readBits(3);
-@@ -7946,8 +7954,8 @@ var Mediabunny = (() => {
+@@ -7946,8 +7975,8 @@ var Mediabunny = (() => {
              if (!track || track.info?.type !== "audio") {
                break;
              }
@@ -726,7 +746,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              if (!config) {
                Logging._warn("Invalid dec3 box contents, ignoring.");
                break;
-@@ -7966,8 +7974,8 @@ var Mediabunny = (() => {
+@@ -7966,8 +7995,8 @@ var Mediabunny = (() => {
              if (!track || track.info?.type !== "audio") {
                break;
              }
@@ -737,7 +757,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              if (!config) {
                Logging._warn("Invalid ddts box contents, ignoring.");
                break;
-@@ -7979,220 +7987,10 @@ var Mediabunny = (() => {
+@@ -7979,220 +8008,10 @@ var Mediabunny = (() => {
            }
            ;
            break;
@@ -959,7 +979,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
            }
            ;
            break;
-@@ -8223,43 +8021,6 @@ var Mediabunny = (() => {
+@@ -8223,43 +8042,6 @@ var Mediabunny = (() => {
            }
            ;
            break;
@@ -1003,7 +1023,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          case "moof":
            {
              if (this.currentFragment) {
-@@ -8274,7 +8035,7 @@ var Mediabunny = (() => {
+@@ -8274,7 +8056,7 @@ var Mediabunny = (() => {
                sampleCount: 0
              };
              try {
@@ -1012,7 +1032,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                this.lastReadFragment = this.currentFragment;
              } finally {
                this.currentFragment = null;
-@@ -8290,7 +8051,7 @@ var Mediabunny = (() => {
+@@ -8290,7 +8072,7 @@ var Mediabunny = (() => {
              }
              this.isReadingTraf = true;
              try {
@@ -1021,7 +1041,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              } finally {
                this.isReadingTraf = false;
              }
-@@ -8627,11 +8388,11 @@ var Mediabunny = (() => {
+@@ -8627,11 +8409,11 @@ var Mediabunny = (() => {
              for (const { boxInfo: boxInfo2, slice: slice2 } of iterator) {
                if (boxInfo2.name !== "meta" && !this.currentTrack) {
                  const startPos2 = slice2.filePos;
@@ -1036,7 +1056,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                  }
                  slice2.filePos = startPos2;
                }
-@@ -8639,7 +8400,7 @@ var Mediabunny = (() => {
+@@ -8639,7 +8421,7 @@ var Mediabunny = (() => {
                  case "meta":
                    {
                      slice2.skip(-boxInfo2.headerSize);
@@ -1045,7 +1065,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                    }
                    ;
                    break;
-@@ -8649,7 +8410,7 @@ var Mediabunny = (() => {
+@@ -8649,7 +8431,7 @@ var Mediabunny = (() => {
                      if (this.currentTrack) {
                        this.currentTrack.name = textDecoder.decode(readBytes(slice2, boxInfo2.contentSize));
                      } else {
@@ -1054,7 +1074,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8657,7 +8418,7 @@ var Mediabunny = (() => {
+@@ -8657,7 +8439,7 @@ var Mediabunny = (() => {
                  case "\xA9des":
                    {
                      if (!this.currentTrack) {
@@ -1063,7 +1083,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8665,7 +8426,7 @@ var Mediabunny = (() => {
+@@ -8665,7 +8447,7 @@ var Mediabunny = (() => {
                  case "\xA9ART":
                    {
                      if (!this.currentTrack) {
@@ -1072,7 +1092,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8673,7 +8434,7 @@ var Mediabunny = (() => {
+@@ -8673,7 +8455,7 @@ var Mediabunny = (() => {
                  case "\xA9alb":
                    {
                      if (!this.currentTrack) {
@@ -1081,7 +1101,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8681,7 +8442,7 @@ var Mediabunny = (() => {
+@@ -8681,7 +8463,7 @@ var Mediabunny = (() => {
                  case "albr":
                    {
                      if (!this.currentTrack) {
@@ -1090,7 +1110,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8689,7 +8450,7 @@ var Mediabunny = (() => {
+@@ -8689,7 +8471,7 @@ var Mediabunny = (() => {
                  case "\xA9gen":
                    {
                      if (!this.currentTrack) {
@@ -1099,7 +1119,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8699,7 +8460,7 @@ var Mediabunny = (() => {
+@@ -8699,7 +8481,7 @@ var Mediabunny = (() => {
                      if (!this.currentTrack) {
                        const date = new Date(readMetadataStringShort(slice2));
                        if (!Number.isNaN(date.getTime())) {
@@ -1108,7 +1128,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                        }
                      }
                    }
-@@ -8708,7 +8469,7 @@ var Mediabunny = (() => {
+@@ -8708,7 +8490,7 @@ var Mediabunny = (() => {
                  case "\xA9cmt":
                    {
                      if (!this.currentTrack) {
@@ -1117,7 +1137,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8716,7 +8477,7 @@ var Mediabunny = (() => {
+@@ -8716,7 +8498,7 @@ var Mediabunny = (() => {
                  case "\xA9lyr":
                    {
                      if (!this.currentTrack) {
@@ -1126,7 +1146,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8735,9 +8496,9 @@ var Mediabunny = (() => {
+@@ -8735,9 +8517,9 @@ var Mediabunny = (() => {
              const isQuickTime = word !== 0;
              this.currentMetadataKeys = /* @__PURE__ */ new Map();
              if (isQuickTime) {
@@ -1138,7 +1158,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
              }
              this.currentMetadataKeys = null;
            }
-@@ -8775,8 +8536,8 @@ var Mediabunny = (() => {
+@@ -8775,8 +8557,8 @@ var Mediabunny = (() => {
                  metadataKey = this.currentMetadataKeys.get(nameAsNumber);
                }
                const data = readDataBox(slice2);
@@ -1149,7 +1169,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                switch (metadataKey) {
                  case "\xA9nam":
                  case "titl":
-@@ -8784,7 +8545,7 @@ var Mediabunny = (() => {
+@@ -8784,7 +8566,7 @@ var Mediabunny = (() => {
                  case "title":
                    {
                      if (typeof data === "string") {
@@ -1158,7 +1178,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8796,7 +8557,7 @@ var Mediabunny = (() => {
+@@ -8796,7 +8578,7 @@ var Mediabunny = (() => {
                  case "description":
                    {
                      if (typeof data === "string") {
@@ -1167,7 +1187,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8806,7 +8567,7 @@ var Mediabunny = (() => {
+@@ -8806,7 +8588,7 @@ var Mediabunny = (() => {
                  case "artist":
                    {
                      if (typeof data === "string") {
@@ -1176,7 +1196,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8817,7 +8578,7 @@ var Mediabunny = (() => {
+@@ -8817,7 +8599,7 @@ var Mediabunny = (() => {
                  case "album":
                    {
                      if (typeof data === "string") {
@@ -1185,7 +1205,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8826,7 +8587,7 @@ var Mediabunny = (() => {
+@@ -8826,7 +8608,7 @@ var Mediabunny = (() => {
                  case "album_artist":
                    {
                      if (typeof data === "string") {
@@ -1194,7 +1214,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8836,7 +8597,7 @@ var Mediabunny = (() => {
+@@ -8836,7 +8618,7 @@ var Mediabunny = (() => {
                  case "comment":
                    {
                      if (typeof data === "string") {
@@ -1203,7 +1223,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8847,7 +8608,7 @@ var Mediabunny = (() => {
+@@ -8847,7 +8629,7 @@ var Mediabunny = (() => {
                  case "genre":
                    {
                      if (typeof data === "string") {
@@ -1212,7 +1232,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8856,7 +8617,7 @@ var Mediabunny = (() => {
+@@ -8856,7 +8638,7 @@ var Mediabunny = (() => {
                  case "lyrics":
                    {
                      if (typeof data === "string") {
@@ -1221,7 +1241,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                      }
                    }
                    ;
-@@ -8869,7 +8630,7 @@ var Mediabunny = (() => {
+@@ -8869,7 +8651,7 @@ var Mediabunny = (() => {
                      if (typeof data === "string") {
                        const date = new Date(data);
                        if (!Number.isNaN(date.getTime())) {
@@ -1230,7 +1250,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                        }
                      }
                    }
-@@ -8880,7 +8641,7 @@ var Mediabunny = (() => {
+@@ -8880,7 +8662,7 @@ var Mediabunny = (() => {
                      if (data instanceof Uint8Array && data.length >= 2) {
                        const bpm = toDataView(data).getInt16(0, false);
                        if (bpm > 0) {
@@ -1239,7 +1259,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                        }
                      }
                    }
-@@ -8890,14 +8651,14 @@ var Mediabunny = (() => {
+@@ -8890,14 +8672,14 @@ var Mediabunny = (() => {
                  case "com.apple.quicktime.artwork":
                    {
                      if (data instanceof RichImageData) {
@@ -1256,7 +1276,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                        this.metadataTags.images.push({
                          data,
                          kind: "coverFront",
-@@ -8914,10 +8675,10 @@ var Mediabunny = (() => {
+@@ -8914,10 +8696,10 @@ var Mediabunny = (() => {
                        const trackNum = Number.parseInt(parts[0], 10);
                        const tracksTotal = parts[1] && Number.parseInt(parts[1], 10);
                        if (Number.isInteger(trackNum) && trackNum > 0) {
@@ -1269,7 +1289,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                        }
                      }
                    }
-@@ -8926,14 +8687,14 @@ var Mediabunny = (() => {
+@@ -8926,14 +8708,14 @@ var Mediabunny = (() => {
                  case "trkn":
                    {
                      if (data instanceof Uint8Array && data.length >= 6) {
@@ -1289,7 +1309,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                        }
                      }
                    }
-@@ -8943,14 +8704,14 @@ var Mediabunny = (() => {
+@@ -8943,14 +8725,14 @@ var Mediabunny = (() => {
                  case "disk":
                    {
                      if (data instanceof Uint8Array && data.length >= 6) {
@@ -1309,7 +1329,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
                        }
                      }
                    }
-@@ -8962,7 +8723,7 @@ var Mediabunny = (() => {
+@@ -8962,7 +8744,7 @@ var Mediabunny = (() => {
            ;
            break;
        }
@@ -1318,7 +1338,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        return true;
      }
    };
-@@ -9065,8 +8826,8 @@ var Mediabunny = (() => {
+@@ -9065,8 +8847,8 @@ var Mediabunny = (() => {
      }
      async getPacket(timestamp, options) {
        const timestampInTimescale = this.mapTimestampIntoTimescale(timestamp);
@@ -1329,7 +1349,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        const regularPacket = await this.fetchPacketForSampleIndex(sampleIndex, options);
        if (!sampleTableIsEmpty(sampleTable) || !this.internalTrack.demuxer.isFragmented) {
          return regularPacket;
-@@ -9134,8 +8895,8 @@ var Mediabunny = (() => {
+@@ -9134,8 +8916,8 @@ var Mediabunny = (() => {
      }
      async getKeyPacket(timestamp, options) {
        const timestampInTimescale = this.mapTimestampIntoTimescale(timestamp);
@@ -1340,7 +1360,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        const regularPacket = await this.fetchPacketForSampleIndex(sampleIndex, options);
        if (!sampleTableIsEmpty(sampleTable) || !this.internalTrack.demuxer.isFragmented) {
          return regularPacket;
-@@ -9163,8 +8924,8 @@ var Mediabunny = (() => {
+@@ -9163,8 +8945,8 @@ var Mediabunny = (() => {
      async getNextKeyPacket(packet, options) {
        const regularSampleIndex = this.packetToSampleIndex.get(packet);
        if (regularSampleIndex !== void 0) {
@@ -1351,7 +1371,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          return this.fetchPacketForSampleIndex(nextKeyFrameSampleIndex, options);
        }
        const locationInFragment = this.packetToFragmentLocation.get(packet);
-@@ -9210,8 +8971,8 @@ var Mediabunny = (() => {
+@@ -9210,8 +8992,8 @@ var Mediabunny = (() => {
        if (sampleIndex === -1) {
          return null;
        }
@@ -1362,7 +1382,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        if (!sampleInfo) {
          return null;
        }
-@@ -9240,7 +9001,7 @@ var Mediabunny = (() => {
+@@ -9240,7 +9022,7 @@ var Mediabunny = (() => {
                sampleEncryption = entries[sampleIndex];
              }
            }
@@ -1371,7 +1391,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
            if (sampleEncryption) {
              data = await decryptSample(this.internalTrack, sampleEncryption, data, null);
            }
-@@ -9315,12 +9076,9 @@ var Mediabunny = (() => {
+@@ -9315,22 +9097,21 @@ var Mediabunny = (() => {
            bestSampleIndex = sampleIndex;
          }
        }
@@ -1387,7 +1407,11 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        const positionCacheIndex = binarySearchLessOrEqual(
          this.internalTrack.fragmentPositionCache,
          searchTimestamp,
-@@ -9331,6 +9089,7 @@ var Mediabunny = (() => {
+         (x) => x.startTimestamp
+       );
+       const positionCacheEntry = positionCacheIndex !== -1 ? this.internalTrack.fragmentPositionCache[positionCacheIndex] : null;
++      if (positionCacheEntry) positionCacheEntry.lastAccess = ++demuxer.fragmentCacheAccess;
+       const lookupEntryPosition = Math.max(
          lookupEntry?.moofOffset ?? 0,
          positionCacheEntry?.moofOffset ?? 0
        ) || null;
@@ -1395,7 +1419,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
        const lookupTableWins = !!lookupEntry && lookupEntry.moofOffset >= (positionCacheEntry?.moofOffset ?? 0);
        let currentPos;
        if (!startFragment) {
-@@ -9353,6 +9112,10 @@ var Mediabunny = (() => {
+@@ -9353,6 +9134,10 @@ var Mediabunny = (() => {
            currentFragment = null;
          }
          const summary = demuxer.fragmentSummaries.get(currentPos);
@@ -1406,7 +1430,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          if (summary && !summary.trackIds.has(this.internalTrack.id)) {
            currentPos += summary.moofSize;
            continue;
-@@ -9382,8 +9145,8 @@ var Mediabunny = (() => {
+@@ -9382,8 +9167,8 @@ var Mediabunny = (() => {
          currentPos = boxStartPos + boxInfo.totalSize;
        }
        if (lookupEntryPosition !== null && (!bestFragment || bestFragment.moofOffset < lookupEntryPosition)) {
@@ -1417,7 +1441,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          const newSearchTimestamp = previousEntryTimestamp ?? -Infinity;
          return this.performFragmentedLookup(
            null,
-@@ -9447,7 +9210,8 @@ var Mediabunny = (() => {
+@@ -9447,7 +9232,8 @@ var Mediabunny = (() => {
        if (!this.internalTrack.info.codec) {
          return null;
        }
@@ -1427,7 +1451,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          if (this.internalTrack.info.codec === "avc" && !this.internalTrack.info.codecDescription) {
            const firstPacket = await this.getFirstPacket({});
            this.internalTrack.info.avcCodecInfo = firstPacket && extractAvcDecoderConfigurationRecord(firstPacket.data);
-@@ -9480,10 +9244,10 @@ var Mediabunny = (() => {
+@@ -9480,10 +9266,10 @@ var Mediabunny = (() => {
          }
          if (!colorSpaceIsComplete(this.internalTrack.info.colorSpace)) {
            const colorSpace = extractColorSpace(this.internalTrack.info);
@@ -1442,7 +1466,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          }
          const config = {
            codec: extractVideoCodecString(this.internalTrack.info),
-@@ -9497,7 +9261,7 @@ var Mediabunny = (() => {
+@@ -9497,7 +9283,7 @@ var Mediabunny = (() => {
            config.displayAspectHeight = this.internalTrack.info.squarePixelHeight;
          }
          return config;
@@ -1451,7 +1475,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
      }
    };
    var IsobmffAudioTrackBacking = class extends IsobmffTrackBacking {
-@@ -9521,7 +9285,7 @@ var Mediabunny = (() => {
+@@ -9521,7 +9307,7 @@ var Mediabunny = (() => {
        if (!this.internalTrack.info.codec) {
          return null;
        }
@@ -1460,14 +1484,13 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          if (this.internalTrack.info.codec === "dts" && !this.internalTrack.info.dtsFormat) {
            const firstPacket = await this.getFirstPacket({});
            this.internalTrack.info.dtsFormat = firstPacket && extractDtsFourCcFromPacket(firstPacket.data);
-@@ -9532,166 +9296,13 @@ var Mediabunny = (() => {
+@@ -9532,166 +9318,13 @@ var Mediabunny = (() => {
            sampleRate: this.internalTrack.info.sampleRate,
            description: this.internalTrack.info.codecDescription ?? void 0
          };
 -      })();
-+      })());
-     }
-   };
+-    }
+-  };
 -  var getSampleIndexForTimestamp = (sampleTable, timescaleUnits) => {
 -    if (sampleTable.sortedCompositionTimeOffsets) {
 -      return performPresentationTimeLookup(sampleTable, timescaleUnits, false);
@@ -1500,8 +1523,9 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 -      const sampleIndex = getSampleIndexForTimestamp(sampleTable, timescaleUnits);
 -      const index = binarySearchLessOrEqual(sampleTable.keySampleIndices, sampleIndex, (x) => x);
 -      return sampleTable.keySampleIndices[index] ?? -1;
--    }
--  };
++      })());
+     }
+   };
 -  var getSampleInfo = (sampleTable, sampleIndex) => {
 -    if (sampleIndex >= sampleTable.sampleCount) {
 -      return null;
@@ -1629,7 +1653,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
      for (const sample of trackData.samples) {
        sample.presentationTimestamp += timestamp;
      }
-@@ -9729,35 +9340,25 @@ var Mediabunny = (() => {
+@@ -9729,35 +9362,25 @@ var Mediabunny = (() => {
        info.squarePixelHeight = Math.round(info.height * den / num);
      }
    };
@@ -1671,7 +1695,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
      }
    };
    var resolveEncryptionAuxInfo = async (reader, encryptionInfo, aux) => {
-@@ -9999,6 +9600,404 @@ var Mediabunny = (() => {
+@@ -9999,6 +9622,460 @@ var Mediabunny = (() => {
      }
      return ranges;
    };
@@ -1991,6 +2015,10 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 +      this.version = version;
 +      this.widths = widths;
 +      this.entrySize = entrySize;
++      this.orderPromise = null;
++      this.timestampsOrdered = true;
++      this.offsetsOrdered = true;
++      this.offsetCursor = null;
 +      this.pages = /* @__PURE__ */ new Map();
 +    }
 +    static async read(reader, start, end) {
@@ -2011,7 +2039,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 +    async at(index) {
 +      if (this.reader.source._disposed) throw new InputDisposedError();
 +      if (!Number.isInteger(index) || index < 0 || index >= this.count) return null;
-+      const entriesPerPage = Math.floor(16 * 1024 / this.entrySize);
++      const entriesPerPage = Math.floor(FRAGMENT_INDEX_PAGE_SIZE / this.entrySize);
 +      const first = Math.floor(index / entriesPerPage) * entriesPerPage;
 +      let view = this.pages.get(first);
 +      if (!view) {
@@ -2019,11 +2047,11 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 +        const slice = await this.reader.requestSlice(this.start + first * this.entrySize, length);
 +        if (this.reader.source._disposed) throw new InputDisposedError();
 +        if (!slice) throw new RangeError("Truncated tfra page.");
-+        view = toDataView(readBytes(slice, length).slice());
++        view = toDataView(new Uint8Array(readBytes(slice, length)));
 +      }
 +      this.pages.delete(first);
 +      this.pages.set(first, view);
-+      while (this.pages.size > 4) this.pages.delete(this.pages.keys().next().value);
++      while (this.pages.size > MAX_FRAGMENT_INDEX_PAGES) this.pages.delete(this.pages.keys().next().value);
 +      let offset = (index - first) * this.entrySize;
 +      const readWord = (width) => {
 +        let value = 0;
@@ -2038,6 +2066,26 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 +      const sampleNumber = readWord(this.widths[2]);
 +      return { timestamp, moofOffset, trunNumber, sampleNumber };
 +    }
++    ensureOrder() {
++      return this.orderPromise ?? (this.orderPromise = (async () => {
++        let previous = null;
++        let timestampsOrdered = true;
++        let offsetsOrdered = true;
++        for (let index = 0; index < this.count; index++) {
++          const entry = await this.at(index);
++          if (previous) {
++            timestampsOrdered && (timestampsOrdered = previous.timestamp <= entry.timestamp);
++            offsetsOrdered && (offsetsOrdered = previous.moofOffset <= entry.moofOffset);
++          }
++          previous = entry;
++        }
++        this.timestampsOrdered = timestampsOrdered;
++        this.offsetsOrdered = offsetsOrdered;
++      })().catch((error) => {
++        this.orderPromise = null;
++        throw error;
++      }));
++    }
 +    async bound(value, field, inclusive) {
 +      let low = 0;
 +      let high = this.count;
@@ -2051,6 +2099,15 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 +    }
 +    async findTimestamp(timestamp) {
 +      if (timestamp === -Infinity) return null;
++      await this.ensureOrder();
++      if (!this.timestampsOrdered) {
++        let best = null;
++        for (let index2 = 0; index2 < this.count; index2++) {
++          const entry = await this.at(index2);
++          if (entry.trunNumber >= 1 && entry.sampleNumber >= 1 && entry.timestamp <= timestamp && (!best || entry.timestamp > best.entry.timestamp)) best = { entry, index: index2 };
++        }
++        return best;
++      }
 +      let index = await this.bound(timestamp, "timestamp", true) - 1;
 +      while (index >= 0) {
 +        const time = (await this.at(index)).timestamp;
@@ -2064,11 +2121,34 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
 +      return null;
 +    }
 +    async findOffset(offset) {
++      await this.ensureOrder();
++      if (!this.offsetsOrdered) {
++        for (let index2 = 0; index2 < this.count; index2++) {
++          const entry = await this.at(index2);
++          if (entry.moofOffset === offset && entry.trunNumber >= 1 && entry.sampleNumber >= 1) return entry;
++        }
++        return null;
++      }
++      if (this.offsetCursor && this.offsetCursor.entry.moofOffset <= offset) {
++        for (let step = 0; step < 4; step++) {
++          const index2 = this.offsetCursor.index + step;
++          const entry = await this.at(index2);
++          if (!entry || entry.moofOffset > offset) break;
++          if (entry.moofOffset === offset && entry.trunNumber >= 1 && entry.sampleNumber >= 1) {
++            this.offsetCursor = { index: index2, entry };
++            return entry;
++          }
++        }
++      }
 +      let index = await this.bound(offset, "moofOffset", false);
 +      while (index < this.count) {
-+        const entry = await this.at(index++);
++        const entry = await this.at(index);
 +        if (entry.moofOffset !== offset) break;
-+        if (entry.trunNumber >= 1 && entry.sampleNumber >= 1) return entry;
++        if (entry.trunNumber >= 1 && entry.sampleNumber >= 1) {
++          this.offsetCursor = { index, entry };
++          return entry;
++        }
++        index++;
 +      }
 +      return null;
 +    }
@@ -2076,7 +2156,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
  
    // src/matroska/ebml.ts
    var EBMLFloat32 = class {
-@@ -30926,7 +30925,8 @@ var Mediabunny = (() => {
+@@ -30926,7 +31003,8 @@ var Mediabunny = (() => {
      const uniqueSampleSizes = new Set(allSampleSizes);
      const uniqueSampleFlags = new Set(allSampleFlags);
      const uniqueSampleCompositionTimeOffsets = new Set(allSampleCompositionTimeOffsets);
@@ -2086,7 +2166,7 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
      const sampleDurationPresent = uniqueSampleDurations.size > 1;
      const sampleSizePresent = uniqueSampleSizes.size > 1;
      const sampleFlagsPresent = !firstSampleFlagsPresent && uniqueSampleFlags.size > 1;
-@@ -33054,6 +33054,10 @@ var Mediabunny = (() => {
+@@ -33054,6 +33132,10 @@ var Mediabunny = (() => {
          this.formatOptions.onMdat(data, start);
        }
        for (const trackData of tracksInFragment) {
@@ -2098,10 +2178,10 @@ index 63f3e83fcaf1b2af7ed732764af302c4819ce5bd..561da2bbd9cb49636d0a925afc5a7f09
          this.finalizedChunks.push(trackData.currentChunk);
          trackData.currentChunk = null;
 diff --git a/dist/bundles/mediabunny.node.cjs b/dist/bundles/mediabunny.node.cjs
-index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb695ec9b4f 100644
+index 7fad5872fbf470957781b29d3c562296e60f5544..eb9d7502347acf56964945efceed66e4cf4d19b2 100644
 --- a/dist/bundles/mediabunny.node.cjs
 +++ b/dist/bundles/mediabunny.node.cjs
-@@ -6616,11 +6616,21 @@ var Mediabunny = (() => {
+@@ -6616,11 +6616,24 @@ var Mediabunny = (() => {
    };
  
    // src/isobmff/isobmff-demuxer.ts
@@ -2115,6 +2195,9 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
    var MAX_BOX_NESTING_DEPTH = 64;
 -  var IsobmffDemuxer = class _IsobmffDemuxer extends Demuxer {
 +  var MOVIE_LEAF_BOXES = /* @__PURE__ */ new Set(["mdia", "minf", "dinf", "mfra", "edts", "sinf", "schi", "mvhd", "trak", "tkhd", "elst", "mdhd", "hdlr", "stbl", "stsd", "frma", "schm", "tenc", "avcC", "hvcC", "vpcC", "av1C", "colr", "pasp", "btrt", "wave", "esds", "enda", "pcmC", "dOps", "dfLa", "dac3", "dec3", "ddts", "stts", "ctts", "stsz", "stz2", "stss", "stsc", "stco", "co64", "mvex", "mehd", "trex", "tfra", "moof", "traf", "pssh", "tfhd", "tfdt", "trun", "saiz", "saio", "senc", "udta", "meta", "keys", "ilst"]);
++  var MAX_FRAGMENT_CACHE_ENTRIES = 128;
++  var FRAGMENT_INDEX_PAGE_SIZE = 16 * 1024;
++  var MAX_FRAGMENT_INDEX_PAGES = 4;
 +  var IsobmffDemuxer = class extends Demuxer {
      constructor(input) {
        super(input);
@@ -2125,16 +2208,18 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        this.currentTrack = null;
        this.tracks = [];
        this.idToTrack = /* @__PURE__ */ new Map();
-@@ -6642,7 +6652,7 @@ var Mediabunny = (() => {
+@@ -6641,8 +6654,9 @@ var Mediabunny = (() => {
+        * same fragment in quick succession.
         */
        this.lastReadFragment = null;
++      this.fragmentCacheAccess = 0;
        this.fragmentSummaries = /* @__PURE__ */ new Map();
 -      // Keyed by moof offset
 +      // At most 128 entries, keyed by moof offset
        this.decryptionKeyCache = /* @__PURE__ */ new Map();
        this.boxNestingDepth = 0;
        this.reader = input._reader;
-@@ -6669,7 +6679,7 @@ var Mediabunny = (() => {
+@@ -6669,7 +6683,7 @@ var Mediabunny = (() => {
        return this.metadataTags;
      }
      readMetadata() {
@@ -2143,7 +2228,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          let currentPos = 0;
          let lookForMfraBox = false;
          let foundMovieBoxes = false;
-@@ -6686,11 +6696,18 @@ var Mediabunny = (() => {
+@@ -6686,11 +6700,18 @@ var Mediabunny = (() => {
              const majorBrand = readAscii(slice, 4);
              this.isQuickTime = majorBrand === "qt  ";
            } else if (boxInfo.name === "moov") {
@@ -2167,7 +2252,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              if (this.movieTimescale === -1) {
                throw new Error("Invalid moov box: missing mvhd box.");
              }
-@@ -6734,31 +6751,27 @@ var Mediabunny = (() => {
+@@ -6734,31 +6755,27 @@ var Mediabunny = (() => {
              if (mfraHeaderSlice) {
                const boxInfo = readBoxHeader(mfraHeaderSlice);
                if (boxInfo && boxInfo.name === "mfra") {
@@ -2212,7 +2297,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          throw new Error("Init input must match the input's format.");
        }
        await initDemuxer.readMetadata();
-@@ -6784,9 +6797,10 @@ var Mediabunny = (() => {
+@@ -6784,9 +6801,10 @@ var Mediabunny = (() => {
            languageCode: foreignTrack.languageCode,
            sampleTableByteOffset: null,
            sampleTable: null,
@@ -2224,7 +2309,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
            editListPreviousSegmentDurations: foreignTrack.editListPreviousSegmentDurations,
            editListOffset: foreignTrack.editListOffset,
            encryptionInfo: foreignTrack.encryptionInfo,
-@@ -6813,234 +6827,182 @@ var Mediabunny = (() => {
+@@ -6813,234 +6831,199 @@ var Mediabunny = (() => {
          }
        }
      }
@@ -2498,23 +2583,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 -              offsetFragmentTrackDataByTimestamp(trackData, lastCache.endTimestamp);
 -            } else {
 -            }
--          }
--          trackData.startTimestampIsFinal = true;
--        }
--        const insertionIndex = binarySearchLessOrEqual(
--          fragmentPositionCache,
--          trackData.startTimestamp,
--          (x) => x.startTimestamp
--        );
--        const previousEntry = fragmentPositionCache[insertionIndex];
--        const nextEntry = fragmentPositionCache[insertionIndex + 1];
--        if ((!previousEntry || previousEntry.moofOffset < fragment.moofOffset) && (!nextEntry || nextEntry.moofOffset > fragment.moofOffset)) {
--          fragmentPositionCache.splice(insertionIndex + 1, 0, {
--            moofOffset: fragment.moofOffset,
--            startTimestamp: trackData.startTimestamp,
--            endTimestamp: trackData.endTimestamp
--          });
-+      while (this.fragmentSummaries.size > 128) {
++      while (this.fragmentSummaries.size > MAX_FRAGMENT_CACHE_ENTRIES) {
 +        this.fragmentSummaries.delete(this.fragmentSummaries.keys().next().value);
 +      }
 +      return fragment;
@@ -2533,29 +2602,55 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 +        afterMoofOffset: fragment.moofOffset + fragment.moofSize,
 +        endDecodeTimestamp: data.currentTimestamp
 +      });
-+      while (track.fragmentDecodeCache.size > 128) {
++      while (track.fragmentDecodeCache.size > MAX_FRAGMENT_CACHE_ENTRIES) {
 +        track.fragmentDecodeCache.delete(track.fragmentDecodeCache.keys().next().value);
 +      }
 +      const cache = track.fragmentPositionCache;
++      const existing = cache.find((entry) => entry.moofOffset === fragment.moofOffset);
++      if (existing) {
++        existing.lastAccess = ++this.fragmentCacheAccess;
++        return;
++      }
 +      const index = binarySearchLessOrEqual(cache, data.startTimestamp, (x) => x.startTimestamp);
 +      if ((!cache[index] || cache[index].moofOffset < fragment.moofOffset) && (!cache[index + 1] || cache[index + 1].moofOffset > fragment.moofOffset)) {
 +        cache.splice(index + 1, 0, {
 +          moofOffset: fragment.moofOffset,
 +          startTimestamp: data.startTimestamp,
-+          endTimestamp: data.endTimestamp
++          endTimestamp: data.endTimestamp,
++          lastAccess: ++this.fragmentCacheAccess
 +        });
-+        if (cache.length > 128) cache.shift();
++        if (cache.length > MAX_FRAGMENT_CACHE_ENTRIES) {
++          let oldest = 0;
++          for (let i = 1; i < cache.length; i++) {
++            if (cache[i].lastAccess < cache[oldest].lastAccess) oldest = i;
+           }
+-          trackData.startTimestampIsFinal = true;
++          cache.splice(oldest, 1);
+         }
+-        const insertionIndex = binarySearchLessOrEqual(
+-          fragmentPositionCache,
+-          trackData.startTimestamp,
+-          (x) => x.startTimestamp
+-        );
+-        const previousEntry = fragmentPositionCache[insertionIndex];
+-        const nextEntry = fragmentPositionCache[insertionIndex + 1];
+-        if ((!previousEntry || previousEntry.moofOffset < fragment.moofOffset) && (!nextEntry || nextEntry.moofOffset > fragment.moofOffset)) {
+-          fragmentPositionCache.splice(insertionIndex + 1, 0, {
+-            moofOffset: fragment.moofOffset,
+-            startTimestamp: trackData.startTimestamp,
+-            endTimestamp: trackData.endTimestamp
+-          });
 +      }
 +    }
 +    async getDecodeTimeBefore(track, targetOffset) {
 +      let position = this.moovEnd ?? 0;
 +      let timestamp = 0;
 +      let anchorOffset = -1;
-+      for (const [offset, anchor] of track.fragmentDecodeCache) {
++      for (const [offset, anchor2] of track.fragmentDecodeCache) {
 +        if (offset < targetOffset && offset > anchorOffset) {
 +          anchorOffset = offset;
-+          position = anchor.afterMoofOffset;
-+          timestamp = anchor.endDecodeTimestamp;
++          position = anchor2.afterMoofOffset;
++          timestamp = anchor2.endDecodeTimestamp;
          }
 -        if (trackData.encryptionAuxInfo && track.encryptionInfo) {
 -          const entries = await resolveEncryptionAuxInfo(
@@ -2566,6 +2661,11 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 -          for (let i = 0; i < Math.min(trackData.samples.length, entries.length); i++) {
 -            const entry = entries[i];
 -            trackData.samples[i].encryption = entry;
++      }
++      const anchor = track.fragmentDecodeCache.get(anchorOffset);
++      if (anchor) {
++        track.fragmentDecodeCache.delete(anchorOffset);
++        track.fragmentDecodeCache.set(anchorOffset, anchor);
 +      }
 +      while (position < targetOffset) {
 +        const slice = await this.reader.requestSliceRange(position, MIN_BOX_HEADER_SIZE, MAX_BOX_HEADER_SIZE);
@@ -2590,20 +2690,20 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        }
 -      return fragment;
 +      return timestamp;
-     }
--    readContiguousBoxes(slice) {
++    }
 +    async readMovieSlice(start, end, maxLength = 64 * 1024) {
 +      const length = Math.min(maxLength, end - start);
 +      if (length <= 0) throw new RangeError("Truncated movie box payload.");
 +      const slice = await this.reader.requestSlice(start, length);
 +      if (!slice) throw new RangeError("Truncated movie box payload.");
 +      return slice;
-+    }
+     }
+-    readContiguousBoxes(slice) {
 +    async readContiguousBoxes(slice, fromFile = false) {
        if (this.boxNestingDepth === MAX_BOX_NESTING_DEPTH) {
          throw new Error("Invalid file: boxes are nested too deeply.");
        }
-@@ -7048,7 +7010,7 @@ var Mediabunny = (() => {
+@@ -7048,7 +7031,7 @@ var Mediabunny = (() => {
        this.boxNestingDepth++;
        try {
          while (slice.filePos - startIndex <= slice.length - MIN_BOX_HEADER_SIZE) {
@@ -2612,7 +2712,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
            if (!foundBox) {
              break;
            }
-@@ -7070,14 +7032,59 @@ var Mediabunny = (() => {
+@@ -7070,14 +7053,59 @@ var Mediabunny = (() => {
          slice.filePos = startPos + boxInfo.totalSize;
        }
      }
@@ -2677,7 +2777,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        switch (boxInfo.name) {
          case "mdia":
          case "minf":
-@@ -7087,7 +7094,7 @@ var Mediabunny = (() => {
+@@ -7087,7 +7115,7 @@ var Mediabunny = (() => {
          case "sinf":
          case "schi":
            {
@@ -2686,7 +2786,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
            }
            ;
            break;
-@@ -7135,9 +7142,10 @@ var Mediabunny = (() => {
+@@ -7135,9 +7163,10 @@ var Mediabunny = (() => {
                languageCode: UNDETERMINED_LANGUAGE,
                sampleTableByteOffset: -1,
                sampleTable: null,
@@ -2698,7 +2798,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                editListPreviousSegmentDurations: 0,
                editListOffset: 0,
                encryptionInfo: null,
-@@ -7147,7 +7155,7 @@ var Mediabunny = (() => {
+@@ -7147,7 +7176,7 @@ var Mediabunny = (() => {
                avgBitrate: null
              };
              this.currentTrack = track;
@@ -2707,7 +2807,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              if (track.id !== -1 && track.timescale !== -1 && track.info !== null && track.sampleTableByteOffset !== -1) {
                if (track.info.type === "video" && track.info.width !== -1) {
                  const videoTrack = track;
-@@ -7313,7 +7321,7 @@ var Mediabunny = (() => {
+@@ -7313,7 +7342,7 @@ var Mediabunny = (() => {
                break;
              }
              track.sampleTableByteOffset = startPos;
@@ -2716,7 +2816,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
            }
            ;
            break;
-@@ -7345,7 +7353,7 @@ var Mediabunny = (() => {
+@@ -7345,7 +7374,7 @@ var Mediabunny = (() => {
                  track.info.squarePixelHeight = track.info.height;
                  slice.skip(4 + 4 + 4 + 2 + 32 + 2 + 2);
                  track.frmaCodecString = null;
@@ -2725,7 +2825,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                    slice.slice(
                      slice.filePos,
                      sampleBoxStartPos + sampleBoxInfo.totalSize - slice.filePos
-@@ -7399,7 +7407,7 @@ var Mediabunny = (() => {
+@@ -7399,7 +7428,7 @@ var Mediabunny = (() => {
                  track.info.numberOfChannels = channelCount;
                  track.info.sampleRate = sampleRate;
                  track.frmaCodecString = null;
@@ -2734,7 +2834,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                    slice.slice(
                      slice.filePos,
                      sampleBoxStartPos + sampleBoxInfo.totalSize - slice.filePos
-@@ -7639,7 +7647,7 @@ var Mediabunny = (() => {
+@@ -7639,7 +7668,7 @@ var Mediabunny = (() => {
                break;
              }
              track.info.codecDescription = readBytes(slice, boxInfo.contentSize);
@@ -2743,7 +2843,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              const spsInfo = sps && parseHevcSps(sps);
              if (spsInfo) {
                applySpsPixelAspectRatio(track, spsInfo.pixelAspectRatio);
-@@ -7777,7 +7785,7 @@ var Mediabunny = (() => {
+@@ -7777,7 +7806,7 @@ var Mediabunny = (() => {
            break;
          case "wave":
            {
@@ -2752,7 +2852,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
            }
            ;
            break;
-@@ -7863,15 +7871,15 @@ var Mediabunny = (() => {
+@@ -7863,15 +7892,15 @@ var Mediabunny = (() => {
                channelMappingTable = new Uint8Array(0);
              }
              const description = new Uint8Array(8 + 1 + 1 + 2 + 4 + 2 + 1 + channelMappingTable.byteLength);
@@ -2777,7 +2877,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              description.set(channelMappingTable, 19);
              track.info.codecDescription = description;
              track.info.numberOfChannels = outputChannelCount;
-@@ -7892,7 +7900,7 @@ var Mediabunny = (() => {
+@@ -7892,7 +7921,7 @@ var Mediabunny = (() => {
                const flagAndType = readU8(slice);
                const metadataBlockLength = readU24Be(slice);
                const type = flagAndType & BLOCK_TYPE_MASK;
@@ -2786,7 +2886,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                  slice.skip(10);
                  const word = readU32Be(slice);
                  const sampleRate = word >>> 12;
-@@ -7909,11 +7917,11 @@ var Mediabunny = (() => {
+@@ -7909,11 +7938,11 @@ var Mediabunny = (() => {
              }
              const endPos = slice.filePos;
              slice.filePos = startPos2;
@@ -2803,7 +2903,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              track.info.codecDescription = description;
            }
            ;
-@@ -7924,8 +7932,8 @@ var Mediabunny = (() => {
+@@ -7924,8 +7953,8 @@ var Mediabunny = (() => {
              if (!track || track.info?.type !== "audio") {
                break;
              }
@@ -2814,7 +2914,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              const fscod = bitstream.readBits(2);
              bitstream.skipBits(5 + 3);
              const acmod = bitstream.readBits(3);
-@@ -7943,8 +7951,8 @@ var Mediabunny = (() => {
+@@ -7943,8 +7972,8 @@ var Mediabunny = (() => {
              if (!track || track.info?.type !== "audio") {
                break;
              }
@@ -2825,7 +2925,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              if (!config) {
                Logging._warn("Invalid dec3 box contents, ignoring.");
                break;
-@@ -7963,8 +7971,8 @@ var Mediabunny = (() => {
+@@ -7963,8 +7992,8 @@ var Mediabunny = (() => {
              if (!track || track.info?.type !== "audio") {
                break;
              }
@@ -2836,7 +2936,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              if (!config) {
                Logging._warn("Invalid ddts box contents, ignoring.");
                break;
-@@ -7976,220 +7984,10 @@ var Mediabunny = (() => {
+@@ -7976,220 +8005,10 @@ var Mediabunny = (() => {
            }
            ;
            break;
@@ -3058,7 +3158,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
            }
            ;
            break;
-@@ -8220,43 +8018,6 @@ var Mediabunny = (() => {
+@@ -8220,43 +8039,6 @@ var Mediabunny = (() => {
            }
            ;
            break;
@@ -3102,7 +3202,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          case "moof":
            {
              if (this.currentFragment) {
-@@ -8271,7 +8032,7 @@ var Mediabunny = (() => {
+@@ -8271,7 +8053,7 @@ var Mediabunny = (() => {
                sampleCount: 0
              };
              try {
@@ -3111,7 +3211,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                this.lastReadFragment = this.currentFragment;
              } finally {
                this.currentFragment = null;
-@@ -8287,7 +8048,7 @@ var Mediabunny = (() => {
+@@ -8287,7 +8069,7 @@ var Mediabunny = (() => {
              }
              this.isReadingTraf = true;
              try {
@@ -3120,7 +3220,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              } finally {
                this.isReadingTraf = false;
              }
-@@ -8624,11 +8385,11 @@ var Mediabunny = (() => {
+@@ -8624,11 +8406,11 @@ var Mediabunny = (() => {
              for (const { boxInfo: boxInfo2, slice: slice2 } of iterator) {
                if (boxInfo2.name !== "meta" && !this.currentTrack) {
                  const startPos2 = slice2.filePos;
@@ -3135,7 +3235,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                  }
                  slice2.filePos = startPos2;
                }
-@@ -8636,7 +8397,7 @@ var Mediabunny = (() => {
+@@ -8636,7 +8418,7 @@ var Mediabunny = (() => {
                  case "meta":
                    {
                      slice2.skip(-boxInfo2.headerSize);
@@ -3144,7 +3244,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                    }
                    ;
                    break;
-@@ -8646,7 +8407,7 @@ var Mediabunny = (() => {
+@@ -8646,7 +8428,7 @@ var Mediabunny = (() => {
                      if (this.currentTrack) {
                        this.currentTrack.name = textDecoder.decode(readBytes(slice2, boxInfo2.contentSize));
                      } else {
@@ -3153,7 +3253,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8654,7 +8415,7 @@ var Mediabunny = (() => {
+@@ -8654,7 +8436,7 @@ var Mediabunny = (() => {
                  case "\xA9des":
                    {
                      if (!this.currentTrack) {
@@ -3162,7 +3262,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8662,7 +8423,7 @@ var Mediabunny = (() => {
+@@ -8662,7 +8444,7 @@ var Mediabunny = (() => {
                  case "\xA9ART":
                    {
                      if (!this.currentTrack) {
@@ -3171,7 +3271,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8670,7 +8431,7 @@ var Mediabunny = (() => {
+@@ -8670,7 +8452,7 @@ var Mediabunny = (() => {
                  case "\xA9alb":
                    {
                      if (!this.currentTrack) {
@@ -3180,7 +3280,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8678,7 +8439,7 @@ var Mediabunny = (() => {
+@@ -8678,7 +8460,7 @@ var Mediabunny = (() => {
                  case "albr":
                    {
                      if (!this.currentTrack) {
@@ -3189,7 +3289,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8686,7 +8447,7 @@ var Mediabunny = (() => {
+@@ -8686,7 +8468,7 @@ var Mediabunny = (() => {
                  case "\xA9gen":
                    {
                      if (!this.currentTrack) {
@@ -3198,7 +3298,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8696,7 +8457,7 @@ var Mediabunny = (() => {
+@@ -8696,7 +8478,7 @@ var Mediabunny = (() => {
                      if (!this.currentTrack) {
                        const date = new Date(readMetadataStringShort(slice2));
                        if (!Number.isNaN(date.getTime())) {
@@ -3207,7 +3307,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                        }
                      }
                    }
-@@ -8705,7 +8466,7 @@ var Mediabunny = (() => {
+@@ -8705,7 +8487,7 @@ var Mediabunny = (() => {
                  case "\xA9cmt":
                    {
                      if (!this.currentTrack) {
@@ -3216,7 +3316,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8713,7 +8474,7 @@ var Mediabunny = (() => {
+@@ -8713,7 +8495,7 @@ var Mediabunny = (() => {
                  case "\xA9lyr":
                    {
                      if (!this.currentTrack) {
@@ -3225,7 +3325,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8732,9 +8493,9 @@ var Mediabunny = (() => {
+@@ -8732,9 +8514,9 @@ var Mediabunny = (() => {
              const isQuickTime = word !== 0;
              this.currentMetadataKeys = /* @__PURE__ */ new Map();
              if (isQuickTime) {
@@ -3237,7 +3337,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
              }
              this.currentMetadataKeys = null;
            }
-@@ -8772,8 +8533,8 @@ var Mediabunny = (() => {
+@@ -8772,8 +8554,8 @@ var Mediabunny = (() => {
                  metadataKey = this.currentMetadataKeys.get(nameAsNumber);
                }
                const data = readDataBox(slice2);
@@ -3248,7 +3348,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                switch (metadataKey) {
                  case "\xA9nam":
                  case "titl":
-@@ -8781,7 +8542,7 @@ var Mediabunny = (() => {
+@@ -8781,7 +8563,7 @@ var Mediabunny = (() => {
                  case "title":
                    {
                      if (typeof data === "string") {
@@ -3257,7 +3357,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8793,7 +8554,7 @@ var Mediabunny = (() => {
+@@ -8793,7 +8575,7 @@ var Mediabunny = (() => {
                  case "description":
                    {
                      if (typeof data === "string") {
@@ -3266,7 +3366,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8803,7 +8564,7 @@ var Mediabunny = (() => {
+@@ -8803,7 +8585,7 @@ var Mediabunny = (() => {
                  case "artist":
                    {
                      if (typeof data === "string") {
@@ -3275,7 +3375,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8814,7 +8575,7 @@ var Mediabunny = (() => {
+@@ -8814,7 +8596,7 @@ var Mediabunny = (() => {
                  case "album":
                    {
                      if (typeof data === "string") {
@@ -3284,7 +3384,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8823,7 +8584,7 @@ var Mediabunny = (() => {
+@@ -8823,7 +8605,7 @@ var Mediabunny = (() => {
                  case "album_artist":
                    {
                      if (typeof data === "string") {
@@ -3293,7 +3393,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8833,7 +8594,7 @@ var Mediabunny = (() => {
+@@ -8833,7 +8615,7 @@ var Mediabunny = (() => {
                  case "comment":
                    {
                      if (typeof data === "string") {
@@ -3302,7 +3402,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8844,7 +8605,7 @@ var Mediabunny = (() => {
+@@ -8844,7 +8626,7 @@ var Mediabunny = (() => {
                  case "genre":
                    {
                      if (typeof data === "string") {
@@ -3311,7 +3411,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8853,7 +8614,7 @@ var Mediabunny = (() => {
+@@ -8853,7 +8635,7 @@ var Mediabunny = (() => {
                  case "lyrics":
                    {
                      if (typeof data === "string") {
@@ -3320,7 +3420,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                      }
                    }
                    ;
-@@ -8866,7 +8627,7 @@ var Mediabunny = (() => {
+@@ -8866,7 +8648,7 @@ var Mediabunny = (() => {
                      if (typeof data === "string") {
                        const date = new Date(data);
                        if (!Number.isNaN(date.getTime())) {
@@ -3329,7 +3429,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                        }
                      }
                    }
-@@ -8877,7 +8638,7 @@ var Mediabunny = (() => {
+@@ -8877,7 +8659,7 @@ var Mediabunny = (() => {
                      if (data instanceof Uint8Array && data.length >= 2) {
                        const bpm = toDataView(data).getInt16(0, false);
                        if (bpm > 0) {
@@ -3338,7 +3438,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                        }
                      }
                    }
-@@ -8887,14 +8648,14 @@ var Mediabunny = (() => {
+@@ -8887,14 +8669,14 @@ var Mediabunny = (() => {
                  case "com.apple.quicktime.artwork":
                    {
                      if (data instanceof RichImageData) {
@@ -3355,7 +3455,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                        this.metadataTags.images.push({
                          data,
                          kind: "coverFront",
-@@ -8911,10 +8672,10 @@ var Mediabunny = (() => {
+@@ -8911,10 +8693,10 @@ var Mediabunny = (() => {
                        const trackNum = Number.parseInt(parts[0], 10);
                        const tracksTotal = parts[1] && Number.parseInt(parts[1], 10);
                        if (Number.isInteger(trackNum) && trackNum > 0) {
@@ -3368,7 +3468,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                        }
                      }
                    }
-@@ -8923,14 +8684,14 @@ var Mediabunny = (() => {
+@@ -8923,14 +8705,14 @@ var Mediabunny = (() => {
                  case "trkn":
                    {
                      if (data instanceof Uint8Array && data.length >= 6) {
@@ -3388,7 +3488,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                        }
                      }
                    }
-@@ -8940,14 +8701,14 @@ var Mediabunny = (() => {
+@@ -8940,14 +8722,14 @@ var Mediabunny = (() => {
                  case "disk":
                    {
                      if (data instanceof Uint8Array && data.length >= 6) {
@@ -3408,7 +3508,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
                        }
                      }
                    }
-@@ -8959,7 +8720,7 @@ var Mediabunny = (() => {
+@@ -8959,7 +8741,7 @@ var Mediabunny = (() => {
            ;
            break;
        }
@@ -3417,7 +3517,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        return true;
      }
    };
-@@ -9062,8 +8823,8 @@ var Mediabunny = (() => {
+@@ -9062,8 +8844,8 @@ var Mediabunny = (() => {
      }
      async getPacket(timestamp, options) {
        const timestampInTimescale = this.mapTimestampIntoTimescale(timestamp);
@@ -3428,7 +3528,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        const regularPacket = await this.fetchPacketForSampleIndex(sampleIndex, options);
        if (!sampleTableIsEmpty(sampleTable) || !this.internalTrack.demuxer.isFragmented) {
          return regularPacket;
-@@ -9131,8 +8892,8 @@ var Mediabunny = (() => {
+@@ -9131,8 +8913,8 @@ var Mediabunny = (() => {
      }
      async getKeyPacket(timestamp, options) {
        const timestampInTimescale = this.mapTimestampIntoTimescale(timestamp);
@@ -3439,7 +3539,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        const regularPacket = await this.fetchPacketForSampleIndex(sampleIndex, options);
        if (!sampleTableIsEmpty(sampleTable) || !this.internalTrack.demuxer.isFragmented) {
          return regularPacket;
-@@ -9160,8 +8921,8 @@ var Mediabunny = (() => {
+@@ -9160,8 +8942,8 @@ var Mediabunny = (() => {
      async getNextKeyPacket(packet, options) {
        const regularSampleIndex = this.packetToSampleIndex.get(packet);
        if (regularSampleIndex !== void 0) {
@@ -3450,7 +3550,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          return this.fetchPacketForSampleIndex(nextKeyFrameSampleIndex, options);
        }
        const locationInFragment = this.packetToFragmentLocation.get(packet);
-@@ -9207,8 +8968,8 @@ var Mediabunny = (() => {
+@@ -9207,8 +8989,8 @@ var Mediabunny = (() => {
        if (sampleIndex === -1) {
          return null;
        }
@@ -3461,7 +3561,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        if (!sampleInfo) {
          return null;
        }
-@@ -9237,7 +8998,7 @@ var Mediabunny = (() => {
+@@ -9237,7 +9019,7 @@ var Mediabunny = (() => {
                sampleEncryption = entries[sampleIndex];
              }
            }
@@ -3470,7 +3570,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
            if (sampleEncryption) {
              data = await decryptSample(this.internalTrack, sampleEncryption, data, null);
            }
-@@ -9312,12 +9073,9 @@ var Mediabunny = (() => {
+@@ -9312,22 +9094,21 @@ var Mediabunny = (() => {
            bestSampleIndex = sampleIndex;
          }
        }
@@ -3486,7 +3586,11 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        const positionCacheIndex = binarySearchLessOrEqual(
          this.internalTrack.fragmentPositionCache,
          searchTimestamp,
-@@ -9328,6 +9086,7 @@ var Mediabunny = (() => {
+         (x) => x.startTimestamp
+       );
+       const positionCacheEntry = positionCacheIndex !== -1 ? this.internalTrack.fragmentPositionCache[positionCacheIndex] : null;
++      if (positionCacheEntry) positionCacheEntry.lastAccess = ++demuxer.fragmentCacheAccess;
+       const lookupEntryPosition = Math.max(
          lookupEntry?.moofOffset ?? 0,
          positionCacheEntry?.moofOffset ?? 0
        ) || null;
@@ -3494,7 +3598,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
        const lookupTableWins = !!lookupEntry && lookupEntry.moofOffset >= (positionCacheEntry?.moofOffset ?? 0);
        let currentPos;
        if (!startFragment) {
-@@ -9350,6 +9109,10 @@ var Mediabunny = (() => {
+@@ -9350,6 +9131,10 @@ var Mediabunny = (() => {
            currentFragment = null;
          }
          const summary = demuxer.fragmentSummaries.get(currentPos);
@@ -3505,7 +3609,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          if (summary && !summary.trackIds.has(this.internalTrack.id)) {
            currentPos += summary.moofSize;
            continue;
-@@ -9379,8 +9142,8 @@ var Mediabunny = (() => {
+@@ -9379,8 +9164,8 @@ var Mediabunny = (() => {
          currentPos = boxStartPos + boxInfo.totalSize;
        }
        if (lookupEntryPosition !== null && (!bestFragment || bestFragment.moofOffset < lookupEntryPosition)) {
@@ -3516,7 +3620,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          const newSearchTimestamp = previousEntryTimestamp ?? -Infinity;
          return this.performFragmentedLookup(
            null,
-@@ -9444,7 +9207,8 @@ var Mediabunny = (() => {
+@@ -9444,7 +9229,8 @@ var Mediabunny = (() => {
        if (!this.internalTrack.info.codec) {
          return null;
        }
@@ -3526,7 +3630,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          if (this.internalTrack.info.codec === "avc" && !this.internalTrack.info.codecDescription) {
            const firstPacket = await this.getFirstPacket({});
            this.internalTrack.info.avcCodecInfo = firstPacket && extractAvcDecoderConfigurationRecord(firstPacket.data);
-@@ -9477,10 +9241,10 @@ var Mediabunny = (() => {
+@@ -9477,10 +9263,10 @@ var Mediabunny = (() => {
          }
          if (!colorSpaceIsComplete(this.internalTrack.info.colorSpace)) {
            const colorSpace = extractColorSpace(this.internalTrack.info);
@@ -3541,7 +3645,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          }
          const config = {
            codec: extractVideoCodecString(this.internalTrack.info),
-@@ -9494,7 +9258,7 @@ var Mediabunny = (() => {
+@@ -9494,7 +9280,7 @@ var Mediabunny = (() => {
            config.displayAspectHeight = this.internalTrack.info.squarePixelHeight;
          }
          return config;
@@ -3550,7 +3654,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
      }
    };
    var IsobmffAudioTrackBacking = class extends IsobmffTrackBacking {
-@@ -9518,7 +9282,7 @@ var Mediabunny = (() => {
+@@ -9518,7 +9304,7 @@ var Mediabunny = (() => {
        if (!this.internalTrack.info.codec) {
          return null;
        }
@@ -3559,14 +3663,13 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
          if (this.internalTrack.info.codec === "dts" && !this.internalTrack.info.dtsFormat) {
            const firstPacket = await this.getFirstPacket({});
            this.internalTrack.info.dtsFormat = firstPacket && extractDtsFourCcFromPacket(firstPacket.data);
-@@ -9529,166 +9293,13 @@ var Mediabunny = (() => {
+@@ -9529,166 +9315,13 @@ var Mediabunny = (() => {
            sampleRate: this.internalTrack.info.sampleRate,
            description: this.internalTrack.info.codecDescription ?? void 0
          };
 -      })();
-+      })());
-     }
-   };
+-    }
+-  };
 -  var getSampleIndexForTimestamp = (sampleTable, timescaleUnits) => {
 -    if (sampleTable.sortedCompositionTimeOffsets) {
 -      return performPresentationTimeLookup(sampleTable, timescaleUnits, false);
@@ -3599,8 +3702,9 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 -      const sampleIndex = getSampleIndexForTimestamp(sampleTable, timescaleUnits);
 -      const index = binarySearchLessOrEqual(sampleTable.keySampleIndices, sampleIndex, (x) => x);
 -      return sampleTable.keySampleIndices[index] ?? -1;
--    }
--  };
++      })());
+     }
+   };
 -  var getSampleInfo = (sampleTable, sampleIndex) => {
 -    if (sampleIndex >= sampleTable.sampleCount) {
 -      return null;
@@ -3728,7 +3832,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
      for (const sample of trackData.samples) {
        sample.presentationTimestamp += timestamp;
      }
-@@ -9726,35 +9337,25 @@ var Mediabunny = (() => {
+@@ -9726,35 +9359,25 @@ var Mediabunny = (() => {
        info.squarePixelHeight = Math.round(info.height * den / num);
      }
    };
@@ -3770,7 +3874,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
      }
    };
    var resolveEncryptionAuxInfo = async (reader, encryptionInfo, aux) => {
-@@ -9996,6 +9597,404 @@ var Mediabunny = (() => {
+@@ -9996,6 +9619,460 @@ var Mediabunny = (() => {
      }
      return ranges;
    };
@@ -4090,6 +4194,10 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 +      this.version = version;
 +      this.widths = widths;
 +      this.entrySize = entrySize;
++      this.orderPromise = null;
++      this.timestampsOrdered = true;
++      this.offsetsOrdered = true;
++      this.offsetCursor = null;
 +      this.pages = /* @__PURE__ */ new Map();
 +    }
 +    static async read(reader, start, end) {
@@ -4110,7 +4218,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 +    async at(index) {
 +      if (this.reader.source._disposed) throw new InputDisposedError();
 +      if (!Number.isInteger(index) || index < 0 || index >= this.count) return null;
-+      const entriesPerPage = Math.floor(16 * 1024 / this.entrySize);
++      const entriesPerPage = Math.floor(FRAGMENT_INDEX_PAGE_SIZE / this.entrySize);
 +      const first = Math.floor(index / entriesPerPage) * entriesPerPage;
 +      let view = this.pages.get(first);
 +      if (!view) {
@@ -4118,11 +4226,11 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 +        const slice = await this.reader.requestSlice(this.start + first * this.entrySize, length);
 +        if (this.reader.source._disposed) throw new InputDisposedError();
 +        if (!slice) throw new RangeError("Truncated tfra page.");
-+        view = toDataView(readBytes(slice, length).slice());
++        view = toDataView(new Uint8Array(readBytes(slice, length)));
 +      }
 +      this.pages.delete(first);
 +      this.pages.set(first, view);
-+      while (this.pages.size > 4) this.pages.delete(this.pages.keys().next().value);
++      while (this.pages.size > MAX_FRAGMENT_INDEX_PAGES) this.pages.delete(this.pages.keys().next().value);
 +      let offset = (index - first) * this.entrySize;
 +      const readWord = (width) => {
 +        let value = 0;
@@ -4137,6 +4245,26 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 +      const sampleNumber = readWord(this.widths[2]);
 +      return { timestamp, moofOffset, trunNumber, sampleNumber };
 +    }
++    ensureOrder() {
++      return this.orderPromise ?? (this.orderPromise = (async () => {
++        let previous = null;
++        let timestampsOrdered = true;
++        let offsetsOrdered = true;
++        for (let index = 0; index < this.count; index++) {
++          const entry = await this.at(index);
++          if (previous) {
++            timestampsOrdered && (timestampsOrdered = previous.timestamp <= entry.timestamp);
++            offsetsOrdered && (offsetsOrdered = previous.moofOffset <= entry.moofOffset);
++          }
++          previous = entry;
++        }
++        this.timestampsOrdered = timestampsOrdered;
++        this.offsetsOrdered = offsetsOrdered;
++      })().catch((error) => {
++        this.orderPromise = null;
++        throw error;
++      }));
++    }
 +    async bound(value, field, inclusive) {
 +      let low = 0;
 +      let high = this.count;
@@ -4150,6 +4278,15 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 +    }
 +    async findTimestamp(timestamp) {
 +      if (timestamp === -Infinity) return null;
++      await this.ensureOrder();
++      if (!this.timestampsOrdered) {
++        let best = null;
++        for (let index2 = 0; index2 < this.count; index2++) {
++          const entry = await this.at(index2);
++          if (entry.trunNumber >= 1 && entry.sampleNumber >= 1 && entry.timestamp <= timestamp && (!best || entry.timestamp > best.entry.timestamp)) best = { entry, index: index2 };
++        }
++        return best;
++      }
 +      let index = await this.bound(timestamp, "timestamp", true) - 1;
 +      while (index >= 0) {
 +        const time = (await this.at(index)).timestamp;
@@ -4163,11 +4300,34 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
 +      return null;
 +    }
 +    async findOffset(offset) {
++      await this.ensureOrder();
++      if (!this.offsetsOrdered) {
++        for (let index2 = 0; index2 < this.count; index2++) {
++          const entry = await this.at(index2);
++          if (entry.moofOffset === offset && entry.trunNumber >= 1 && entry.sampleNumber >= 1) return entry;
++        }
++        return null;
++      }
++      if (this.offsetCursor && this.offsetCursor.entry.moofOffset <= offset) {
++        for (let step = 0; step < 4; step++) {
++          const index2 = this.offsetCursor.index + step;
++          const entry = await this.at(index2);
++          if (!entry || entry.moofOffset > offset) break;
++          if (entry.moofOffset === offset && entry.trunNumber >= 1 && entry.sampleNumber >= 1) {
++            this.offsetCursor = { index: index2, entry };
++            return entry;
++          }
++        }
++      }
 +      let index = await this.bound(offset, "moofOffset", false);
 +      while (index < this.count) {
-+        const entry = await this.at(index++);
++        const entry = await this.at(index);
 +        if (entry.moofOffset !== offset) break;
-+        if (entry.trunNumber >= 1 && entry.sampleNumber >= 1) return entry;
++        if (entry.trunNumber >= 1 && entry.sampleNumber >= 1) {
++          this.offsetCursor = { index, entry };
++          return entry;
++        }
++        index++;
 +      }
 +      return null;
 +    }
@@ -4175,7 +4335,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
  
    // src/matroska/ebml.ts
    var EBMLFloat32 = class {
-@@ -30929,7 +30928,8 @@ var Mediabunny = (() => {
+@@ -30929,7 +31006,8 @@ var Mediabunny = (() => {
      const uniqueSampleSizes = new Set(allSampleSizes);
      const uniqueSampleFlags = new Set(allSampleFlags);
      const uniqueSampleCompositionTimeOffsets = new Set(allSampleCompositionTimeOffsets);
@@ -4185,7 +4345,7 @@ index 7fad5872fbf470957781b29d3c562296e60f5544..2a2521621db6df4bb46a046d47047fb6
      const sampleDurationPresent = uniqueSampleDurations.size > 1;
      const sampleSizePresent = uniqueSampleSizes.size > 1;
      const sampleFlagsPresent = !firstSampleFlagsPresent && uniqueSampleFlags.size > 1;
-@@ -33056,6 +33056,10 @@ var Mediabunny = (() => {
+@@ -33056,6 +33134,10 @@ var Mediabunny = (() => {
          this.formatOptions.onMdat(data, start);
        }
        for (const trackData of tracksInFragment) {
@@ -4211,7 +4371,7 @@ index bebfefdea09bc527958f32e948c3492689b77cb1..2ab1b1b4ae155cb3f1fc59496d24865a
      const sampleSizePresent = uniqueSampleSizes.size > 1;
      const sampleFlagsPresent = !firstSampleFlagsPresent && uniqueSampleFlags.size > 1;
 diff --git a/dist/modules/src/isobmff/isobmff-demuxer.d.ts b/dist/modules/src/isobmff/isobmff-demuxer.d.ts
-index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc59436174373c 100644
+index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..9c76293e0cc80521c04cc943e22ec996f293e46c 100644
 --- a/dist/modules/src/isobmff/isobmff-demuxer.d.ts
 +++ b/dist/modules/src/isobmff/isobmff-demuxer.d.ts
 @@ -5,15 +5,15 @@
@@ -4239,7 +4399,7 @@ index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc5943
  type InternalTrack = {
      id: number;
      demuxer: IsobmffDemuxer;
-@@ -28,12 +28,13 @@ type InternalTrack = {
+@@ -28,16 +28,18 @@ type InternalTrack = {
      languageCode: string;
      sampleTableByteOffset: number | null;
      sampleTable: SampleTable | null;
@@ -4258,7 +4418,12 @@ index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc5943
      fragmentPositionCache: {
          moofOffset: number;
          startTimestamp: number;
-@@ -84,37 +85,6 @@ type InternalTrack = {
+         endTimestamp: number;
++        lastAccess: number;
+     }[];
+     /** The segment durations of all edit list entries leading up to the main one (from which the offset is taken.) */
+     editListPreviousSegmentDurations: number;
+@@ -84,37 +86,6 @@ type InternalTrack = {
          pcmSampleSize: number | null;
      };
  });
@@ -4296,7 +4461,7 @@ index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc5943
  type FragmentTrackDefaults = {
      trackId: number;
      defaultSampleDescriptionIndex: number;
-@@ -202,7 +172,9 @@ type SampleEncryptionAuxInfo = {
+@@ -202,7 +173,9 @@ type SampleEncryptionAuxInfo = {
  };
  export declare class IsobmffDemuxer extends Demuxer {
      reader: Reader;
@@ -4307,7 +4472,15 @@ index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc5943
      currentTrack: InternalTrack | null;
      tracks: InternalTrack[];
      idToTrack: Map<number, InternalTrack>;
-@@ -232,9 +204,16 @@ export declare class IsobmffDemuxer extends Demuxer {
+@@ -223,6 +196,7 @@ export declare class IsobmffDemuxer extends Demuxer {
+      * same fragment in quick succession.
+      */
+     lastReadFragment: Fragment | null;
++    fragmentCacheAccess: number;
+     fragmentSummaries: Map<number, FragmentSummary>;
+     decryptionKeyCache: Map<string, Promise<Uint8Array<ArrayBufferLike>>>;
+     boxNestingDepth: number;
+@@ -232,9 +206,16 @@ export declare class IsobmffDemuxer extends Demuxer {
      getMetadataTags(): Promise<MetadataTags>;
      readMetadata(): Promise<void>;
      private copyMetadataFromInitInput;
@@ -4326,7 +4499,7 @@ index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc5943
      iterateContiguousBoxes(slice: FileSlice): Generator<{
          boxInfo: {
              name: string;
-@@ -244,7 +223,74 @@ export declare class IsobmffDemuxer extends Demuxer {
+@@ -244,7 +225,79 @@ export declare class IsobmffDemuxer extends Demuxer {
          };
          slice: FileSlice;
      }, void, unknown>;
@@ -4381,7 +4554,7 @@ index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc5943
 +        isKeyFrame: boolean;
 +    } | null>;
 +}
-+/** A timestamp-ordered TFRA kept on the input, with four copied 16 KiB LRU pages. */
++/** A TFRA kept on the input, with four copied 16 KiB LRU pages. */
 +declare class FragmentLookupTable {
 +    private reader;
 +    trackId: number;
@@ -4390,10 +4563,15 @@ index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc5943
 +    private version;
 +    private widths;
 +    private entrySize;
++    private orderPromise;
++    private timestampsOrdered;
++    private offsetsOrdered;
++    private offsetCursor;
 +    private pages;
 +    constructor(reader: Reader, trackId: number, start: number, count: number, version: number, widths: number[], entrySize: number);
 +    static read(reader: Reader, start: number, end: number): Promise<FragmentLookupTable>;
 +    at(index: number): Promise<FragmentLookupTableEntry | null>;
++    private ensureOrder;
 +    private bound;
 +    findTimestamp(timestamp: number): Promise<{
 +        entry: FragmentLookupTableEntry;
@@ -4405,7 +4583,7 @@ index 96d2f7de38f7a7aa527b3676ddf3575ec2c45c41..91ea9355bd931403c671bb71cabc5943
 -//# sourceMappingURL=isobmff-demuxer.d.ts.map
 \ No newline at end of file
 diff --git a/dist/modules/src/isobmff/isobmff-demuxer.js b/dist/modules/src/isobmff/isobmff-demuxer.js
-index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f255622e130df0 100644
+index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..695fc929a6041c0e60f1fa4afdac2bd93522ceb2 100644
 --- a/dist/modules/src/isobmff/isobmff-demuxer.js
 +++ b/dist/modules/src/isobmff/isobmff-demuxer.js
 @@ -9,11 +9,12 @@ import { parseAacAudioSpecificConfig } from '../../shared/aac-misc.js';
@@ -4423,11 +4601,14 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
  import { DEFAULT_TRACK_DISPOSITION, RichImageData } from '../metadata.js';
  import { AC3_SAMPLE_RATES } from '../../shared/ac3-misc.js';
  import { Bitstream } from '../../shared/bitstream.js';
-@@ -21,10 +22,13 @@ import { Aes128CbcContext } from '../aes.js';
+@@ -21,10 +22,16 @@ import { Aes128CbcContext } from '../aes.js';
  import { Logging } from '../logging.js';
  // Anything beyond this is malicious
  const MAX_BOX_NESTING_DEPTH = 64;
 +const MOVIE_LEAF_BOXES = new Set(['mdia', 'minf', 'dinf', 'mfra', 'edts', 'sinf', 'schi', 'mvhd', 'trak', 'tkhd', 'elst', 'mdhd', 'hdlr', 'stbl', 'stsd', 'frma', 'schm', 'tenc', 'avcC', 'hvcC', 'vpcC', 'av1C', 'colr', 'pasp', 'btrt', 'wave', 'esds', 'enda', 'pcmC', 'dOps', 'dfLa', 'dac3', 'dec3', 'ddts', 'stts', 'ctts', 'stsz', 'stz2', 'stss', 'stsc', 'stco', 'co64', 'mvex', 'mehd', 'trex', 'tfra', 'moof', 'traf', 'pssh', 'tfhd', 'tfdt', 'trun', 'saiz', 'saio', 'senc', 'udta', 'meta', 'keys', 'ilst']);
++const MAX_FRAGMENT_CACHE_ENTRIES = 128;
++const FRAGMENT_INDEX_PAGE_SIZE = 16 * 1024;
++const MAX_FRAGMENT_INDEX_PAGES = 4;
  export class IsobmffDemuxer extends Demuxer {
      constructor(input) {
          super(input);
@@ -4438,16 +4619,17 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          this.currentTrack = null;
          this.tracks = [];
          this.idToTrack = new Map();
-@@ -45,7 +49,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -45,7 +52,8 @@ export class IsobmffDemuxer extends Demuxer {
           * same fragment in quick succession.
           */
          this.lastReadFragment = null;
 -        this.fragmentSummaries = new Map(); // Keyed by moof offset
++        this.fragmentCacheAccess = 0;
 +        this.fragmentSummaries = new Map(); // At most 128 entries, keyed by moof offset
          this.decryptionKeyCache = new Map();
          this.boxNestingDepth = 0;
          this.reader = input._reader;
-@@ -90,14 +94,14 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -90,14 +98,14 @@ export class IsobmffDemuxer extends Demuxer {
                      this.isQuickTime = majorBrand === 'qt  ';
                  }
                  else if (boxInfo.name === 'moov') {
@@ -4470,7 +4652,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                      if (this.movieTimescale === -1) {
                          throw new Error('Invalid moov box: missing mvhd box.');
                      }
-@@ -147,29 +151,16 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -147,29 +155,16 @@ export class IsobmffDemuxer extends Demuxer {
                      if (mfraHeaderSlice) {
                          const boxInfo = readBoxHeader(mfraHeaderSlice);
                          if (boxInfo && boxInfo.name === 'mfra') {
@@ -4505,7 +4687,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          })();
      }
      async copyMetadataFromInitInput(initInput) {
-@@ -201,9 +192,10 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -201,9 +196,10 @@ export class IsobmffDemuxer extends Demuxer {
                  languageCode: foreignTrack.languageCode,
                  sampleTableByteOffset: null,
                  sampleTable: null,
@@ -4517,7 +4699,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                  editListPreviousSegmentDurations: foreignTrack.editListPreviousSegmentDurations,
                  editListOffset: foreignTrack.editListOffset,
                  encryptionInfo: foreignTrack.encryptionInfo,
-@@ -233,31 +225,43 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -233,31 +229,43 @@ export class IsobmffDemuxer extends Demuxer {
              }
          }
      }
@@ -4575,7 +4757,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          }
          catch (error) {
              internalTrack.sampleTable = null;
-@@ -266,222 +270,151 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -266,222 +274,168 @@ export class IsobmffDemuxer extends Demuxer {
          finally {
              this.currentTrack = null;
          }
@@ -4711,18 +4893,15 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 -                const lastSampleIndex = entry.startIndex + entry.count - 1;
 -                entry.startTimestamp = getDecodeTimestampAhead(entry.startIndex) + entry.offset;
 -                entry.lastTimestamp = getDecodeTimestampAhead(lastSampleIndex) + entry.offset;
-+                }
-+                this.lastReadFragment = fragment;
-+                return fragment;
-             }
+-            }
 -            sortedEntries.sort((a, b) => a.startTimestamp - b.startTimestamp || a.startIndex - b.startIndex);
 -            let maxLastTimestamp = -Infinity;
 -            for (const entry of sortedEntries) {
 -                maxLastTimestamp = Math.max(maxLastTimestamp, entry.lastTimestamp);
 -                entry.maxLastTimestamp = maxLastTimestamp;
-+            catch (error) {
-+                this.lastReadFragment = null;
-+                throw error;
++                }
++                this.lastReadFragment = fragment;
++                return fragment;
              }
 -            sampleTable.sortedCompositionTimeOffsets = sortedEntries;
 -        }
@@ -4733,7 +4912,10 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 -            sampleTable.cumulativeSampleSizes = [0];
 -            for (let i = 0; i < sampleTable.sampleSizes.length; i++) {
 -                sampleTable.cumulativeSampleSizes.push(sampleTable.cumulativeSampleSizes[i] + sampleTable.sampleSizes[i]);
--            }
++            catch (error) {
++                this.lastReadFragment = null;
++                throw error;
+             }
 -        }
 -        return sampleTable;
 +        });
@@ -4778,7 +4960,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +        this.fragmentSummaries.delete(startPos);
 +        this.fragmentSummaries.set(startPos, { moofSize: fragment.moofSize,
 +            trackIds: new Set(fragment.trackData.keys()) });
-+        while (this.fragmentSummaries.size > 128) {
++        while (this.fragmentSummaries.size > MAX_FRAGMENT_CACHE_ENTRIES) {
 +            this.fragmentSummaries.delete(this.fragmentSummaries.keys().next().value);
 +        }
 +        return fragment;
@@ -4842,28 +5024,28 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 -                    }
 -                }
 -                trackData.startTimestampIsFinal = true;
-+        while (track.fragmentDecodeCache.size > 128) {
++        while (track.fragmentDecodeCache.size > MAX_FRAGMENT_CACHE_ENTRIES) {
 +            track.fragmentDecodeCache.delete(track.fragmentDecodeCache.keys().next().value);
 +        }
 +        const cache = track.fragmentPositionCache;
++        const existing = cache.find(entry => entry.moofOffset === fragment.moofOffset);
++        if (existing) {
++            existing.lastAccess = ++this.fragmentCacheAccess;
++            return;
++        }
 +        const index = binarySearchLessOrEqual(cache, data.startTimestamp, x => x.startTimestamp);
 +        if ((!cache[index] || cache[index].moofOffset < fragment.moofOffset)
 +            && (!cache[index + 1] || cache[index + 1].moofOffset > fragment.moofOffset)) {
 +            cache.splice(index + 1, 0, { moofOffset: fragment.moofOffset,
-+                startTimestamp: data.startTimestamp, endTimestamp: data.endTimestamp });
-+            if (cache.length > 128)
-+                cache.shift();
-+        }
-+    }
-+    async getDecodeTimeBefore(track, targetOffset) {
-+        let position = this.moovEnd ?? 0;
-+        let timestamp = 0;
-+        let anchorOffset = -1;
-+        for (const [offset, anchor] of track.fragmentDecodeCache) {
-+            if (offset < targetOffset && offset > anchorOffset) {
-+                anchorOffset = offset;
-+                position = anchor.afterMoofOffset;
-+                timestamp = anchor.endDecodeTimestamp;
++                startTimestamp: data.startTimestamp, endTimestamp: data.endTimestamp,
++                lastAccess: ++this.fragmentCacheAccess });
++            if (cache.length > MAX_FRAGMENT_CACHE_ENTRIES) {
++                let oldest = 0;
++                for (let i = 1; i < cache.length; i++) {
++                    if (cache[i].lastAccess < cache[oldest].lastAccess)
++                        oldest = i;
++                }
++                cache.splice(oldest, 1);
              }
 -            // Let's remember that a fragment with a given timestamp is here, speeding up future lookups if no
 -            // lookup table exists
@@ -4878,13 +5060,29 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 -                    startTimestamp: trackData.startTimestamp,
 -                    endTimestamp: trackData.endTimestamp,
 -                });
--            }
++        }
++    }
++    async getDecodeTimeBefore(track, targetOffset) {
++        let position = this.moovEnd ?? 0;
++        let timestamp = 0;
++        let anchorOffset = -1;
++        for (const [offset, anchor] of track.fragmentDecodeCache) {
++            if (offset < targetOffset && offset > anchorOffset) {
++                anchorOffset = offset;
++                position = anchor.afterMoofOffset;
++                timestamp = anchor.endDecodeTimestamp;
+             }
 -            // If senc wasn't parsed but saiz+saio were, fetch the aux info now and stamp each sample with it
 -            if (trackData.encryptionAuxInfo && track.encryptionInfo) {
 -                const entries = await resolveEncryptionAuxInfo(this.reader, track.encryptionInfo, trackData.encryptionAuxInfo);
 -                for (let i = 0; i < Math.min(trackData.samples.length, entries.length); i++) {
 -                    const entry = entries[i];
 -                    trackData.samples[i].encryption = entry;
++        }
++        const anchor = track.fragmentDecodeCache.get(anchorOffset);
++        if (anchor) {
++            track.fragmentDecodeCache.delete(anchorOffset);
++            track.fragmentDecodeCache.set(anchorOffset, anchor);
 +        }
 +        // Missing tfdt needs a contiguous cumulative decode time, not the PTS end
 +        // of whichever cached fragment happens to precede the target. Rebuild from
@@ -4916,8 +5114,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          }
 -        return fragment;
 +        return timestamp;
-     }
--    readContiguousBoxes(slice) {
++    }
 +    async readMovieSlice(start, end, maxLength = 64 * 1024) {
 +        const length = Math.min(maxLength, end - start);
 +        if (length <= 0)
@@ -4926,12 +5123,13 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +        if (!slice)
 +            throw new RangeError('Truncated movie box payload.');
 +        return slice;
-+    }
+     }
+-    readContiguousBoxes(slice) {
 +    async readContiguousBoxes(slice, fromFile = false) {
          if (this.boxNestingDepth === MAX_BOX_NESTING_DEPTH) {
              throw new Error('Invalid file: boxes are nested too deeply.');
          }
-@@ -489,7 +422,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -489,7 +443,7 @@ export class IsobmffDemuxer extends Demuxer {
          this.boxNestingDepth++;
          try {
              while (slice.filePos - startIndex <= slice.length - MIN_BOX_HEADER_SIZE) {
@@ -4940,7 +5138,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                  if (!foundBox) {
                      break;
                  }
-@@ -512,14 +445,57 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -512,14 +466,57 @@ export class IsobmffDemuxer extends Demuxer {
              slice.filePos = startPos + boxInfo.totalSize;
          }
      }
@@ -5003,7 +5201,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          switch (boxInfo.name) {
              case 'mdia':
              case 'minf':
-@@ -529,7 +505,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -529,7 +526,7 @@ export class IsobmffDemuxer extends Demuxer {
              case 'sinf':
              case 'schi':
                  {
@@ -5012,7 +5210,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                  }
                  ;
                  break;
-@@ -578,9 +554,10 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -578,9 +575,10 @@ export class IsobmffDemuxer extends Demuxer {
                          languageCode: UNDETERMINED_LANGUAGE,
                          sampleTableByteOffset: -1,
                          sampleTable: null,
@@ -5024,7 +5222,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                          editListPreviousSegmentDurations: 0,
                          editListOffset: 0,
                          encryptionInfo: null,
-@@ -590,7 +567,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -590,7 +588,7 @@ export class IsobmffDemuxer extends Demuxer {
                          avgBitrate: null,
                      };
                      this.currentTrack = track;
@@ -5033,7 +5231,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                      if (track.id !== -1
                          && track.timescale !== -1
                          && track.info !== null
-@@ -771,7 +748,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -771,7 +769,7 @@ export class IsobmffDemuxer extends Demuxer {
                          break;
                      }
                      track.sampleTableByteOffset = startPos;
@@ -5042,7 +5240,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                  }
                  ;
                  break;
-@@ -803,7 +780,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -803,7 +801,7 @@ export class IsobmffDemuxer extends Demuxer {
                              track.info.squarePixelHeight = track.info.height;
                              slice.skip(4 + 4 + 4 + 2 + 32 + 2 + 2);
                              track.frmaCodecString = null;
@@ -5051,7 +5249,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                              const codecName = lowercaseBoxName === 'encv'
                                  ? track.frmaCodecString
                                  : lowercaseBoxName;
-@@ -865,7 +842,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -865,7 +863,7 @@ export class IsobmffDemuxer extends Demuxer {
                              track.info.numberOfChannels = channelCount;
                              track.info.sampleRate = sampleRate;
                              track.frmaCodecString = null;
@@ -5060,7 +5258,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                              const codecName = lowercaseBoxName === 'enca'
                                  ? track.frmaCodecString
                                  : lowercaseBoxName;
-@@ -1294,7 +1271,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1294,7 +1292,7 @@ export class IsobmffDemuxer extends Demuxer {
                  break;
              case 'wave':
                  {
@@ -5069,7 +5267,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                  }
                  ;
                  break;
-@@ -1507,225 +1484,10 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1507,225 +1505,10 @@ export class IsobmffDemuxer extends Demuxer {
                  }
                  ;
                  break;
@@ -5296,7 +5494,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                  }
                  ;
                  break;
-@@ -1757,46 +1519,6 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1757,46 +1540,6 @@ export class IsobmffDemuxer extends Demuxer {
                  }
                  ;
                  break;
@@ -5343,7 +5541,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
              case 'moof':
                  {
                      if (this.currentFragment) {
-@@ -1811,7 +1533,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1811,7 +1554,7 @@ export class IsobmffDemuxer extends Demuxer {
                          sampleCount: 0,
                      };
                      try {
@@ -5352,7 +5550,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                          this.lastReadFragment = this.currentFragment;
                      }
                      finally {
-@@ -1828,7 +1550,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1828,7 +1571,7 @@ export class IsobmffDemuxer extends Demuxer {
                      }
                      this.isReadingTraf = true;
                      try {
@@ -5361,7 +5559,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                      }
                      finally {
                          this.isReadingTraf = false;
-@@ -2218,7 +1940,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -2218,7 +1961,7 @@ export class IsobmffDemuxer extends Demuxer {
                              case 'meta':
                                  {
                                      slice.skip(-boxInfo.headerSize);
@@ -5370,7 +5568,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                                  }
                                  ;
                                  break;
-@@ -2317,10 +2039,10 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -2317,10 +2060,10 @@ export class IsobmffDemuxer extends Demuxer {
                      const isQuickTime = word !== 0;
                      this.currentMetadataKeys = new Map();
                      if (isQuickTime) {
@@ -5383,7 +5581,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
                      }
                      this.currentMetadataKeys = null;
                  }
-@@ -2551,7 +2273,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -2551,7 +2294,7 @@ export class IsobmffDemuxer extends Demuxer {
                  ;
                  break;
          }
@@ -5392,7 +5590,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          return true;
      }
  }
-@@ -2654,8 +2376,8 @@ class IsobmffTrackBacking {
+@@ -2654,8 +2397,8 @@ class IsobmffTrackBacking {
      }
      async getPacket(timestamp, options) {
          const timestampInTimescale = this.mapTimestampIntoTimescale(timestamp);
@@ -5403,7 +5601,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          const regularPacket = await this.fetchPacketForSampleIndex(sampleIndex, options);
          if (!sampleTableIsEmpty(sampleTable) || !this.internalTrack.demuxer.isFragmented) {
              // Prefer the non-fragmented packet
-@@ -2711,8 +2433,8 @@ class IsobmffTrackBacking {
+@@ -2711,8 +2454,8 @@ class IsobmffTrackBacking {
      }
      async getKeyPacket(timestamp, options) {
          const timestampInTimescale = this.mapTimestampIntoTimescale(timestamp);
@@ -5414,7 +5612,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          const regularPacket = await this.fetchPacketForSampleIndex(sampleIndex, options);
          if (!sampleTableIsEmpty(sampleTable) || !this.internalTrack.demuxer.isFragmented) {
              // Prefer the non-fragmented packet
-@@ -2736,8 +2458,8 @@ class IsobmffTrackBacking {
+@@ -2736,8 +2479,8 @@ class IsobmffTrackBacking {
          const regularSampleIndex = this.packetToSampleIndex.get(packet);
          if (regularSampleIndex !== undefined) {
              // Prefer the non-fragmented packet
@@ -5425,7 +5623,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
              return this.fetchPacketForSampleIndex(nextKeyFrameSampleIndex, options);
          }
          const locationInFragment = this.packetToFragmentLocation.get(packet);
-@@ -2779,8 +2501,8 @@ class IsobmffTrackBacking {
+@@ -2779,8 +2522,8 @@ class IsobmffTrackBacking {
          if (sampleIndex === -1) {
              return null;
          }
@@ -5436,7 +5634,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          if (!sampleInfo) {
              return null;
          }
-@@ -2881,15 +2603,15 @@ class IsobmffTrackBacking {
+@@ -2881,15 +2624,17 @@ class IsobmffTrackBacking {
          }
          // Search for a lookup entry; this way, we won't need to start searching from the start of the file
          // but can jump right into the correct fragment (or at least nearby).
@@ -5451,12 +5649,14 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
          const positionCacheEntry = positionCacheIndex !== -1
              ? this.internalTrack.fragmentPositionCache[positionCacheIndex]
              : null;
++        if (positionCacheEntry)
++            positionCacheEntry.lastAccess = ++demuxer.fragmentCacheAccess;
          const lookupEntryPosition = Math.max(lookupEntry?.moofOffset ?? 0, positionCacheEntry?.moofOffset ?? 0) || null;
 +        const previousPositionTimestamps = this.internalTrack.fragmentPositionCache.map(entry => entry.startTimestamp);
          const lookupTableWins = !!lookupEntry && lookupEntry.moofOffset >= (positionCacheEntry?.moofOffset ?? 0);
          let currentPos;
          if (!startFragment) {
-@@ -2916,6 +2638,10 @@ class IsobmffTrackBacking {
+@@ -2916,6 +2661,10 @@ class IsobmffTrackBacking {
                  currentFragment = null; // So we don't process it again next iteration
              }
              const summary = demuxer.fragmentSummaries.get(currentPos);
@@ -5467,7 +5667,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
              if (summary && !summary.trackIds.has(this.internalTrack.id)) {
                  // We've read this fragment before and know it has nothing for this track, so let's not read it again
                  currentPos += summary.moofSize;
-@@ -2954,10 +2680,10 @@ class IsobmffTrackBacking {
+@@ -2954,10 +2703,10 @@ class IsobmffTrackBacking {
              // search again but using a previous entry of the kind we started from. Each time this happens, we double
              // the backwards step to perform better (and have more sequential reads) if it takes us a long time to find
              // the media.
@@ -5481,7 +5681,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
              const newSearchTimestamp = previousEntryTimestamp ?? -Infinity;
              return this.performFragmentedLookup(null, getMatchInFragment, newSearchTimestamp, latestTimestamp, options, scanStartPos, // So we don't read the same fragments again
              lookupRetryCount + 1);
-@@ -3117,171 +2843,10 @@ class IsobmffAudioTrackBacking extends IsobmffTrackBacking {
+@@ -3117,171 +2866,10 @@ class IsobmffAudioTrackBacking extends IsobmffTrackBacking {
          })();
      }
  }
@@ -5654,7 +5854,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
      for (const sample of trackData.samples) {
          sample.presentationTimestamp += timestamp;
      }
-@@ -3320,18 +2885,7 @@ const applySpsPixelAspectRatio = (track, pixelAspectRatio) => {
+@@ -3320,18 +2908,7 @@ const applySpsPixelAspectRatio = (track, pixelAspectRatio) => {
          info.squarePixelHeight = Math.round(info.height * den / num);
      }
  };
@@ -5674,7 +5874,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
  const getOrCreateEncryptionAuxInfo = (track) => {
      if (track.currentFragmentState) {
          return track.currentFragmentState.encryptionAuxInfo ??= {
-@@ -3598,3 +3152,469 @@ const collectCryptRanges = (subsamples, cryptByteBlock, skipByteBlock, dataLengt
+@@ -3598,3 +3175,528 @@ const collectCryptRanges = (subsamples, cryptByteBlock, skipByteBlock, dataLengt
      }
      return ranges;
  };
@@ -6034,7 +6234,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +            isKeyFrame: await this.keyIndex(index) === index };
 +    }
 +}
-+/** A timestamp-ordered TFRA kept on the input, with four copied 16 KiB LRU pages. */
++/** A TFRA kept on the input, with four copied 16 KiB LRU pages. */
 +class FragmentLookupTable {
 +    constructor(reader, trackId, start, count, version, widths, entrySize) {
 +        this.reader = reader;
@@ -6044,6 +6244,10 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +        this.version = version;
 +        this.widths = widths;
 +        this.entrySize = entrySize;
++        this.orderPromise = null;
++        this.timestampsOrdered = true;
++        this.offsetsOrdered = true;
++        this.offsetCursor = null;
 +        this.pages = new Map();
 +    }
 +    static async read(reader, start, end) {
@@ -6070,7 +6274,7 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +            throw new InputDisposedError();
 +        if (!Number.isInteger(index) || index < 0 || index >= this.count)
 +            return null;
-+        const entriesPerPage = Math.floor(16 * 1024 / this.entrySize);
++        const entriesPerPage = Math.floor(FRAGMENT_INDEX_PAGE_SIZE / this.entrySize);
 +        const first = Math.floor(index / entriesPerPage) * entriesPerPage;
 +        let view = this.pages.get(first);
 +        if (!view) {
@@ -6080,11 +6284,11 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +                throw new InputDisposedError();
 +            if (!slice)
 +                throw new RangeError('Truncated tfra page.');
-+            view = toDataView(readBytes(slice, length).slice());
++            view = toDataView(new Uint8Array(readBytes(slice, length)));
 +        }
 +        this.pages.delete(first);
 +        this.pages.set(first, view);
-+        while (this.pages.size > 4)
++        while (this.pages.size > MAX_FRAGMENT_INDEX_PAGES)
 +            this.pages.delete(this.pages.keys().next().value);
 +        let offset = (index - first) * this.entrySize;
 +        const readWord = (width) => {
@@ -6102,6 +6306,26 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +        const sampleNumber = readWord(this.widths[2]);
 +        return { timestamp, moofOffset, trunNumber, sampleNumber };
 +    }
++    ensureOrder() {
++        return this.orderPromise ??= (async () => {
++            let previous = null;
++            let timestampsOrdered = true;
++            let offsetsOrdered = true;
++            for (let index = 0; index < this.count; index++) {
++                const entry = (await this.at(index));
++                if (previous) {
++                    timestampsOrdered &&= previous.timestamp <= entry.timestamp;
++                    offsetsOrdered &&= previous.moofOffset <= entry.moofOffset;
++                }
++                previous = entry;
++            }
++            this.timestampsOrdered = timestampsOrdered;
++            this.offsetsOrdered = offsetsOrdered;
++        })().catch((error) => {
++            this.orderPromise = null;
++            throw error;
++        });
++    }
 +    async bound(value, field, inclusive) {
 +        let low = 0;
 +        let high = this.count;
@@ -6118,6 +6342,17 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +    async findTimestamp(timestamp) {
 +        if (timestamp === -Infinity)
 +            return null;
++        await this.ensureOrder();
++        if (!this.timestampsOrdered) {
++            let best = null;
++            for (let index = 0; index < this.count; index++) {
++                const entry = (await this.at(index));
++                if (entry.trunNumber >= 1 && entry.sampleNumber >= 1 && entry.timestamp <= timestamp
++                    && (!best || entry.timestamp > best.entry.timestamp))
++                    best = { entry, index };
++            }
++            return best;
++        }
 +        let index = await this.bound(timestamp, 'timestamp', true) - 1;
 +        while (index >= 0) {
 +            const time = (await this.at(index)).timestamp;
@@ -6133,13 +6368,37 @@ index 83fcffba36aa4fe5b98360f0fc99b0e3f1cb8e91..eec0fc084d1686d28b50ac4b31f25562
 +        return null;
 +    }
 +    async findOffset(offset) {
++        await this.ensureOrder();
++        if (!this.offsetsOrdered) {
++            for (let index = 0; index < this.count; index++) {
++                const entry = (await this.at(index));
++                if (entry.moofOffset === offset && entry.trunNumber >= 1 && entry.sampleNumber >= 1)
++                    return entry;
++            }
++            return null;
++        }
++        if (this.offsetCursor && this.offsetCursor.entry.moofOffset <= offset) {
++            for (let step = 0; step < 4; step++) {
++                const index = this.offsetCursor.index + step;
++                const entry = await this.at(index);
++                if (!entry || entry.moofOffset > offset)
++                    break;
++                if (entry.moofOffset === offset && entry.trunNumber >= 1 && entry.sampleNumber >= 1) {
++                    this.offsetCursor = { index, entry };
++                    return entry;
++                }
++            }
++        }
 +        let index = await this.bound(offset, 'moofOffset', false);
 +        while (index < this.count) {
-+            const entry = (await this.at(index++));
++            const entry = (await this.at(index));
 +            if (entry.moofOffset !== offset)
 +                break;
-+            if (entry.trunNumber >= 1 && entry.sampleNumber >= 1)
++            if (entry.trunNumber >= 1 && entry.sampleNumber >= 1) {
++                this.offsetCursor = { index, entry };
 +                return entry;
++            }
++            index++;
 +        }
 +        return null;
 +    }
@@ -6174,7 +6433,7 @@ index 24a1e43d3b14dc0a563348d59689c732b7c233fc..f5694c26166f83da6af91f4fb9eb139f
  	const sampleSizePresent = uniqueSampleSizes.size > 1;
  	const sampleFlagsPresent = !firstSampleFlagsPresent && uniqueSampleFlags.size > 1;
 diff --git a/src/isobmff/isobmff-demuxer.ts b/src/isobmff/isobmff-demuxer.ts
-index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12e78e58d5 100644
+index e743af508e4318e5629da1686cc22436c48f8675..1d5de33fb179566f33122a793ed508aef3312fe8 100644
 --- a/src/isobmff/isobmff-demuxer.ts
 +++ b/src/isobmff/isobmff-demuxer.ts
 @@ -53,7 +53,7 @@ import {
@@ -6186,7 +6445,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  import {
  	InputAudioTrackBacking,
  	InputTrackBacking,
-@@ -132,12 +132,10 @@ type InternalTrack = {
+@@ -132,16 +132,15 @@ type InternalTrack = {
  	languageCode: string;
  	sampleTableByteOffset: number | null; // null when the track's sample table is another file (ominous ik 👀)
  	sampleTable: SampleTable | null;
@@ -6202,7 +6461,12 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  	fragmentPositionCache: {
  		moofOffset: number;
  		startTimestamp: number;
-@@ -192,38 +190,6 @@ type InternalTrack = {
+ 		endTimestamp: number;
++		lastAccess: number;
+ 	}[];
+ 	/** The segment durations of all edit list entries leading up to the main one (from which the offset is taken.) */
+ 	editListPreviousSegmentDurations: number;
+@@ -192,38 +191,6 @@ type InternalTrack = {
  type InternalVideoTrack = InternalTrack & {	info: { type: 'video' } };
  type InternalAudioTrack = InternalTrack & {	info: { type: 'audio' } };
  
@@ -6241,11 +6505,14 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  type FragmentTrackDefaults = {
  	trackId: number;
  	defaultSampleDescriptionIndex: number;
-@@ -325,9 +291,13 @@ type SampleEncryptionAuxInfo = {
+@@ -325,9 +292,16 @@ type SampleEncryptionAuxInfo = {
  // Anything beyond this is malicious
  const MAX_BOX_NESTING_DEPTH = 64;
  
 +const MOVIE_LEAF_BOXES = new Set(['mdia', 'minf', 'dinf', 'mfra', 'edts', 'sinf', 'schi', 'mvhd', 'trak', 'tkhd', 'elst', 'mdhd', 'hdlr', 'stbl', 'stsd', 'frma', 'schm', 'tenc', 'avcC', 'hvcC', 'vpcC', 'av1C', 'colr', 'pasp', 'btrt', 'wave', 'esds', 'enda', 'pcmC', 'dOps', 'dfLa', 'dac3', 'dec3', 'ddts', 'stts', 'ctts', 'stsz', 'stz2', 'stss', 'stsc', 'stco', 'co64', 'mvex', 'mehd', 'trex', 'tfra', 'moof', 'traf', 'pssh', 'tfhd', 'tfdt', 'trun', 'saiz', 'saio', 'senc', 'udta', 'meta', 'keys', 'ilst']);
++const MAX_FRAGMENT_CACHE_ENTRIES = 128;
++const FRAGMENT_INDEX_PAGE_SIZE = 16 * 1024;
++const MAX_FRAGMENT_INDEX_PAGES = 4;
 +
  export class IsobmffDemuxer extends Demuxer {
  	reader: Reader;
@@ -6256,16 +6523,17 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  	currentTrack: InternalTrack | null = null;
  	tracks: InternalTrack[] = [];
-@@ -350,7 +320,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -350,7 +324,8 @@ export class IsobmffDemuxer extends Demuxer {
  	 * same fragment in quick succession.
  	 */
  	lastReadFragment: Fragment | null = null;
 -	fragmentSummaries = new Map<number, FragmentSummary>(); // Keyed by moof offset
++	fragmentCacheAccess = 0;
 +	fragmentSummaries = new Map<number, FragmentSummary>(); // At most 128 entries, keyed by moof offset
  
  	decryptionKeyCache = new Map<string, Promise<Uint8Array>>();
  	boxNestingDepth = 0;
-@@ -408,14 +378,15 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -408,14 +383,15 @@ export class IsobmffDemuxer extends Demuxer {
  					const majorBrand = readAscii(slice, 4);
  					this.isQuickTime = majorBrand === 'qt  ';
  				} else if (boxInfo.name === 'moov') {
@@ -6289,7 +6557,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  					if (this.movieTimescale === -1) {
  						throw new Error('Invalid moov box: missing mvhd box.');
-@@ -484,31 +455,18 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -484,31 +460,18 @@ export class IsobmffDemuxer extends Demuxer {
  						const boxInfo = readBoxHeader(mfraHeaderSlice);
  
  						if (boxInfo && boxInfo.name === 'mfra') {
@@ -6327,7 +6595,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		})();
  	}
  
-@@ -544,9 +502,10 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -544,9 +507,10 @@ export class IsobmffDemuxer extends Demuxer {
  				languageCode: foreignTrack.languageCode,
  				sampleTableByteOffset: null,
  				sampleTable: null,
@@ -6339,7 +6607,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  				editListPreviousSegmentDurations: foreignTrack.editListPreviousSegmentDurations,
  				editListOffset: foreignTrack.editListOffset,
  				encryptionInfo: foreignTrack.encryptionInfo,
-@@ -577,22 +536,35 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -577,22 +541,35 @@ export class IsobmffDemuxer extends Demuxer {
  		}
  	}
  
@@ -6387,7 +6655,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		internalTrack.sampleTable = sampleTable;
  
  		if (internalTrack.sampleTableByteOffset === null) {
-@@ -600,13 +572,14 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -600,13 +577,14 @@ export class IsobmffDemuxer extends Demuxer {
  			return sampleTable;
  		}
  
@@ -6405,7 +6673,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		} catch (error) {
  			internalTrack.sampleTable = null;
  			throw error;
-@@ -614,305 +587,145 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -614,305 +592,162 @@ export class IsobmffDemuxer extends Demuxer {
  			this.currentTrack = null;
  		}
  
@@ -6619,7 +6887,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +		this.fragmentSummaries.delete(startPos);
 +		this.fragmentSummaries.set(startPos, { moofSize: fragment.moofSize,
 +			trackIds: new Set(fragment.trackData.keys()) });
-+		while (this.fragmentSummaries.size > 128) {
++		while (this.fragmentSummaries.size > MAX_FRAGMENT_CACHE_ENTRIES) {
 +			this.fragmentSummaries.delete(this.fragmentSummaries.keys().next().value!);
  		}
 +		return fragment;
@@ -6641,7 +6909,6 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 -				sampleTable.cumulativeSampleSizes.push(
 -					sampleTable.cumulativeSampleSizes[i]! + sampleTable.sampleSizes[i]!,
 -				);
--			}
 +	private rememberFragmentTrack(fragment: Fragment, data: FragmentTrackData) {
 +		const track = data.track;
 +		track.fragmentDecodeCache.delete(fragment.moofOffset);
@@ -6649,16 +6916,28 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +			afterMoofOffset: fragment.moofOffset + fragment.moofSize,
 +			endDecodeTimestamp: data.currentTimestamp,
 +		});
-+		while (track.fragmentDecodeCache.size > 128) {
++		while (track.fragmentDecodeCache.size > MAX_FRAGMENT_CACHE_ENTRIES) {
 +			track.fragmentDecodeCache.delete(track.fragmentDecodeCache.keys().next().value!);
 +		}
 +		const cache = track.fragmentPositionCache;
++		const existing = cache.find(entry => entry.moofOffset === fragment.moofOffset);
++		if (existing) {
++			existing.lastAccess = ++this.fragmentCacheAccess;
++			return;
++		}
 +		const index = binarySearchLessOrEqual(cache, data.startTimestamp, x => x.startTimestamp);
 +		if ((!cache[index] || cache[index]!.moofOffset < fragment.moofOffset)
 +			&& (!cache[index + 1] || cache[index + 1]!.moofOffset > fragment.moofOffset)) {
 +			cache.splice(index + 1, 0, { moofOffset: fragment.moofOffset,
-+				startTimestamp: data.startTimestamp, endTimestamp: data.endTimestamp });
-+			if (cache.length > 128) cache.shift();
++				startTimestamp: data.startTimestamp, endTimestamp: data.endTimestamp,
++				lastAccess: ++this.fragmentCacheAccess });
++			if (cache.length > MAX_FRAGMENT_CACHE_ENTRIES) {
++				let oldest = 0;
++				for (let i = 1; i < cache.length; i++) {
++					if (cache[i]!.lastAccess < cache[oldest]!.lastAccess) oldest = i;
++				}
++				cache.splice(oldest, 1);
+ 			}
  		}
 -
 -		return sampleTable;
@@ -6750,6 +7029,11 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 -						offsetFragmentTrackDataByTimestamp(trackData, lastCache.endTimestamp);
 -					} else {
 -						// We're the first fragment I guess, "offset by 0"
++		const anchor = track.fragmentDecodeCache.get(anchorOffset);
++		if (anchor) {
++			track.fragmentDecodeCache.delete(anchorOffset);
++			track.fragmentDecodeCache.set(anchorOffset, anchor);
++		}
 +		// Missing tfdt needs a contiguous cumulative decode time, not the PTS end
 +		// of whichever cached fragment happens to precede the target. Rebuild from
 +		// a retained anchor or the file start when that range was evicted.
@@ -6830,7 +7114,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		if (this.boxNestingDepth === MAX_BOX_NESTING_DEPTH) {
  			throw new Error('Invalid file: boxes are nested too deeply.');
  		}
-@@ -922,7 +735,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -922,7 +757,7 @@ export class IsobmffDemuxer extends Demuxer {
  
  		try {
  			while (slice.filePos - startIndex <= slice.length - MIN_BOX_HEADER_SIZE) {
@@ -6839,7 +7123,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  				if (!foundBox) {
  					break;
-@@ -949,15 +762,54 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -949,15 +784,54 @@ export class IsobmffDemuxer extends Demuxer {
  		}
  	}
  
@@ -6899,7 +7183,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  		switch (boxInfo.name) {
  			case 'mdia':
-@@ -967,7 +819,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -967,7 +841,7 @@ export class IsobmffDemuxer extends Demuxer {
  			case 'edts':
  			case 'sinf':
  			case 'schi': {
@@ -6908,7 +7192,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  			}; break;
  
  			case 'mvhd': {
-@@ -1015,9 +867,10 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1015,9 +889,10 @@ export class IsobmffDemuxer extends Demuxer {
  					languageCode: UNDETERMINED_LANGUAGE,
  					sampleTableByteOffset: -1,
  					sampleTable: null,
@@ -6916,11 +7200,11 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +					fragmentLookupTable: null,
  					currentFragmentState: null,
  					fragmentPositionCache: [],
-+				fragmentDecodeCache: new Map(),
++					fragmentDecodeCache: new Map(),
  					editListPreviousSegmentDurations: 0,
  					editListOffset: 0,
  					encryptionInfo: null,
-@@ -1028,7 +881,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1028,7 +903,7 @@ export class IsobmffDemuxer extends Demuxer {
  				} satisfies InternalTrack as InternalTrack;
  				this.currentTrack = track;
  
@@ -6929,7 +7213,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  				if (
  					track.id !== -1
-@@ -1223,7 +1076,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1223,7 +1098,7 @@ export class IsobmffDemuxer extends Demuxer {
  
  				track.sampleTableByteOffset = startPos;
  
@@ -6938,7 +7222,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  			}; break;
  
  			case 'stsd': {
-@@ -1262,7 +1115,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1262,7 +1137,7 @@ export class IsobmffDemuxer extends Demuxer {
  						slice.skip(4 + 4 + 4 + 2 + 32 + 2 + 2);
  
  						track.frmaCodecString = null;
@@ -6947,7 +7231,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  							slice.slice(
  								slice.filePos,
  								(sampleBoxStartPos + sampleBoxInfo.totalSize) - slice.filePos,
-@@ -1332,7 +1185,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1332,7 +1207,7 @@ export class IsobmffDemuxer extends Demuxer {
  						track.info.sampleRate = sampleRate;
  
  						track.frmaCodecString = null;
@@ -6956,7 +7240,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  							slice.slice(
  								slice.filePos,
  								(sampleBoxStartPos + sampleBoxInfo.totalSize) - slice.filePos,
-@@ -1743,7 +1596,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1743,7 +1618,7 @@ export class IsobmffDemuxer extends Demuxer {
  			}; break;
  
  			case 'wave': {
@@ -6965,7 +7249,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  			}; break;
  
  			case 'esds': {
-@@ -1973,257 +1826,9 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -1973,257 +1848,9 @@ export class IsobmffDemuxer extends Demuxer {
  				}
  			}; break;
  
@@ -7224,7 +7508,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  			}; break;
  
  			case 'mehd': {
-@@ -2253,51 +1858,6 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -2253,51 +1880,6 @@ export class IsobmffDemuxer extends Demuxer {
  				});
  			}; break;
  
@@ -7276,7 +7560,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  			case 'moof': {
  				if (this.currentFragment) {
-@@ -2314,7 +1874,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -2314,7 +1896,7 @@ export class IsobmffDemuxer extends Demuxer {
  				};
  
  				try {
@@ -7285,7 +7569,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  					this.lastReadFragment = this.currentFragment;
  				} finally {
  					this.currentFragment = null;
-@@ -2329,7 +1889,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -2329,7 +1911,7 @@ export class IsobmffDemuxer extends Demuxer {
  
  				this.isReadingTraf = true;
  				try {
@@ -7294,7 +7578,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  				} finally {
  					this.isReadingTraf = false;
  				}
-@@ -2758,7 +2318,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -2758,7 +2340,7 @@ export class IsobmffDemuxer extends Demuxer {
  					switch (boxInfo.name) {
  						case 'meta': {
  							slice.skip(-boxInfo.headerSize);
@@ -7303,7 +7587,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  						}; break;
  
  						case '©nam':
-@@ -2837,9 +2397,9 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -2837,9 +2419,9 @@ export class IsobmffDemuxer extends Demuxer {
  				this.currentMetadataKeys = new Map();
  
  				if (isQuickTime) {
@@ -7315,7 +7599,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  				}
  
  				this.currentMetadataKeys = null;
-@@ -3053,7 +2613,7 @@ export class IsobmffDemuxer extends Demuxer {
+@@ -3053,7 +2635,7 @@ export class IsobmffDemuxer extends Demuxer {
  			}; break;
  		}
  
@@ -7324,7 +7608,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		return true;
  	}
  }
-@@ -3193,8 +2753,8 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+@@ -3193,8 +2775,8 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
  	async getPacket(timestamp: number, options: PacketRetrievalOptions) {
  		const timestampInTimescale = this.mapTimestampIntoTimescale(timestamp);
  
@@ -7335,7 +7619,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		const regularPacket = await this.fetchPacketForSampleIndex(sampleIndex, options);
  
  		if (!sampleTableIsEmpty(sampleTable) || !this.internalTrack.demuxer.isFragmented) {
-@@ -3276,8 +2836,8 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+@@ -3276,8 +2858,8 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
  	async getKeyPacket(timestamp: number, options: PacketRetrievalOptions) {
  		const timestampInTimescale = this.mapTimestampIntoTimescale(timestamp);
  
@@ -7346,7 +7630,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		const regularPacket = await this.fetchPacketForSampleIndex(sampleIndex, options);
  
  		if (!sampleTableIsEmpty(sampleTable) || !this.internalTrack.demuxer.isFragmented) {
-@@ -3313,8 +2873,8 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+@@ -3313,8 +2895,8 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
  		const regularSampleIndex = this.packetToSampleIndex.get(packet);
  		if (regularSampleIndex !== undefined) {
  			// Prefer the non-fragmented packet
@@ -7357,7 +7641,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  			return this.fetchPacketForSampleIndex(nextKeyFrameSampleIndex, options);
  		}
  
-@@ -3367,8 +2927,8 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+@@ -3367,8 +2949,8 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
  			return null;
  		}
  
@@ -7368,7 +7652,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		if (!sampleInfo) {
  			return null;
  		}
-@@ -3514,14 +3074,9 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+@@ -3514,14 +3096,9 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
  
  		// Search for a lookup entry; this way, we won't need to start searching from the start of the file
  		// but can jump right into the correct fragment (or at least nearby).
@@ -7386,7 +7670,13 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  		const positionCacheIndex = binarySearchLessOrEqual(
  			this.internalTrack.fragmentPositionCache,
-@@ -3536,6 +3091,7 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+@@ -3532,10 +3109,13 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+ 			? this.internalTrack.fragmentPositionCache[positionCacheIndex]!
+ 			: null;
+ 
++		if (positionCacheEntry) positionCacheEntry.lastAccess = ++demuxer.fragmentCacheAccess;
++
+ 		const lookupEntryPosition = Math.max(
  			lookupEntry?.moofOffset ?? 0,
  			positionCacheEntry?.moofOffset ?? 0,
  		) || null;
@@ -7394,7 +7684,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  		const lookupTableWins = !!lookupEntry && lookupEntry.moofOffset >= (positionCacheEntry?.moofOffset ?? 0);
  
  		let currentPos: number;
-@@ -3566,6 +3122,10 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+@@ -3566,6 +3146,10 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
  			}
  
  			const summary = demuxer.fragmentSummaries.get(currentPos);
@@ -7405,7 +7695,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  			if (summary && !summary.trackIds.has(this.internalTrack.id)) {
  				// We've read this fragment before and know it has nothing for this track, so let's not read it again
  				currentPos += summary.moofSize;
-@@ -3608,10 +3168,10 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
+@@ -3608,10 +3192,10 @@ abstract class IsobmffTrackBacking implements InputTrackBacking {
  			// search again but using a previous entry of the kind we started from. Each time this happens, we double
  			// the backwards step to perform better (and have more sequential reads) if it takes us a long time to find
  			// the media.
@@ -7419,7 +7709,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  			const newSearchTimestamp = previousEntryTimestamp ?? -Infinity;
  
  			return this.performFragmentedLookup(
-@@ -3824,236 +3384,10 @@ class IsobmffAudioTrackBacking extends IsobmffTrackBacking implements InputAudio
+@@ -3824,236 +3408,10 @@ class IsobmffAudioTrackBacking extends IsobmffTrackBacking implements InputAudio
  	}
  }
  
@@ -7657,7 +7947,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  	for (const sample of trackData.samples) {
  		sample.presentationTimestamp += timestamp;
-@@ -4097,20 +3431,7 @@ const applySpsPixelAspectRatio = (track: InternalTrack, pixelAspectRatio: Ration
+@@ -4097,20 +3455,7 @@ const applySpsPixelAspectRatio = (track: InternalTrack, pixelAspectRatio: Ration
  	}
  };
  
@@ -7679,7 +7969,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
  
  const getOrCreateEncryptionAuxInfo = (track: InternalTrack) => {
  	if (track.currentFragmentState) {
-@@ -4468,3 +3789,445 @@ const collectCryptRanges = (
+@@ -4468,3 +3813,503 @@ const collectCryptRanges = (
  
  	return ranges;
  };
@@ -8033,8 +8323,12 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +	}
 +}
 +
-+/** A timestamp-ordered TFRA kept on the input, with four copied 16 KiB LRU pages. */
++/** A TFRA kept on the input, with four copied 16 KiB LRU pages. */
 +class FragmentLookupTable {
++	private orderPromise: Promise<void> | null = null;
++	private timestampsOrdered = true;
++	private offsetsOrdered = true;
++	private offsetCursor: { index: number; entry: FragmentLookupTableEntry } | null = null;
 +	private pages = new Map<number, DataView>();
 +
 +	constructor(private reader: Reader, public trackId: number, private start: number,
@@ -8059,7 +8353,7 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +	async at(index: number): Promise<FragmentLookupTableEntry | null> {
 +		if (this.reader.source._disposed) throw new InputDisposedError();
 +		if (!Number.isInteger(index) || index < 0 || index >= this.count) return null;
-+		const entriesPerPage = Math.floor(16 * 1024 / this.entrySize);
++		const entriesPerPage = Math.floor(FRAGMENT_INDEX_PAGE_SIZE / this.entrySize);
 +		const first = Math.floor(index / entriesPerPage) * entriesPerPage;
 +		let view = this.pages.get(first);
 +		if (!view) {
@@ -8067,11 +8361,11 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +			const slice = await this.reader.requestSlice(this.start + first * this.entrySize, length);
 +			if (this.reader.source._disposed) throw new InputDisposedError();
 +			if (!slice) throw new RangeError('Truncated tfra page.');
-+			view = toDataView(readBytes(slice, length).slice());
++			view = toDataView(new Uint8Array(readBytes(slice, length)));
 +		}
 +		this.pages.delete(first);
 +		this.pages.set(first, view);
-+		while (this.pages.size > 4) this.pages.delete(this.pages.keys().next().value!);
++		while (this.pages.size > MAX_FRAGMENT_INDEX_PAGES) this.pages.delete(this.pages.keys().next().value!);
 +		let offset = (index - first) * this.entrySize;
 +		const readWord = (width: number) => {
 +			let value = 0;
@@ -8085,6 +8379,27 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +		const trunNumber = readWord(this.widths[1]!);
 +		const sampleNumber = readWord(this.widths[2]!);
 +		return { timestamp, moofOffset, trunNumber, sampleNumber };
++	}
++
++	private ensureOrder() {
++		return this.orderPromise ??= (async () => {
++			let previous: FragmentLookupTableEntry | null = null;
++			let timestampsOrdered = true;
++			let offsetsOrdered = true;
++			for (let index = 0; index < this.count; index++) {
++				const entry = (await this.at(index))!;
++				if (previous) {
++					timestampsOrdered &&= previous.timestamp <= entry.timestamp;
++					offsetsOrdered &&= previous.moofOffset <= entry.moofOffset;
++				}
++				previous = entry;
++			}
++			this.timestampsOrdered = timestampsOrdered;
++			this.offsetsOrdered = offsetsOrdered;
++		})().catch((error) => {
++			this.orderPromise = null;
++			throw error;
++		});
 +	}
 +
 +	private async bound(value: number, field: 'timestamp' | 'moofOffset', inclusive: boolean) {
@@ -8101,6 +8416,16 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +
 +	async findTimestamp(timestamp: number): Promise<{ entry: FragmentLookupTableEntry; index: number } | null> {
 +		if (timestamp === -Infinity) return null;
++		await this.ensureOrder();
++		if (!this.timestampsOrdered) {
++			let best: { index: number; entry: FragmentLookupTableEntry } | null = null;
++			for (let index = 0; index < this.count; index++) {
++				const entry = (await this.at(index))!;
++				if (entry.trunNumber >= 1 && entry.sampleNumber >= 1 && entry.timestamp <= timestamp
++					&& (!best || entry.timestamp > best.entry.timestamp)) best = { entry, index };
++			}
++			return best;
++		}
 +		let index = await this.bound(timestamp, 'timestamp', true) - 1;
 +		while (index >= 0) {
 +			const time = (await this.at(index))!.timestamp;
@@ -8116,11 +8441,34 @@ index e743af508e4318e5629da1686cc22436c48f8675..9a031697437948d29401c36abe988a12
 +	}
 +
 +	async findOffset(offset: number) {
++		await this.ensureOrder();
++		if (!this.offsetsOrdered) {
++			for (let index = 0; index < this.count; index++) {
++				const entry = (await this.at(index))!;
++				if (entry.moofOffset === offset && entry.trunNumber >= 1 && entry.sampleNumber >= 1) return entry;
++			}
++			return null;
++		}
++		if (this.offsetCursor && this.offsetCursor.entry.moofOffset <= offset) {
++			for (let step = 0; step < 4; step++) {
++				const index = this.offsetCursor.index + step;
++				const entry = await this.at(index);
++				if (!entry || entry.moofOffset > offset) break;
++				if (entry.moofOffset === offset && entry.trunNumber >= 1 && entry.sampleNumber >= 1) {
++					this.offsetCursor = { index, entry };
++					return entry;
++				}
++			}
++		}
 +		let index = await this.bound(offset, 'moofOffset', false);
 +		while (index < this.count) {
-+			const entry = (await this.at(index++))!;
++			const entry = (await this.at(index))!;
 +			if (entry.moofOffset !== offset) break;
-+			if (entry.trunNumber >= 1 && entry.sampleNumber >= 1) return entry;
++			if (entry.trunNumber >= 1 && entry.sampleNumber >= 1) {
++				this.offsetCursor = { index, entry };
++				return entry;
++			}
++			index++;
 +		}
 +		return null;
 +	}
