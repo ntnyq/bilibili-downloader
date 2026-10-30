@@ -1,7 +1,7 @@
 {
   "name": "bilibili-downloader",
   "type": "module",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "private": true,
   "packageManager": "pnpm@12.16.1",
   "description": "Download Bilibili videos, audio, covers, subtitles and danmaku, with multi-part batch downloads and asset bundles.",
