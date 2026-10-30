@@ -4,6 +4,7 @@ import {
   getMediaCacheStats,
 } from '~/utils/downloads/media/mediaCache'
 import { getAvailableMediaStorageBytes } from '~/utils/downloads/media/storageBudget'
+import { i18n } from '~/utils/i18n'
 
 export function useDownloadCache() {
   const stats = shallowRef<Awaited<ReturnType<typeof getMediaCacheStats>>>()
@@ -51,7 +52,9 @@ export function useDownloadCache() {
     notice.value = ''
     try {
       if (!navigator.locks) {
-        throw new Error('当前浏览器无法安全清理缓存，请更新浏览器后重试。')
+        throw new Error(
+          i18n.t('useDownloadCache.thisBrowserCannotSafelyClearTheCacheUpdate'),
+        )
       }
       await navigator.locks.request(
         'bilibili-media-cache',
@@ -59,7 +62,7 @@ export function useDownloadCache() {
         async lock => {
           if (!lock) {
             throw new Error(
-              '下载正在使用缓存，请暂停队列并等待当前任务结束后再清理。',
+              i18n.t('useDownloadCache.downloadsAreUsingTheCachePauseTheQueue'),
             )
           }
           await clearMediaCache()
@@ -68,7 +71,9 @@ export function useDownloadCache() {
       revision++
       stats.value = { bytes: 0, entries: 0 }
       refreshError.value = ''
-      notice.value = '下载缓存已清理，下次重试将重新下载媒体。'
+      notice.value = i18n.t(
+        'useDownloadCache.downloadCacheClearedTheNextRetryWillDownload',
+      )
     } catch (error) {
       actionError.value = getErrorMessage(error)
     } finally {

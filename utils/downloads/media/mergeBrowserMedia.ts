@@ -1,3 +1,5 @@
+import { i18n } from '~/utils/i18n'
+import { getRemuxMessages } from './i18n'
 import { MEDIA_CACHE_DIRECTORY } from './mediaCache'
 import { assertMediaOutputSpace } from './storageBudget'
 import type { RemuxRequest, RemuxResponse } from './remux.worker'
@@ -107,12 +109,23 @@ export async function mergeBrowserMedia(
       // distinguish that work from a hang. Explicit cancellation stays available.
       timeout = setTimeout(() => {
         cleanup()
-        reject(new Error('浏览器封装 Worker 启动超时，请重试。'))
+        reject(
+          new Error(
+            i18n.t(
+              'mergeBrowserMedia.browserRemuxWorkerStartupTimedOutPleaseRetry',
+            ),
+          ),
+        )
       }, 120000)
       signal.addEventListener('abort', abort, { once: true })
       remuxWorker.addEventListener('error', event => {
         cleanup()
-        reject(new Error(event.message || '浏览器封装 Worker 启动失败。'))
+        reject(
+          new Error(
+            event.message
+              || i18n.t('mergeBrowserMedia.browserRemuxWorkerFailedToStart'),
+          ),
+        )
       })
       remuxWorker.addEventListener(
         'message',
@@ -132,7 +145,9 @@ export async function mergeBrowserMedia(
             reject(
               new Error(
                 data.name === 'QuotaExceededError'
-                  ? '浏览器本地缓存空间不足，请清理下载缓存或释放磁盘空间后重试。'
+                  ? i18n.t(
+                      'mediaCache.insufficientBrowserCacheSpaceClearTheDownloadCache',
+                    )
                   : data.message,
               ),
             )
@@ -141,10 +156,17 @@ export async function mergeBrowserMedia(
       )
       remuxWorker.addEventListener('messageerror', () => {
         cleanup()
-        reject(new Error('浏览器无法接收音视频封装结果。'))
+        reject(
+          new Error(
+            i18n.t(
+              'mergeBrowserMedia.theBrowserCannotReceiveTheRemuxedMediaResult',
+            ),
+          ),
+        )
       })
       try {
         remuxWorker.postMessage({
+          messages: getRemuxMessages(),
           kind,
           inputs,
           handle,
@@ -158,7 +180,7 @@ export async function mergeBrowserMedia(
     signal.throwIfAborted()
     const blob = await handle.getFile()
     if (!blob.size) {
-      throw new Error('浏览器封装结果为空。')
+      throw new Error(i18n.t('mergeBrowserMedia.theBrowserRemuxOutputIsEmpty'))
     }
     return {
       // Set the media MIME without reading/copying the disk-backed file. A

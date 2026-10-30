@@ -1,39 +1,81 @@
 <script lang="ts" setup>
 import { FilesIcon, FolderDownIcon, LayersIcon, VideoIcon } from '@lucide/vue'
+import { i18n } from '~/utils/i18n'
 
 const FEATURES = [
   {
-    title: '按需导出素材',
+    get title() {
+      return i18n.t('welcomeFeatureCards.exportTheAssetsYouNeed')
+    },
     icon: FilesIcon,
-    description:
-      '在「下载内容」中选择音频、封面、字幕或弹幕，只保存你需要的内容。',
-    detail:
-      '音频保存为 M4A；每个视频保留一份原始封面；字幕支持中文、英文或自动选择；弹幕导出为当前可获取的 XML。',
-    note: '素材不可用时，会显示具体原因。',
+    get description() {
+      return i18n.t(
+        'welcomeFeatureCards.chooseAudioCoversSubtitlesOrDanmakuUnderDownload',
+      )
+    },
+    get detail() {
+      return i18n.t('welcomeFeatureCards.audioIsSavedAsM4aEachVideoGets')
+    },
+    get note() {
+      return i18n.t('welcomeFeatureCards.specificReasonsAreShownWhenAnAssetIs')
+    },
   },
   {
-    title: '单视频，一键下载',
+    get title() {
+      return i18n.t('welcomeFeatureCards.oneVideoOneClick')
+    },
     icon: VideoIcon,
-    description:
-      '打开 B 站普通视频页面，在播放器下方点击「下载视频」，即可开始保存。',
-    detail: '也可以点击浏览器工具栏中的扩展图标，打开下载面板。',
-    note: '默认选择当前账号可用的最高画质。',
+    get description() {
+      return i18n.t(
+        'welcomeFeatureCards.openARegularBilibiliVideoAndClickDownload',
+      )
+    },
+    get detail() {
+      return i18n.t('welcomeFeatureCards.youCanAlsoOpenTheDownloadPanelFrom')
+    },
+    get note() {
+      return i18n.t(
+        'welcomeFeatureCards.theBestQualityAvailableToYourAccountIs',
+      )
+    },
   },
   {
-    title: '多 P，自由切换',
+    get title() {
+      return i18n.t('welcomeFeatureCards.chooseYourVideoParts')
+    },
     icon: LayersIcon,
-    description:
-      '默认下载当前分 P，也可以选择「全部分 P」或「自选分 P」，一次保存多个分段。',
-    detail: '支持逐个勾选、全选或反选，按需要灵活组合。',
-    note: '每个分 P 都会保存为独立的 MP4 文件。',
+    get description() {
+      return i18n.t(
+        'welcomeFeatureCards.downloadTheCurrentPartByDefaultOrChoose',
+      )
+    },
+    get detail() {
+      return i18n.t(
+        'welcomeFeatureCards.selectPartsIndividuallySelectAllOrInvertYour',
+      )
+    },
+    get note() {
+      return i18n.t('welcomeFeatureCards.eachPartIsSavedAsASeparateMp4')
+    },
   },
   {
-    title: '下载中心，查看进度',
+    get title() {
+      return i18n.t('welcomeFeatureCards.trackProgressInTheDownloadCenter')
+    },
     icon: FolderDownIcon,
-    description:
-      '下载会在新建的后台标签页中进行，可查看进度、搜索任务、筛选失败项和批量重试。',
-    detail: '暂停队列后，当前任务继续完成，其余任务等待恢复。',
-    note: '请保持下载中心打开；关闭或刷新会中断任务，可在下载中心重试。',
+    get description() {
+      return i18n.t('welcomeFeatureCards.downloadsRunInABackgroundTabWhereYou')
+    },
+    get detail() {
+      return i18n.t(
+        'welcomeFeatureCards.pausingTheQueueLetsTheCurrentTaskFinish',
+      )
+    },
+    get note() {
+      return i18n.t(
+        'welcomeFeatureCards.keepTheDownloadCenterOpenClosingOrRefreshing',
+      )
+    },
   },
 ]
 </script>

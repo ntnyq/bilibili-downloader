@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { browser } from '#imports'
 import { downloadJobSchema, downloadJobsSchema } from '~/types/download'
 import { getVideoMedia } from '~/utils/bilibili/api'
+import { i18n } from '~/utils/i18n'
 import { JOBS_STORAGE_KEY } from '../constants'
 import { createDownloadPath } from '../files/createDownloadPath'
 import { fetchAsset } from '../files/fetchAsset'
@@ -228,7 +229,7 @@ export async function startDownloadRunner(onError: (message: string) => void) {
     { ifAvailable: true },
     async lock => {
       if (!lock) {
-        onError('已有下载中心正在运行，请使用原来的下载中心。')
+        onError(i18n.t('runner.aDownloadCenterIsAlreadyRunningUseThe'))
         return
       }
       await sendDownloadMessage({ type: 'runner.ready' }, z.null())

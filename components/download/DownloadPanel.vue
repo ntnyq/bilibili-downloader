@@ -14,6 +14,7 @@ import { useVideoDownload } from '~/composables/useVideoDownload'
 import { DOWNLOAD_KIND_LABELS, QUALITY_LABELS } from '~/utils/downloads/labels'
 import { getJobIdentity } from '~/utils/downloads/queue/identity'
 import { isJobActive } from '~/utils/downloads/queue/jobs'
+import { i18n } from '~/utils/i18n'
 import type { VNode } from 'vue'
 
 const props = defineProps<{
@@ -118,27 +119,42 @@ const isAlreadyQueued = computed(() => {
 })
 const downloadLabel = computed(() => {
   if (isAdding.value) {
-    return '正在加入队列…'
+    return i18n.t('downloadPanel.addingToQueue')
   }
   if (isAlreadyQueued.value) {
-    return '已加入下载队列'
+    return i18n.t('downloadPanel.addedToDownloadQueue')
   }
   if (isBundleEnabled.value) {
-    return `下载素材组合 · ${bundleTaskCount.value} 个素材`
+    return i18n.t('downloadPanel.downloadBundleAssets', bundleTaskCount.value)
   }
   if (kind.value === 'cover') {
-    return '下载视频封面'
+    return i18n.t('downloadPanel.downloadVideoCover')
   }
   if (kind.value !== 'video') {
-    return `下载${DOWNLOAD_KIND_LABELS[kind.value]}${isMultipart.value ? ` · ${targetPages.value.length} P` : ''}`
+    return isMultipart.value
+      ? i18n.t('downloadPanel.downloadAssetParts', targetPages.value.length, [
+          DOWNLOAD_KIND_LABELS[kind.value],
+          targetPages.value.length,
+        ])
+      : i18n.t('labels.downloading', [DOWNLOAD_KIND_LABELS[kind.value]])
   }
   if (mode.value === 'selected') {
-    return `下载所选 ${targetPages.value.length} P`
+    return i18n.t(
+      'downloadPanel.downloadSelectedParts',
+      targetPages.value.length,
+    )
   }
   if (mode.value === 'all' && isMultipart.value) {
-    return `下载全部 ${video.value?.pages.length} P`
+    return i18n.t(
+      'downloadPanel.downloadAllParts',
+      video.value?.pages.length ?? 0,
+    )
   }
-  return isMultipart.value ? `下载当前 P${currentPage.value?.page}` : '下载视频'
+  return isMultipart.value
+    ? i18n.t('downloadPanel.downloadCurrentPart', [
+        currentPage.value?.page ?? 1,
+      ])
+    : i18n.t('downloadPanel.downloadVideo')
 })
 const isDownloadDisabled = computed(
   () =>
@@ -154,24 +170,23 @@ const isDownloadDisabled = computed(
 <template>
   <section
     :class="embedded ? '@container' : 'max-h-150'"
+    :aria-label="i18n.t('extensionName')"
     class="bili-font flex flex-col overflow-hidden rounded-lg border border-border bg-white text-foreground"
-    aria-label="B 站下载器"
   >
     <header
       class="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3.5"
     >
       <div class="flex items-center gap-3 text-[15px] font-semibold">
-        <ExtensionLogo class="size-8" />
-        B 站下载器
+        <ExtensionLogo class="size-8" />{{ i18n.t('extensionName') }}
       </div>
       <div class="flex items-center gap-1">
         <Button
           :href="optionsUrl"
+          :aria-label="i18n.t('downloadPanel.settingsAndHelp')"
           as="a"
           target="_blank"
           variant="ghost"
           size="icon-sm"
-          aria-label="设置与说明"
         >
           <Settings2Icon class="size-4" />
         </Button>
@@ -184,7 +199,7 @@ const isDownloadDisabled = computed(
         class="py-4.5 text-[13px] text-muted-foreground"
         role="status"
       >
-        正在读取视频信息…
+        {{ i18n.t('downloadPanel.loadingVideoInformation') }}
       </div>
       <div
         v-else-if="!location"
@@ -194,18 +209,19 @@ const isDownloadDisabled = computed(
           class="shrink-0 mx-auto mb-3 block size-8 text-primary"
           aria-hidden="true"
         />
-        <p class="text-[15px] font-medium">去看看喜欢的视频</p>
+        <p class="text-[15px] font-medium">
+          {{ i18n.t('downloadPanel.findAVideoYouLove') }}
+        </p>
         <p class="mt-1.5 text-[12px] text-muted-foreground">
-          打开 B 站视频页面，即可下载视频、音频、封面、字幕和弹幕。
+          {{ i18n.t('downloadPanel.openABilibiliVideoToDownloadVideosAudio') }}
         </p>
         <a
           class="mt-4.5 bili-primary-button inline-flex"
           href="https://www.bilibili.com"
           target="_blank"
           rel="noreferrer"
+          >{{ i18n.t('downloadPanel.openBilibili') }}</a
         >
-          打开哔哩哔哩
-        </a>
       </div>
       <div
         v-else-if="video && currentPage"
@@ -237,7 +253,12 @@ const isDownloadDisabled = computed(
               {{ video.title }}
             </h2>
             <p class="mt-1.25 truncate text-[12px] text-muted-foreground">
-              {{ video.owner }} · {{ video.pages.length }} 个分 P
+              {{
+                i18n.t('downloadPanel.parts', video.pages.length, [
+                  video.owner,
+                  video.pages.length,
+                ])
+              }}
             </p>
           </div>
         </div>
@@ -285,7 +306,7 @@ const isDownloadDisabled = computed(
             class="mt-2.5 text-[12px] text-primary"
             role="status"
           >
-            队列已暂停，加入的任务将等待恢复。请前往下载中心恢复队列。
+            {{ i18n.t('downloadPanel.theQueueIsPausedNewTasksWillWait') }}
           </p>
         </div>
       </div>
@@ -302,9 +323,8 @@ const isDownloadDisabled = computed(
           size="sm"
           type="button"
           class="ml-2 text-muted-foreground hover:text-primary underline"
+          >{{ i18n.t('downloadPanel.reload') }}</Button
         >
-          重新读取
-        </Button>
       </div>
       <p
         v-if="notice"
@@ -350,13 +370,13 @@ const isDownloadDisabled = computed(
         >
           <span>{{
             hasPageAssets
-              ? `已选 ${targetPages.length} 个分 P`
-              : '每个视频保存一份封面'
+              ? i18n.t('downloadPanel.partsSelected', targetPages.length)
+              : i18n.t('downloadPanel.oneCoverPerVideo')
           }}</span>
           <span class="text-foreground"
             >{{
               isBundleEnabled
-                ? `素材组合 · ${bundleTaskCount} 个素材`
+                ? i18n.t('downloadPanel.bundleAssets', bundleTaskCount)
                 : DOWNLOAD_KIND_LABELS[kind]
             }}<template v-if="!isBundleEnabled && kind === 'video'">
               · {{ QUALITY_LABELS[settings.quality] }}</template
@@ -380,15 +400,15 @@ const isDownloadDisabled = computed(
           ><FolderIcon
             class="size-4"
             aria-hidden="true"
-          />Bilibili 文件夹</span
+          />{{ i18n.t('downloadPanel.bilibiliFolder') }}</span
         >
         <Button
           @click="openManager"
           variant="ghost"
           size="sm"
           class="h-7 text-primary"
-          >下载中心
-          <ArrowUpRightIcon
+          >{{ i18n.t('downloadPanel.downloadCenter')
+          }}<ArrowUpRightIcon
             class="size-4"
             aria-hidden="true"
         /></Button>

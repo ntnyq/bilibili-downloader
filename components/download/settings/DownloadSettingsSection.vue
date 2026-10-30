@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { CheckIcon } from '@lucide/vue'
+import { i18n } from '~/utils/i18n'
 import type { VNode } from 'vue'
 
 interface Props {
@@ -53,7 +54,7 @@ const titleId = useId()
         <CheckIcon
           class="size-3"
           aria-hidden="true"
-        />自动保存
+        />{{ i18n.t('downloadSettingsSection.savedAutomatically') }}
       </p>
     </div>
     <div class="min-w-0"><slot /></div>

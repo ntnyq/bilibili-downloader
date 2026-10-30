@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { i18n } from '~/utils/i18n'
 import { normalizeMediaUrl } from './streams'
 import type { SubtitleLanguage } from '../../types/download'
 
@@ -60,20 +61,20 @@ export function selectSubtitle(
   )[0]
   if (!chosen) {
     if (data.need_login_subtitle) {
-      throw new Error('字幕需要登录 B 站后才能获取，请登录后重试。')
+      throw new Error(i18n.t('subtitles.signInToBilibiliToAccessSubtitlesThen'))
     }
     throw new Error(
       language === 'auto'
-        ? '此分 P 没有可导出的字幕。'
-        : '此分 P 没有所选语言的字幕，请更换语言后重新添加。',
+        ? i18n.t('subtitles.thisPartHasNoExportableSubtitles')
+        : i18n.t('subtitles.thisPartHasNoSubtitlesInTheSelected'),
     )
   }
   if (!chosen.url) {
-    throw new Error('字幕地址不受支持，请更新扩展后重试。')
+    throw new Error(i18n.t('subtitles.thisSubtitleUrlIsNotSupportedUpdateThe'))
   }
   return {
     url: chosen.url,
-    label: `${chosen.lan_doc || chosen.lan}${chosen.isAutomatic ? '（自动）' : ''}`,
+    label: `${chosen.lan_doc || chosen.lan}${chosen.isAutomatic ? i18n.t('subtitles.automatic') : ''}`,
   }
 }
 
@@ -86,7 +87,9 @@ const subtitleBodySchema = z.object({
           to: z.number().nonnegative().max(3600000),
           content: z.string(),
         })
-        .refine(cue => cue.to > cue.from, '字幕结束时间必须晚于开始时间。'),
+        .refine(cue => cue.to > cue.from, {
+          error: () => i18n.t('subtitles.subtitleEndTimeMustBeAfterStartTime'),
+        }),
     )
     .max(100000),
 })
@@ -133,7 +136,7 @@ export function subtitlesToSrt(value: unknown): string {
     )
     .toSorted((a, b) => a.from - b.from)
   if (!cues.length) {
-    throw new Error('字幕内容为空，未保存文件。')
+    throw new Error(i18n.t('subtitles.subtitleContentIsEmptyNoFileWasSaved'))
   }
   return cues
     .map(

@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import { MediaNetworkError } from './fetchMediaBytes'
 import {
   MEDIA_CACHE_CHUNK_BYTES,
@@ -38,11 +39,15 @@ function parseByteCount(value: string | null): number | null {
     return null
   }
   if (!/^(?:0|[1-9]\d*)$/u.test(value)) {
-    throw new MediaNetworkError('素材服务器返回了无效的文件大小。')
+    throw new MediaNetworkError(
+      i18n.t('fetchCachedMedia.theMediaServerReturnedAnInvalidFileSize'),
+    )
   }
   const size = Number(value)
   if (!Number.isSafeInteger(size)) {
-    throw new MediaNetworkError('素材服务器返回了无效的文件大小。')
+    throw new MediaNetworkError(
+      i18n.t('fetchCachedMedia.theMediaServerReturnedAnInvalidFileSize'),
+    )
   }
   return size
 }
@@ -67,7 +72,9 @@ function parseContentRange(value: string | null): MediaRange {
     || start > end
     || end >= total
   ) {
-    throw new MediaNetworkError('素材服务器返回了无效的续传范围。')
+    throw new MediaNetworkError(
+      i18n.t('fetchCachedMedia.theMediaServerReturnedAnInvalidResumeRange'),
+    )
   }
   return {
     start,
@@ -91,7 +98,9 @@ function parseContentRange(value: string | null): MediaRange {
 async function createMediaResourceKey(url: string): Promise<string> {
   const parsed = new URL(url)
   if (!['https:', 'http:'].includes(parsed.protocol)) {
-    throw new MediaNetworkError('素材地址协议无效。')
+    throw new MediaNetworkError(
+      i18n.t('fetchCachedMedia.invalidMediaUrlProtocol'),
+    )
   }
   // ETags are scoped to a resource. A different CDN host or media path must
   // start afresh even when an unrelated resource happens to share its ETag.
@@ -115,7 +124,9 @@ async function createMediaResourceKey(url: string): Promise<string> {
  */
 function assertMediaSizeLimit(received: number, maxBytes: number) {
   if (received > maxBytes) {
-    throw new RangeError('素材超过剩余大小限制，已停止下载。')
+    throw new RangeError(
+      i18n.t('fetchCachedMedia.theAssetExceedsTheRemainingSizeLimitDownload'),
+    )
   }
 }
 
@@ -162,7 +173,9 @@ export async function fetchCachedMedia({
   checkStorage,
 }: FetchCachedMediaOptions): Promise<Blob> {
   if (!Number.isSafeInteger(maxBytes) || maxBytes <= 0) {
-    throw new RangeError('素材超过剩余大小限制，已停止下载。')
+    throw new RangeError(
+      i18n.t('fetchCachedMedia.theAssetExceedsTheRemainingSizeLimitDownload'),
+    )
   }
   let lastError: unknown
   for (const url of urls) {
@@ -212,7 +225,9 @@ export async function fetchCachedMedia({
           if (checkStorage) {
             const state = await cache.read(inputKey)
             if (!state) {
-              throw new MediaCacheError('下载缓存已丢失，请重新下载。')
+              throw new MediaCacheError(
+                i18n.t('fetchCachedMedia.downloadCacheWasLostDownloadAgain'),
+              )
             }
             await checkStorage({
               received: state.received,
@@ -228,13 +243,20 @@ export async function fetchCachedMedia({
       const resetTimeout = () => {
         clearTimeout(timeout)
         timeout = setTimeout(
-          () => controller.abort(new Error('下载连接超时。')),
+          () =>
+            controller.abort(
+              new Error(i18n.t('fetchCachedMedia.downloadConnectionTimedOut')),
+            ),
           30000,
         )
       }
       const recover = async () => {
         if (hasRecovered) {
-          throw new MediaNetworkError('素材服务器无法安全恢复断点下载。')
+          throw new MediaNetworkError(
+            i18n.t(
+              'fetchCachedMedia.theMediaServerCannotSafelyResumeThisDownload',
+            ),
+          )
         }
         hasRecovered = true
         await cache.reset(inputKey, {
@@ -303,7 +325,10 @@ export async function fetchCachedMedia({
           )
         ) {
           throw new MediaNetworkError(
-            `素材服务器返回无法下载的响应（HTTP ${response.status}）。`,
+            i18n.t(
+              'fetchCachedMedia.theMediaServerReturnedAnUndownloadableResponseHttp',
+              [response.status],
+            ),
           )
         }
         const length = parseByteCount(response.headers.get('content-length'))
@@ -311,7 +336,11 @@ export async function fetchCachedMedia({
         let responseBytes: number | null = length
         if (response.status === 206) {
           if (!reusable || reusable.complete) {
-            throw new MediaNetworkError('素材服务器返回了意外的部分响应。')
+            throw new MediaNetworkError(
+              i18n.t(
+                'fetchCachedMedia.theMediaServerReturnedAnUnexpectedPartialResponse',
+              ),
+            )
           }
           let range: MediaRange
           try {
@@ -339,13 +368,19 @@ export async function fetchCachedMedia({
           state = { received: reusable.received, total: range.total }
         } else {
           if (response.headers.has('content-range')) {
-            throw new MediaNetworkError('素材服务器返回了不一致的文件范围。')
+            throw new MediaNetworkError(
+              i18n.t(
+                'fetchCachedMedia.theMediaServerReturnedAnInconsistentFileRange',
+              ),
+            )
           }
           if (length !== null) {
             assertMediaSizeLimit(length, maxBytes)
           }
           if (length === 0) {
-            throw new MediaNetworkError('素材服务器返回了空文件。')
+            throw new MediaNetworkError(
+              i18n.t('fetchCachedMedia.theMediaServerReturnedAnEmptyFile'),
+            )
           }
           // A 200 response ignored Range or describes a new representation.
           // Delete the old prefix before consuming any bytes from this body.
@@ -373,7 +408,9 @@ export async function fetchCachedMedia({
             responseBytes !== null
             && transferred + value.byteLength > responseBytes
           ) {
-            throw new MediaNetworkError('素材响应大小超过声明的范围。')
+            throw new MediaNetworkError(
+              i18n.t('fetchCachedMedia.theMediaResponseExceedsItsDeclaredSize'),
+            )
           }
           transferred += value.byteLength
           received += value.byteLength
@@ -399,7 +436,11 @@ export async function fetchCachedMedia({
           !transferred
           || (responseBytes !== null && transferred !== responseBytes)
         ) {
-          throw new MediaNetworkError('素材传输不完整，已保留下载缓存。')
+          throw new MediaNetworkError(
+            i18n.t(
+              'fetchCachedMedia.mediaTransferIncompleteDownloadCacheRetained',
+            ),
+          )
         }
         if (state.total !== null && received < state.total) {
           // Valid ranges strictly advance toward a stable, finite total. Only
@@ -435,7 +476,10 @@ export async function fetchCachedMedia({
       }
     }
   }
-  throw new MediaNetworkError('所有素材线路均下载失败，已保留下载缓存。', {
-    cause: lastError,
-  })
+  throw new MediaNetworkError(
+    i18n.t('fetchCachedMedia.allMediaSourcesFailedDownloadCacheRetained'),
+    {
+      cause: lastError,
+    },
+  )
 }

@@ -1,5 +1,6 @@
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { exportNativeTask } from '~/utils/downloads/native/exportNativeTask'
+import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
 
 export function useNativeDownload() {
@@ -19,7 +20,9 @@ export function useNativeDownload() {
     controller = new AbortController()
     try {
       await exportNativeTask(job, controller.signal)
-      notice.value = '本地任务已导出，请按上方「下载缓存与大型任务」说明运行。'
+      notice.value = i18n.t(
+        'useNativeDownload.localTaskExportedFollowTheLocalHelperInstructions',
+      )
     } catch (error_) {
       error.value = getErrorMessage(error_)
     } finally {

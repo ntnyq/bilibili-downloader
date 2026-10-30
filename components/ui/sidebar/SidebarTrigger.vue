@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { i18n } from '~/utils/i18n'
 import { PanelLeft } from '@lucide/vue'
 import { cn } from 'cn'
 import { Button } from '~/components/ui/button'
@@ -22,6 +23,6 @@ const { toggleSidebar } = useSidebar()
     data-slot="sidebar-trigger"
   >
     <PanelLeft />
-    <span class="sr-only">Toggle Sidebar</span>
+    <span class="sr-only">{{ i18n.t('common.toggleSidebar') }}</span>
   </Button>
 </template>

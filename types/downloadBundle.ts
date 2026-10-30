@@ -1,10 +1,11 @@
 import { z } from 'zod'
+import { i18n } from '~/utils/i18n'
 import { downloadKindSchema } from './download'
 import type { DownloadJob } from './download'
 
 export const bundleKindsSchema = z
   .array(downloadKindSchema)
-  .min(1, '请至少选择一种素材。')
+  .min(1, { error: () => i18n.t('downloadBundlePicker.selectAtLeastOneAsset') })
   .max(5)
   .transform(kinds => [...new Set(kinds)])
 

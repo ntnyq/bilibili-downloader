@@ -4,6 +4,7 @@ import { formatBytes } from '~/utils/downloads/format'
 import { getJobStatusLabel, STATUS_LABELS } from '~/utils/downloads/labels'
 import { canPauseJob } from '~/utils/downloads/queue/control'
 import { isJobActive } from '~/utils/downloads/queue/jobs'
+import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
 
 const props = defineProps<{
@@ -50,9 +51,8 @@ const canRetry = computed(() =>
           size="sm"
           class="text-muted-foreground hover:text-primary"
           type="button"
+          >{{ i18n.t('downloadProgress.pause') }}</Button
         >
-          暂停
-        </Button>
         <Button
           @click="emit('resume', job.id)"
           v-else-if="job.status === 'paused'"
@@ -60,9 +60,8 @@ const canRetry = computed(() =>
           size="sm"
           class="text-muted-foreground hover:text-primary"
           type="button"
+          >{{ i18n.t('downloadProgress.resume') }}</Button
         >
-          继续
-        </Button>
         <Button
           @click="emit('cancel', job.id)"
           v-if="isActive"
@@ -70,9 +69,8 @@ const canRetry = computed(() =>
           size="sm"
           class="text-muted-foreground hover:text-primary"
           type="button"
+          >{{ i18n.t('downloadProgress.cancel') }}</Button
         >
-          取消
-        </Button>
         <Button
           @click="emit('retry', job.id)"
           v-else-if="canRetry"
@@ -80,25 +78,25 @@ const canRetry = computed(() =>
           size="sm"
           class="text-muted-foreground hover:text-primary"
           type="button"
+          >{{ i18n.t('downloadProgress.retry') }}</Button
         >
-          重试
-        </Button>
       </div>
     </div>
     <Progress
       v-if="isActive && job.status !== 'queued'"
       :model-value="job.progress"
+      :aria-label="i18n.t('downloadProgress.downloadProgressEstimated')"
       class="mt-3 h-1"
-      aria-label="下载进度（估算）"
     />
     <p
       v-if="job.status === 'downloading' || job.status === 'paused'"
       class="mt-1.5 text-muted-foreground"
     >
-      已下载 {{ formatBytes(job.receivedBytes)
-      }}<span v-if="job.totalBytes">
-        / 约 {{ formatBytes(job.totalBytes) }}</span
-      >
+      {{
+        i18n.t('downloadProgress.downloaded', [formatBytes(job.receivedBytes)])
+      }}<span v-if="job.totalBytes">{{
+        i18n.t('downloadProgress.approximately', [formatBytes(job.totalBytes)])
+      }}</span>
     </p>
     <p
       v-if="job.status === 'paused'"
@@ -106,8 +104,10 @@ const canRetry = computed(() =>
     >
       {{
         ['video', 'audio'].includes(job.kind)
-          ? '已停止传输并保留缓存，继续时将校验素材并尝试续传。'
-          : '已暂停，继续后将重新读取此素材。'
+          ? i18n.t(
+              'downloadProgress.transferStoppedAndCacheRetainedResumingWillValidate',
+            )
+          : i18n.t('downloadProgress.pausedResumingWillFetchThisAssetAgain')
       }}
     </p>
     <Alert

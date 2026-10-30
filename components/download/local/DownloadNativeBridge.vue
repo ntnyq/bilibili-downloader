@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useNativeBridge } from '~/composables/useNativeBridge'
+import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
 
 const props = defineProps<{
@@ -38,13 +39,21 @@ const isVisible = computed(
       type="button"
       class="text-muted-foreground hover:text-primary disabled:opacity-50"
     >
-      {{ isRunning ? '本地助手正在处理…' : '交给本地助手' }}
+      {{
+        isRunning
+          ? i18n.t('downloadNativeBridge.localHelperIsProcessing')
+          : i18n.t('downloadNativeBridge.sendToLocalHelper')
+      }}
     </Button>
     <p
       v-if="isRunning"
       class="mt-1.75 text-muted-foreground"
     >
-      请保持下载中心页面打开，完成文件会保存到安装时指定的目录。
+      {{
+        i18n.t(
+          'downloadNativeBridge.keepTheDownloadCenterOpenCompletedFilesAre',
+        )
+      }}
     </p>
     <p
       v-if="status"
@@ -57,7 +66,7 @@ const isVisible = computed(
       v-if="outputPath"
       class="mt-1.75 break-all text-muted-foreground"
     >
-      已保存：{{ outputPath }}
+      {{ i18n.t('downloadNativeBridge.saved', [outputPath]) }}
     </p>
     <Alert
       v-if="nativeError"

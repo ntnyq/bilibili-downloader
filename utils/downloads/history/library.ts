@@ -4,6 +4,7 @@ import {
   MAX_LIBRARY_BYTES,
   MAX_LIBRARY_RECORDS,
 } from '~/types/downloadHistory'
+import { i18n } from '~/utils/i18n'
 import { MAX_PENDING_JOBS } from '../constants'
 import { DOWNLOAD_KIND_LABELS } from '../labels'
 import { getJobIdentity } from '../queue/identity'
@@ -86,7 +87,9 @@ export function pruneDownloadLibrary(
   for (const record of unique.values()) {
     const recordBytes = encoder.encode(JSON.stringify(record)).byteLength
     if (recordBytes + bytes > MAX_LIBRARY_BYTES && !retained.length) {
-      throw new Error('单条下载记录超出长期记录存储上限。')
+      throw new Error(
+        i18n.t('library.thisDownloadRecordExceedsTheHistoryStorageLimit'),
+      )
     }
     const separatorBytes = retained.length ? 1 : 0
     if (
@@ -136,9 +139,7 @@ export function initializeDownloadLibrary(
         record => record.identity !== getJobIdentity(record),
       )
     ) {
-      throw new Error(
-        '长期下载记录格式损坏，无法读取。可清空长期记录后重新建立。',
-      )
+      throw new Error(i18n.t('library.downloadHistoryIsCorruptAndCannotBeRead'))
     }
     return pruneDownloadLibrary(result.data.records, result.data.evictedCount)
   }
@@ -243,10 +244,10 @@ export function createJobFromHistory(
 ): DownloadJob {
   const active = existingJobs.filter(isJobActive)
   if (active.some(job => getJobIdentity(job) === record.identity)) {
-    throw new Error('此素材已在下载队列中。')
+    throw new Error(i18n.t('library.thisAssetIsAlreadyQueued'))
   }
   if (active.length >= MAX_PENDING_JOBS) {
-    throw new Error('下载队列已满，请等待部分任务完成后再添加。')
+    throw new Error(i18n.t('jobs.theDownloadQueueIsFullWaitForSome'))
   }
   return {
     id: crypto.randomUUID(),

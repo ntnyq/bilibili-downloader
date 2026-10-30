@@ -4,6 +4,7 @@ import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/labels'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
 import { parseVideoLocation } from '~/utils/downloads/parseVideoLocation'
+import { i18n } from '~/utils/i18n'
 import type { MaybeRefOrGetter } from 'vue'
 
 export function useQuickDownload(url: MaybeRefOrGetter<string>) {
@@ -14,9 +15,12 @@ export function useQuickDownload(url: MaybeRefOrGetter<string>) {
   const label = computed(
     () => DOWNLOAD_KIND_LABELS[settings.value.doubleClickKind],
   )
-  const hint = computed(
-    () =>
-      `单击打开下载面板；双击下载${label.value}${settings.value.doubleClickKind === 'video' ? '（最高可用画质）' : ''}`,
+  const hint = computed(() =>
+    settings.value.doubleClickKind === 'video'
+      ? i18n.t('useQuickDownload.videoHint')
+      : i18n.t('useQuickDownload.clickToOpenTheDownloadPanelDoubleClick', [
+          label.value,
+        ]),
   )
   let revision = 0
   let feedbackTimer: ReturnType<typeof setTimeout> | undefined
@@ -34,11 +38,17 @@ export function useQuickDownload(url: MaybeRefOrGetter<string>) {
     clearFeedback()
     const target = parseVideoLocation(toValue(url))
     if (!target) {
-      error.value = '无法识别当前视频，请刷新页面后重试。'
+      error.value = i18n.t(
+        'useQuickDownload.cannotIdentifyTheCurrentVideoRefreshThePage',
+      )
       return
     }
     if (!isReady.value) {
-      error.value = settingsError.value || '正在读取下载设置，请稍后重试。'
+      error.value =
+        settingsError.value
+        || i18n.t(
+          'useQuickDownload.loadingDownloadSettingsPleaseTryAgainShortly',
+        )
       return
     }
     const id = revision
@@ -59,8 +69,13 @@ export function useQuickDownload(url: MaybeRefOrGetter<string>) {
       )
       if (id === revision) {
         notice.value = result.added
-          ? `${DOWNLOAD_KIND_LABELS[kind]}已加入下载队列${settings.value.isPaused ? '，队列恢复后开始下载' : ''}。`
-          : '该资源已在下载队列中。'
+          ? i18n.t('useQuickDownload.addedToTheDownloadQueue', [
+              DOWNLOAD_KIND_LABELS[kind],
+              settings.value.isPaused
+                ? i18n.t('useQuickDownload.downloadStartsWhenTheQueueResumes')
+                : '',
+            ])
+          : i18n.t('useQuickDownload.thisAssetIsAlreadyInTheDownloadQueue')
         feedbackTimer = setTimeout(clearFeedback, 5000)
       }
     } catch (error_) {

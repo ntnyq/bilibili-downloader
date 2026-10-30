@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import { nativeManifestSchema } from './manifest'
 import type { z } from 'zod'
 
@@ -59,7 +60,7 @@ export function createNativeRequest(
     new TextEncoder().encode(JSON.stringify(request)).byteLength
     > 1024 ** 2
   ) {
-    throw new Error('本地任务超过 1 MiB，无法直接交接。')
+    throw new Error(i18n.t('bridge.theLocalTaskExceeds1MibAndCannot'))
   }
   return request
 }

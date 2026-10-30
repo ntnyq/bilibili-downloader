@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { groupHistoryRecords } from '~/utils/downloads/history/groupHistoryRecords'
+import { i18n } from '~/utils/i18n'
 import DownloadLibraryItem from './DownloadLibraryItem.vue'
 import type { DownloadHistoryRecord } from '~/types/downloadHistory'
 
@@ -23,9 +24,9 @@ const groups = computed(() => groupHistoryRecords(props.records))
     >
       <div class="mb-2 flex items-center justify-between text-sm">
         <h2 class="font-medium">{{ group.label }}</h2>
-        <span class="text-xs text-muted-foreground"
-          >本页 {{ group.records.length }} 条记录</span
-        >
+        <span class="text-xs text-muted-foreground">{{
+          i18n.t('downloadLibraryList.recordsOnThisPage', group.records.length)
+        }}</span>
       </div>
       <ul class="divide-y overflow-hidden rounded-xl border bg-background">
         <DownloadLibraryItem

@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { browser } from '#imports'
+import { i18n } from '~/utils/i18n'
 
 const url = shallowRef('')
 const pageError = shallowRef('')
@@ -12,7 +13,7 @@ onMounted(async () => {
     })
     url.value = tab?.url || ''
   } catch {
-    pageError.value = '无法读取当前标签页，请刷新页面后重试。'
+    pageError.value = i18n.t('app.cannotReadTheCurrentTabRefreshThePage')
   }
 })
 </script>

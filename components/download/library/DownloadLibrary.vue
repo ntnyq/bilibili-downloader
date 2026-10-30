@@ -3,6 +3,7 @@ import { DownloadIcon, EllipsisIcon, HistoryIcon, InfoIcon } from '@lucide/vue'
 import { useDownloadHistory } from '~/composables/useDownloadHistory'
 import { useDownloadLibrary } from '~/composables/useDownloadLibrary'
 import { MAX_LIBRARY_RECORDS } from '~/types/downloadHistory'
+import { i18n } from '~/utils/i18n'
 import DownloadLibraryFilters from './DownloadLibraryFilters.vue'
 import DownloadLibraryList from './DownloadLibraryList.vue'
 
@@ -36,17 +37,23 @@ const {
 const isClearPending = shallowRef(false)
 const emptyTitle = computed(() => {
   if (!isReady.value) {
-    return isRefreshing.value ? '正在读取下载历史…' : '下载历史暂不可用'
+    return isRefreshing.value
+      ? i18n.t('downloadLibrary.loadingDownloadHistory')
+      : i18n.t('downloadLibrary.downloadHistoryUnavailable')
   }
-  return records.value.length ? '没有匹配的下载记录' : '这里会记住每一份收藏'
+  return records.value.length
+    ? i18n.t('downloadLibrary.noMatchingDownloadRecords')
+    : i18n.t('downloadLibrary.yourSavedCollectionStartsHere')
 })
 const emptyDescription = computed(() => {
   if (!isReady.value) {
-    return '请稍后重试。'
+    return i18n.t('downloadLibrary.pleaseTryAgainLater')
   }
   return records.value.length
-    ? '试试其他关键词，或查看全部素材。'
-    : '成功下载的素材会自动保存在这里。'
+    ? i18n.t('downloadLibrary.tryDifferentKeywordsOrViewAllAssets')
+    : i18n.t(
+        'downloadLibrary.successfullyDownloadedAssetsWillAppearHereAutomatically',
+      )
 })
 
 function resetFilters() {
@@ -73,42 +80,54 @@ function clearHistory() {
             ><Button
               :disabled="isExporting || !filteredRecords.length"
               variant="outline"
-              ><DownloadIcon class="size-4" />导出记录</Button
+              ><DownloadIcon class="size-4" />{{
+                i18n.t('downloadLibrary.exportRecords')
+              }}</Button
             ></DropdownMenuTrigger
           >
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel
-              >导出当前筛选的
-              {{ filteredRecords.length }} 条记录</DropdownMenuLabel
+            <DropdownMenuLabel>{{
+              i18n.t(
+                'downloadLibrary.exportFilteredRecords',
+                filteredRecords.length,
+              )
+            }}</DropdownMenuLabel>
+            <DropdownMenuItem
+              @select="downloadHistory(filteredRecords, 'json')"
+              >{{ i18n.t('downloadLibrary.exportJson') }}</DropdownMenuItem
             >
-            <DropdownMenuItem @select="downloadHistory(filteredRecords, 'json')"
-              >导出 JSON</DropdownMenuItem
-            >
-            <DropdownMenuItem @select="downloadHistory(filteredRecords, 'csv')"
-              >导出 CSV</DropdownMenuItem
+            <DropdownMenuItem
+              @select="downloadHistory(filteredRecords, 'csv')"
+              >{{ i18n.t('downloadLibrary.exportCsv') }}</DropdownMenuItem
             >
           </DropdownMenuContent>
         </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger as-child
             ><Button
+              :aria-label="i18n.t('downloadLibrary.moreHistoryActions')"
               variant="outline"
               size="icon"
-              aria-label="更多历史记录操作"
               ><EllipsisIcon class="size-4" /></Button
           ></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
               @select="refresh"
               :disabled="isRefreshing || isBusy"
-              >{{ isRefreshing ? '正在刷新…' : '刷新记录' }}</DropdownMenuItem
+              >{{
+                isRefreshing
+                  ? i18n.t('downloadLibrary.refreshing')
+                  : i18n.t('downloadLibrary.refreshRecords')
+              }}</DropdownMenuItem
             >
             <DropdownMenuSeparator />
             <DropdownMenuItem
               @select="isClearPending = true"
               :disabled="isBusy || (!records.length && !libraryError)"
               class="text-destructive"
-              >清空下载历史</DropdownMenuItem
+              >{{
+                i18n.t('downloadLibrary.clearDownloadHistory')
+              }}</DropdownMenuItem
             >
           </DropdownMenuContent>
         </DropdownMenu>
@@ -118,31 +137,44 @@ function clearHistory() {
       id="download-library-title"
       class="sr-only"
     >
-      下载历史
+      {{ i18n.t('downloadWorkspace.downloadHistory') }}
     </h2>
     <p
       v-if="evictedCount"
       class="mb-4 text-xs text-muted-foreground"
     >
-      已因存储上限移除
-      {{ evictedCount }} 条旧记录；这些素材可能再次加入批量下载。
+      {{
+        i18n.t(
+          'downloadLibrary.oldRecordsWereRemovedDueToStorageLimits',
+          evictedCount,
+        )
+      }}
     </p>
     <AlertDialog v-model:open="isClearPending">
       <AlertDialogContent>
         <AlertDialogHeader
-          ><AlertDialogTitle>清空下载历史？</AlertDialogTitle
-          ><AlertDialogDescription
-            >清空{{
-              isReady ? `全部 ${records.length} 条记录` : '无法读取的下载历史'
-            }}后，批量导入将不再依据这些记录跳过素材。已保存文件不受影响。</AlertDialogDescription
-          ></AlertDialogHeader
+          ><AlertDialogTitle>{{
+            i18n.t('downloadLibrary.clearDownloadHistory2')
+          }}</AlertDialogTitle
+          ><AlertDialogDescription>{{
+            i18n.t(
+              'downloadLibrary.afterClearingBatchImportsWillNoLongerSkip',
+              [
+                isReady
+                  ? i18n.t('downloadLibrary.allRecords', records.length)
+                  : i18n.t('downloadLibrary.theUnreadableDownloadHistory'),
+              ],
+            )
+          }}</AlertDialogDescription></AlertDialogHeader
         >
         <AlertDialogFooter
-          ><AlertDialogCancel>保留记录</AlertDialogCancel
+          ><AlertDialogCancel>{{
+            i18n.t('downloadLibrary.keepRecords')
+          }}</AlertDialogCancel
           ><AlertDialogAction
             @click="clearHistory"
             :disabled="isBusy"
-            >确认清空</AlertDialogAction
+            >{{ i18n.t('downloadLibrary.confirmClear') }}</AlertDialogAction
           ></AlertDialogFooter
         >
       </AlertDialogContent>
@@ -190,18 +222,16 @@ function clearHistory() {
         variant="outline"
         size="sm"
         class="mt-4"
+        >{{ i18n.t('downloadLibrary.clearFilters') }}</Button
       >
-        清除筛选
-      </Button>
       <Button
         @click="refresh"
         v-if="!isReady && !isRefreshing"
         variant="outline"
         size="sm"
         class="mt-4"
+        >{{ i18n.t('downloadPanel.reload') }}</Button
       >
-        重新读取
-      </Button>
     </div>
     <Collapsible
       class="mt-6 rounded-lg bg-secondary px-4 py-3 text-xs text-muted-foreground"
@@ -212,38 +242,49 @@ function clearHistory() {
           aria-hidden="true"
         />
         <p class="min-w-0 flex-1">
-          这里保存下载记录；移除记录不会删除电脑上的文件。
+          {{
+            i18n.t(
+              'downloadLibrary.downloadRecordsAreStoredHereRemovingARecord',
+            )
+          }}
         </p>
         <CollapsibleTrigger as-child>
           <Button
             variant="ghost"
             size="xs"
+            >{{ i18n.t('downloadLibrary.learnMore') }}</Button
           >
-            了解更多
-          </Button>
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent class="mt-3 space-y-2 leading-6">
         <p>
-          独立保留每份素材最近一次成功下载，最多 {{ MAX_LIBRARY_RECORDS }} 条或
-          3 MB，达到上限时移除最旧记录。清除下载队列记录不会影响这里。
+          {{
+            i18n.t(
+              'downloadLibrary.theMostRecentSuccessfulDownloadOfEachAsset',
+              [MAX_LIBRARY_RECORDS],
+            )
+          }}
         </p>
         <p>
-          删除记录会让批量导入不再跳过对应素材。再次下载沿用原任务的画质、命名与目录设置，实际可用素材可能变化。
+          {{
+            i18n.t(
+              'downloadLibrary.deletingRecordsPreventsBatchImportsFromSkippingThose',
+            )
+          }}
         </p>
       </CollapsibleContent>
     </Collapsible>
     <nav
       v-if="filteredRecords.length"
-      aria-label="下载历史分页"
+      :aria-label="i18n.t('downloadLibrary.downloadHistoryPagination')"
       class="mt-5 flex flex-wrap items-center justify-end gap-3 text-xs"
     >
-      <span class="mr-auto text-muted-foreground"
-        >筛选结果 {{ filteredRecords.length }} 条</span
-      >
-      <span class="text-muted-foreground"
-        >第 {{ page }} / {{ pageCount }} 页 · 每页 20 条</span
-      >
+      <span class="mr-auto text-muted-foreground">{{
+        i18n.t('downloadLibrary.matchingRecords', filteredRecords.length)
+      }}</span>
+      <span class="text-muted-foreground">{{
+        i18n.t('downloadLibrary.page20PerPage', [page, pageCount])
+      }}</span>
       <Button
         @click="previousPage"
         :disabled="page <= 1"
@@ -251,9 +292,8 @@ function clearHistory() {
         size="sm"
         type="button"
         class="text-muted-foreground hover:text-primary disabled:opacity-50"
+        >{{ i18n.t('downloadLibrary.previous') }}</Button
       >
-        上一页
-      </Button>
       <Button
         @click="nextPage"
         :disabled="page >= pageCount"
@@ -261,9 +301,8 @@ function clearHistory() {
         size="sm"
         type="button"
         class="text-muted-foreground hover:text-primary disabled:opacity-50"
+        >{{ i18n.t('downloadLibrary.next') }}</Button
       >
-        下一页
-      </Button>
     </nav>
   </section>
 </template>

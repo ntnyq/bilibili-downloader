@@ -1,6 +1,7 @@
 import { z } from 'zod'
 import { videoIdSchema } from '~/types/download'
 import { normalizeMediaUrl } from '~/utils/bilibili/streams'
+import { i18n } from '~/utils/i18n'
 import { createDownloadPath } from '../files/createDownloadPath'
 import type { DownloadJob } from '~/types/download'
 import type { SelectedMedia } from '~/utils/bilibili/streams'
@@ -64,7 +65,7 @@ export const nativeManifestSchema = z
     ) {
       context.addIssue({
         code: 'custom',
-        message: '本地任务的媒体轨数量无效。',
+        message: i18n.t('manifest.invalidNumberOfMediaTracksInTheLocal'),
       })
     }
     if (
@@ -72,7 +73,7 @@ export const nativeManifestSchema = z
     ) {
       context.addIssue({
         code: 'custom',
-        message: '本地任务的输出扩展名无效。',
+        message: i18n.t('manifest.invalidOutputExtensionInTheLocalTask'),
       })
     }
   })
@@ -97,7 +98,7 @@ export function createNativeManifest(job: DownloadJob, media: SelectedMedia) {
     !['video', 'audio'].includes(job.kind)
     || (job.kind === 'audio') !== (media.kind === 'audio')
   ) {
-    throw new Error('仅视频和音频任务可交给本地 FFmpeg 助手。')
+    throw new Error(i18n.t('manifest.onlyVideoAndAudioTasksCanBeSent'))
   }
   return nativeManifestSchema.parse({
     version: 1,

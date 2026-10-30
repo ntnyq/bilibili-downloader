@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import { MAX_PENDING_JOBS } from '../constants'
 import { getJobIdentity } from '../queue/identity'
 import {
@@ -16,7 +17,7 @@ import type {
 
 export class BatchQueueFullError extends Error {
   constructor() {
-    super('下载队列已满，请等待部分任务完成后再添加。')
+    super(i18n.t('jobs.theDownloadQueueIsFullWaitForSome'))
     this.name = 'BatchQueueFullError'
   }
 }
@@ -74,7 +75,7 @@ export function createBatchJobs(
       ? video.pages.slice(0, 1)
       : selectVideoPages(video.pages, item.page, options.mode)
   if (!pages.length) {
-    throw new Error('找不到当前分 P，请刷新视频页面后重试。')
+    throw new Error(i18n.t('jobs.cannotFindTheCurrentPartRefreshTheVideo'))
   }
   const activeJobs = existing.filter(isJobActive)
   const blocked = new Set(

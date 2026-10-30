@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { i18n } from '~/utils/i18n'
 import { cn } from 'cn'
 import { useSidebar } from './utils'
 import type { HTMLAttributes } from 'vue'
@@ -26,8 +27,8 @@ const { toggleSidebar } = useSidebar()
       )
     "
     data-sidebar="rail"
-    aria-label="Toggle Sidebar"
-    title="Toggle Sidebar"
+    :aria-label="i18n.t('common.toggleSidebar')"
+    :title="i18n.t('common.toggleSidebar')"
     data-slot="sidebar-rail"
   >
     <slot />

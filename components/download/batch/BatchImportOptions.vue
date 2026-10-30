@@ -12,6 +12,7 @@ import {
   QUALITY_LABELS,
   SUBTITLE_LANGUAGE_LABELS,
 } from '~/utils/downloads/labels'
+import { i18n } from '~/utils/i18n'
 import type {
   DownloadKind,
   QualityPreference,
@@ -31,15 +32,19 @@ const skipCompleted = defineModel<boolean>('skipCompleted', { required: true })
 const isExpanded = shallowRef(false)
 const toggleLabel = computed(() => {
   if (isExpanded.value) {
-    return '收起选项'
+    return i18n.t('batchImportOptions.hideOptions')
   }
-  return props.disabled ? '查看选项' : '修改选项'
+  return props.disabled
+    ? i18n.t('batchImportOptions.viewOptions')
+    : i18n.t('batchImportOptions.editOptions')
 })
 const formatLabel = computed(() => {
   if (kind.value === 'video') {
-    return '画质偏好'
+    return i18n.t('batchImportOptions.qualityPreference')
   }
-  return kind.value === 'subtitle' ? '字幕语言' : '保存格式'
+  return kind.value === 'subtitle'
+    ? i18n.t('batchImportOptions.subtitleLanguage')
+    : i18n.t('batchImportOptions.outputFormat')
 })
 const formatValue = computed(() => {
   if (kind.value === 'video') {
@@ -51,10 +56,10 @@ const formatValue = computed(() => {
 })
 const rangeLabel = computed(() =>
   kind.value === 'cover'
-    ? '每个视频一张封面'
+    ? i18n.t('batchImportOptions.oneCoverPerVideo')
     : mode.value === 'all'
-      ? '每个视频的全部 P'
-      : '链接指定 P / 首个 P',
+      ? i18n.t('batchImportOptions.allPartsOfEachVideo')
+      : i18n.t('batchImportOptions.linkedPartFirstPart'),
 )
 </script>
 
@@ -68,7 +73,7 @@ const rangeLabel = computed(() =>
         <Settings2Icon
           class="size-4"
           aria-hidden="true"
-        />下载选项
+        />{{ i18n.t('batchImportOptions.downloadOptions') }}
       </h3>
       <CollapsibleTrigger as-child
         ><Button
@@ -83,7 +88,9 @@ const rangeLabel = computed(() =>
     </div>
     <dl class="my-4 grid gap-3 text-xs sm:grid-cols-3 sm:divide-x">
       <div>
-        <dt class="mb-1 text-muted-foreground">下载内容</dt>
+        <dt class="mb-1 text-muted-foreground">
+          {{ i18n.t('batchImportOptions.downloadContent') }}
+        </dt>
         <dd>{{ DOWNLOAD_KIND_LABELS[kind] }}</dd>
       </div>
       <div class="sm:pl-4">
@@ -95,7 +102,9 @@ const rangeLabel = computed(() =>
         </dd>
       </div>
       <div class="sm:pl-4">
-        <dt class="mb-1 text-muted-foreground">分 P 范围</dt>
+        <dt class="mb-1 text-muted-foreground">
+          {{ i18n.t('batchImportOptions.partRange') }}
+        </dt>
         <dd>{{ rangeLabel }}</dd>
       </div>
     </dl>
@@ -103,7 +112,7 @@ const rangeLabel = computed(() =>
       ><Checkbox
         v-model="skipCompleted"
         :disabled
-      />跳过已完成的相同内容</Label
+      />{{ i18n.t('batchImportOptions.skipPreviouslyCompletedAssets') }}</Label
     >
     <CollapsibleContent class="mt-4 border-t pt-1">
       <div class="grid gap-x-7 sm:grid-cols-2">
@@ -127,32 +136,44 @@ const rangeLabel = computed(() =>
             <Label
               as="span"
               class="shrink-0 text-muted-foreground"
-              >分 P 范围</Label
+              >{{ i18n.t('batchImportOptions.partRange') }}</Label
             >
             <Select
               v-model="mode"
               :disabled
               ><SelectTrigger
-                aria-label="分 P 范围"
+                :aria-label="i18n.t('batchImportOptions.partRange')"
                 class="w-47.5 max-w-full"
-                ><SelectValue /></SelectTrigger
+                ><SelectValue>{{
+                  mode === 'all'
+                    ? i18n.t('batchImportOptions.allPartsOfEachVideo')
+                    : i18n.t('batchImportOptions.linkedPartFirstPart')
+                }}</SelectValue></SelectTrigger
               ><SelectContent>
-                <SelectItem value="current">链接指定 P / 首个 P</SelectItem>
-                <SelectItem value="all">每个视频的全部 P</SelectItem>
+                <SelectItem value="current">{{
+                  i18n.t('batchImportOptions.linkedPartFirstPart')
+                }}</SelectItem>
+                <SelectItem value="all">{{
+                  i18n.t('batchImportOptions.allPartsOfEachVideo')
+                }}</SelectItem>
               </SelectContent></Select
             >
           </div>
           <p class="mt-2.5 text-[11px] text-muted-foreground leading-4.5">
             {{
               kind === 'cover'
-                ? '每个视频保存一张封面。'
-                : '链接中的 p 参数指定分 P；收藏夹、合集和投稿默认取首个 P。选择全部 P 后逐个展开。'
+                ? i18n.t('batchImportOptions.saveOneCoverPerVideo')
+                : i18n.t(
+                    'batchImportOptions.thePParameterSelectsAPartFavoritesCollections',
+                  )
             }}
           </p>
           <p class="mt-1.5 text-[11px] text-muted-foreground leading-4.5">
-            依据本机的已下载记录，同一分 P、同一下载内容只加入一次。最多保留
-            5000 条、3
-            MiB，超出后移除最早记录；清除记录后无法识别。排队中的相同任务始终跳过。
+            {{
+              i18n.t(
+                'batchImportOptions.localHistoryPreventsDuplicateDownloadsOfTheSame',
+              )
+            }}
           </p>
         </div>
       </div>

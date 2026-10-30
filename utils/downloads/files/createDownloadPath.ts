@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import { DOWNLOAD_KIND_LABELS } from '../labels'
 import type { DownloadJob } from '~/types/download'
 
@@ -23,7 +24,8 @@ export function sanitizeFilename(value: string, limit = 220): string {
     }
     result += char
   }
-  result = result.replace(/[. ]+$/g, '') || '视频'
+  result =
+    result.replace(/[. ]+$/g, '') || i18n.t('downloadLibraryFilters.video')
   return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(result)
     ? `_${result}`
     : result
@@ -66,10 +68,15 @@ export function createDownloadPath(
     partSuffix: isMultipart
       ? `_P${String(job.page).padStart(2, '0')}_${sanitizeFilename(job.part, 60)}`
       : '',
-    owner: sanitizeFilename(job.owner || '未知 UP', 60),
+    owner: sanitizeFilename(
+      job.owner || i18n.t('createDownloadPath.unknownUploader'),
+      60,
+    ),
     quality: sanitizeFilename(
       job.quality
-        || (job.kind === 'video' ? '最高画质' : DOWNLOAD_KIND_LABELS[job.kind]),
+        || (job.kind === 'video'
+          ? i18n.t('createDownloadPath.bestQuality')
+          : DOWNLOAD_KIND_LABELS[job.kind]),
       40,
     ),
     type: DOWNLOAD_KIND_LABELS[job.kind],
@@ -83,7 +90,7 @@ export function createDownloadPath(
   )
   const folders = ['Bilibili']
   if (['owner', 'owner-video'].includes(job.folderMode)) {
-    folders.push(values.owner || '未知 UP')
+    folders.push(values.owner || i18n.t('createDownloadPath.unknownUploader'))
   }
   if (['video', 'owner-video'].includes(job.folderMode)) {
     folders.push(`${values.title}_${job.bvid}`)
@@ -97,7 +104,7 @@ export function createDownloadPath(
   }
   const suffix = extension || extensions[job.kind]
   if (!/^(?:mp4|m4a|jpg|png|webp|gif|srt|xml)$/.test(suffix)) {
-    throw new Error('不支持的文件格式。')
+    throw new Error(i18n.t('createDownloadPath.unsupportedFileFormat'))
   }
   return [...folders, `${name}.${suffix}`].join('/')
 }

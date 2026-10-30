@@ -1,4 +1,5 @@
 import { browser } from '#imports'
+import { i18n } from '~/utils/i18n'
 
 /**
  * Saves a Blob through browser downloads and retains its object URL until a
@@ -42,7 +43,11 @@ export async function saveFile(
         return
       }
       if (!item || item.state === 'interrupted') {
-        throw new Error(`文件保存失败：${item?.error || '下载已被移除'}。`)
+        throw new Error(
+          i18n.t('saveFile.fileSavingFailed', [
+            item?.error || i18n.t('saveFile.downloadRemoved'),
+          ]),
+        )
       }
       await new Promise(resolve => setTimeout(resolve, 500))
     }

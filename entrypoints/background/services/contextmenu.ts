@@ -1,4 +1,5 @@
 import { browser } from '#imports'
+import { i18n } from '~/utils/i18n'
 
 const contextMenus = {
   openOptionsPage: 'open-options-page',
@@ -7,7 +8,7 @@ const contextMenus = {
 export function registerContextmenu() {
   browser.contextMenus.create({
     id: contextMenus.openOptionsPage,
-    title: 'Open Options Page',
+    title: i18n.t('common.openOptions'),
   })
 
   browser.contextMenus.onClicked.addListener(params => {

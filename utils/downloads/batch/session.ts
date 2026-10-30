@@ -4,6 +4,7 @@ import {
   batchSessionSchema,
 } from '~/types/batchSession'
 import { downloadSettingsSchema } from '~/types/download'
+import { i18n } from '~/utils/i18n'
 import type {
   BatchAddResult,
   BatchImportOptions,
@@ -63,7 +64,13 @@ export function restoreBatchSession(session: BatchSession): BatchSessionData {
     ...session,
     rows: session.rows.map(row =>
       row.status === 'adding' && !row.receipt
-        ? { ...row, status: 'pending', outcome: '上次处理已中断，可手动继续。' }
+        ? {
+            ...row,
+            status: 'pending',
+            outcome: i18n.t(
+              'session.previousProcessingWasInterruptedResumeManually',
+            ),
+          }
         : row,
     ),
   })
@@ -111,7 +118,9 @@ export function saveBatchSession(
     if (
       [...committed.keys()].some(key => !data.rows.some(row => row.key === key))
     ) {
-      throw new Error('已加入的视频不能从当前会话移除，请开始新的预览。')
+      throw new Error(
+        i18n.t('session.queuedVideosCannotBeRemovedFromThisSession'),
+      )
     }
     data.rows = data.rows.map(
       row => committed.get(row.key) || { ...row, receipt: undefined },
@@ -171,13 +180,13 @@ export function getBatchSessionRow(
       ? session.rows.find(item => item.key === request.rowKey)
       : undefined
   if (!session || !row) {
-    throw new Error('批量会话已被替换，请重新载入已保存的会话。')
+    throw new Error(i18n.t('session.theBatchSessionWasReplacedReloadTheSaved'))
   }
   if (row.receipt) {
     return row
   }
   if (session.revision !== request.expectedRevision) {
-    throw new Error('批量会话已在其他页面更新，请重新载入已保存的会话。')
+    throw new Error(i18n.t('session.theBatchSessionWasUpdatedOnAnotherPage'))
   }
   const options = session.optionsSnapshot
   if (
@@ -188,7 +197,9 @@ export function getBatchSessionRow(
     || JSON.stringify(options)
       !== JSON.stringify(batchImportOptionsSchema.parse(request))
   ) {
-    throw new Error('批量导入选项已变化，请重新载入已保存的会话。')
+    throw new Error(
+      i18n.t('session.batchImportOptionsChangedReloadTheSavedSession'),
+    )
   }
   return row
 }
@@ -249,7 +260,7 @@ export function commitBatchSessionResult(
   result: BatchAddResult,
   now = Date.now(),
 ): BatchSession {
-  const counts = `加入 ${result.added} 个 · 跳过 ${result.skipped} 个`
+  const counts = i18n.t('session.addedSkipped', [result.added, result.skipped])
   return batchSessionSchema.parse({
     ...session,
     revision: session.revision + 1,

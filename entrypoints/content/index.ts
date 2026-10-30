@@ -2,6 +2,7 @@ import '~/assets/tailwind.css'
 import { createApp, shallowRef } from 'vue'
 import { createShadowRootUi, defineContentScript } from '#imports'
 import { DOWNLOAD_PAGE_MATCHES } from '~/constants/contentScript'
+import { initializeI18n } from '~/utils/i18n'
 import App from './App.vue'
 
 export default defineContentScript({
@@ -9,6 +10,7 @@ export default defineContentScript({
   runAt: 'document_idle',
   cssInjectionMode: 'ui',
   async main(ctx) {
+    await initializeI18n().catch(console.warn)
     const url = shallowRef(window.location.href)
     ctx.addEventListener(window, 'wxt:locationchange', event => {
       // Navigation API dispatches before window.location has changed.

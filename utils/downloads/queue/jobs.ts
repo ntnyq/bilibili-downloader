@@ -1,4 +1,5 @@
 import { DEFAULT_FILENAME_TEMPLATE } from '~/types/download'
+import { i18n } from '~/utils/i18n'
 import { MAX_PENDING_JOBS } from '../constants'
 import { isJobRunning } from './control'
 import { getJobIdentity } from './identity'
@@ -73,7 +74,7 @@ export function createDownloadJobs(
       ? video.pages.slice(0, 1)
       : selectVideoPages(video.pages, page, mode, options.selectedPages)
   if (!pages.length) {
-    throw new Error('找不到当前分 P，请刷新视频页面后重试。')
+    throw new Error(i18n.t('jobs.cannotFindTheCurrentPartRefreshTheVideo'))
   }
   const active = new Set(existing.filter(isJobActive).map(getJobIdentity))
   const pending = pages.filter(
@@ -88,7 +89,7 @@ export function createDownloadJobs(
       ),
   )
   if (active.size + pending.length > MAX_PENDING_JOBS) {
-    throw new Error('下载队列已满，请等待部分任务完成后再添加。')
+    throw new Error(i18n.t('jobs.theDownloadQueueIsFullWaitForSome'))
   }
   return pending.map(item => ({
     ...item,
@@ -135,10 +136,10 @@ export function selectVideoPages(
   if (mode === 'selected') {
     const selected = new Set(selectedPages)
     if (!selected.size) {
-      throw new Error('请至少选择一个分 P。')
+      throw new Error(i18n.t('jobs.selectAtLeastOnePart'))
     }
     if ([...selected].some(page => !pages.some(item => item.page === page))) {
-      throw new Error('所选分 P 已失效，请重新读取视频信息。')
+      throw new Error(i18n.t('jobs.theSelectedPartsAreNoLongerValidReload'))
     }
     return pages.filter(page => selected.has(page.page))
   }
@@ -190,10 +191,10 @@ export function retryDownloadJobs(
     }
   })
   if (active.size > MAX_PENDING_JOBS) {
-    throw new Error('下载队列已满，请等待部分任务完成后再重试。')
+    throw new Error(i18n.t('jobs.theDownloadQueueIsFullWaitForSome2'))
   }
   if (id && !added) {
-    throw new Error('此任务无需重试，或此分 P 已在下载队列中。')
+    throw new Error(i18n.t('jobs.thisTaskDoesNotNeedRetryingOrThis'))
   }
   return next
 }

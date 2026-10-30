@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { useNativeDownload } from '~/composables/useNativeDownload'
+import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
 
 const props = defineProps<{
@@ -31,7 +32,11 @@ const canExport = computed(
       type="button"
       class="text-muted-foreground hover:text-primary disabled:opacity-50"
     >
-      {{ isExporting ? '正在导出本地任务…' : '导出本地任务' }}
+      {{
+        isExporting
+          ? i18n.t('downloadNativeExport.exportingLocalTask')
+          : i18n.t('downloadNativeExport.exportLocalTask')
+      }}
     </Button>
     <Alert
       v-if="exportError"

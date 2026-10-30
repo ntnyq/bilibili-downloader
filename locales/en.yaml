@@ -1,2 +1,867 @@
-extensionDescription: Download Bilibili videos, audio, covers, subtitles and danmaku, with multi-part batch downloads and asset bundles.
+api:
+  bilibili: 'Bilibili: $1 ($2)$3'
+  bilibiliApiRequestFailedHttpPleaseTryAgain: Bilibili API request failed (HTTP $1). Please try again later.
+  bilibiliIsTemporarilyLimitingRequestsPlayTheVideo: 'Bilibili is temporarily limiting requests. Play the video normally on the website, then try again later.'
+  cannotParseTheBilibiliResponsePleaseTryAgain: Cannot parse the Bilibili response. Please try again later.
+  interactiveVideosAreNotSupportedChooseARegular: Interactive videos are not supported. Choose a regular single-part or multi-part video.
+  pleaseSignInOnTheBilibiliWebsiteFirst: . Please sign in on the Bilibili website first.
+  requestFailed: Request failed
+app:
+  cannotReadTheCurrentTabRefreshThePage: Cannot read the current tab. Refresh the page and try again.
+batch:
+  bilibiliReturnedAnEmptyPageLoadingStoppedPreview: Bilibili returned an empty page. Loading stopped. Preview again later.
+  bilibiliReturnedAnInconsistentPageNumberLoadingStopped: Bilibili returned an inconsistent page number. Loading stopped. Preview again.
+  cannotRecognizeThisVideoUrl: Cannot recognize this video URL.
+  collection: Collection $1
+  enterAFullBilibiliCollectionOrSeriesUrl: Enter a full Bilibili collection or series URL containing the uploader UID and collection ID.
+  enterASingleVideoUrl: Enter a single video URL.
+  enterAValidNumericIdOrBilibiliHttps: Enter a valid numeric ID or Bilibili HTTPS URL.
+  enterAValidVideoUrlWithAPart: Enter a valid video URL with a part number from 1 to 1000.
+  importUpToLinesAtATime:
+    1: Import up to $1 line at a time.
+    n: Import up to $1 lines at a time.
+  partNumbersMustBeBetween1And1000: Part numbers must be between 1 and 1000.
+  series: Series $1
+  theLinkListCannotExceed1Mb: The link list cannot exceed 1 MB.
+  theUrlDoesNotMatchTheSelectedSource: The URL does not match the selected source type or is missing a valid ID.
+  uploadsBy: Uploads by $1
+  useAFullBilibiliHttpsUrl: Use a full Bilibili HTTPS URL.
+batchImportOptions:
+  allPartsOfEachVideo: All parts of each video
+  downloadContent: Download content
+  downloadOptions: Download options
+  editOptions: Edit options
+  hideOptions: Hide options
+  linkedPartFirstPart: Linked part / first part
+  localHistoryPreventsDuplicateDownloadsOfTheSame: 'Local history prevents duplicate downloads of the same asset and part. Up to 5,000 records or 3 MiB are kept; the oldest are removed when full. Clearing history removes this information. Queued duplicates are always skipped.'
+  oneCoverPerVideo: One cover per video
+  outputFormat: Output format
+  partRange: Part range
+  qualityPreference: Quality preference
+  saveOneCoverPerVideo: Save one cover per video.
+  skipPreviouslyCompletedAssets: Skip previously completed assets
+  subtitleLanguage: Subtitle language
+  thePParameterSelectsAPartFavoritesCollections: 'The p parameter selects a part. Favorites, collections, and uploads use the first part by default. Select all parts to expand each video.'
+  viewOptions: View options
+batchImportSteps:
+  addToQueue: Add to queue
+  batchImportSteps: Batch import steps
+  chooseSource: Choose source
+  reviewVideos: Review videos
+batchPreview:
+  failed: Failed
+  notSelected: Not selected
+  partiallyCompleted: Partially completed
+  processed: Processed
+  selectAllPendingVideos: Select all pending videos
+  selectPart: Select $1 part $2
+  selected: Selected
+  selected2: $1 / $2 selected
+  videoPreviewList: Video preview list
+batchSession:
+  theBatchSessionContainsInvalidOrDuplicateVideo: The batch session contains invalid or duplicate video IDs.
+  theBatchSessionExceeds1MibReduceThe: The batch session exceeds 1 MiB. Reduce the pasted content and retry.
+batchSourceForm:
+  batchImportSource: Batch import source
+  collectionSeries: Collection / series
+  favorites: Favorites
+  linkList: Link list
+  loading: Loading…
+  oneVideoUrlBvIdOrAvId: 'One video URL, BV ID, or av ID per line, up to $1 lines. Use full video URLs; short links are not supported.'
+  openACollectionOrSeriesFromAnUploader: 'Open a collection or series from an uploader profile and copy its full URL, including the uploader UID.'
+  pasteAFavoritesUrlOrIdSignIn: Paste a favorites URL or ID. Sign in to the corresponding Bilibili account to access private favorites.
+  pasteAnUploaderProfileUrlOrUidOnly: Paste an uploader profile URL or UID. Only public video uploads are listed.
+  previewList: Preview list
+  stopLoading: Stop loading
+  uploaderVideos: Uploader videos
+bridge:
+  theLocalTaskExceeds1MibAndCannot: The local task exceeds 1 MiB and cannot be handed off directly.
+capacity:
+  theDownloadQueueIsFullBundleSlotsAre: The download queue is full. Bundle slots are released when all assets finish. Resume or cancel unfinished tasks first.
+  theDownloadQueueReachedItsStorageLimitComplete: The download queue reached its storage limit. Complete or cancel some tasks before adding more.
+common:
+  close: Close
+  mobileSidebar: Download Center navigation on mobile.
+  openOptions: Open settings
+  sidebar: Sidebar
+  toggleSidebar: Toggle sidebar
+control:
+  onlyPausedTasksCanBeResumed: Only paused tasks can be resumed.
+  onlyWaitingTasksCanBeReordered: Only waiting tasks can be reordered.
+  theFileIsBeingSavedAndCannotBe: The file is being saved and cannot be paused. Wait for saving to finish.
+  theTaskStateChangedThisExecutionStopped: The task state changed. This execution stopped.
+  theTaskWasPausedOrTakenOverBy: The task was paused or taken over by a new execution.
+  thisTaskHasEndedAndCannotBePaused: This task has ended and cannot be paused.
+  thisTaskNoLongerExistsRefreshTheList: This task no longer exists. Refresh the list.
+cover:
+  theCoverApiReturnedNoSupportedImageNo: The cover API returned no supported image. No file was saved.
+createDownloadPath:
+  bestQuality: Best quality
+  unknownUploader: Unknown uploader
+  unsupportedFileFormat: Unsupported file format.
+download:
+  enterAFilenameTemplate: Enter a filename template.
+  theFilenameTemplateCannotContainPathSeparatorsOr: The filename template cannot contain path separators or forbidden filename characters.
+  theFilenameTemplateCannotExceed160Characters: The filename template cannot exceed 160 characters.
+  theFilenameTemplateContainsUnknownVariablesOrUnmatched: The filename template contains unknown variables or unmatched braces.
+downloadBatchImport:
+  addSelectedVideos:
+    1: Add $1 selected video
+    n: Add $1 selected videos
+  backToPreview: Back to preview
+  changeSource: Change source
+  chooseImportSource: Choose import source
+  clearCorruptSession: Clear corrupt session
+  duplicatesCombined:
+    1: $1 duplicate combined
+    n: $1 duplicates combined
+  ifSavedDataIsCorruptClearTheBatch: 'If saved data is corrupt, clear the batch draft and preview to start again. Queued tasks will be kept.'
+  inSource: / $1 in source
+  keepThisPageOpenDuringImportAndDownloads: Keep this page open during import and downloads. Results and import progress are saved so you can resume manually after reopening.
+  line: 'Line $1: $2 — $3'
+  linesCouldNotBeRecognizedOtherValidLines:
+    1: $1 line could not be recognized. Other valid lines can still be imported.
+    n: $1 lines could not be recognized. Other valid lines can still be imported.
+  loadNextPage: Load next page
+  loadOnePageAtATimeAndReview: Load one page at a time and review it before continuing.
+  loadSavedSession: Load saved session
+  loadingPreviousSession: Loading previous session…
+  noVideosToAddCheckTheSourceOr: No videos to add. Check the source or input.
+  previewedCount:
+    1: $1 video previewed
+    n: $1 videos previewed
+  saveToBilibiliFolder: Save to Bilibili folder
+  savingDraftAndProgress: Saving draft and progress…
+  selectedVideoCount:
+    1: $1 video selected
+    n: $1 videos selected
+  stopAfterTheCurrentVideo: Stop after the current video
+  thePreviousSessionIsUnavailable: The previous session is unavailable.
+  theQueueIsPausedNewTasksWillWait: The queue is paused. New tasks will wait until it resumes.
+  theSourceOrInputHasChangedThisIs: The source or input has changed. This is the previous preview. Click “Preview list” to update it before adding tasks.
+  thisSessionUsesTheDownloadOptionsFilenameTemplate: 'This session uses the download options, filename template “$1”, and folder settings from the first import. To change them, click “Change source” and preview again to start a new session.'
+  unavailableVideosSkipped:
+    1: $1 unavailable video skipped
+    n: $1 unavailable videos skipped
+  videoPreview: Video preview
+  waitingForTheCurrentVideo: Waiting for the current video…
+  yourLatestSessionIsSavedAutomaticallyResumeManually: Your latest session is saved automatically. Resume manually after refreshing or reopening.
+downloadBundlePicker:
+  bilibiliUploaderVideo: Bilibili / Uploader / Video
+  bilibiliVideo: Bilibili / Video
+  bundleAssetsAreSavedToUsingYourFilename: Bundle assets are saved to $1 using your filename settings. One cover is saved per video; other assets are downloaded for each selected part.
+  downloadMode: Download mode
+  missingSubtitlesOrSignInRequirementsAreRecorded: Missing subtitles or sign-in requirements are recorded as failures. Other assets continue downloading.
+  selectAssets: Select assets
+  selectAtLeastOneAsset: Select at least one asset.
+  singleAsset: Single asset
+downloadBundleProgress:
+  allAssetsSavedInTheVideoFolder: All assets saved in the video folder
+  allBundleAssetsSaved: All bundle assets saved
+  bundleCompletionProgress: Bundle completion progress
+  bundleDownloadProgress: Bundle download progress
+  bundleRecordsIncomplete: Bundle records incomplete
+  cancelled: Cancelled $1
+  created: Created $1
+  downloadingBundle: Downloading bundle
+  failed: Failed $1
+  recordsForAssetsWereRemovedTheFullResult:
+    1: The record for $1 asset was removed. The full result cannot be confirmed.
+    n: Records for $1 assets were removed. The full result cannot be confirmed.
+  saved: Saved $1 / $2
+  savedAssets: Saved $1 / $2 assets
+  someBundleAssetsCancelled: Some bundle assets cancelled
+  someBundleAssetsFailed: Some bundle assets failed
+  unfinished: Unfinished $1
+  viewUnfinishedAssets:
+    1: View unfinished asset ($1)
+    n: View unfinished assets ($1)
+downloadBundles:
+  noBundlesYetChooseAssetBundlesOnA: 'No bundles yet. Choose “Asset bundles” on a video page, select the assets you need, and download.'
+  reviewBundleResultsByVideoABundleIs: Review bundle results by video. A bundle is complete only when every asset is saved. Failed or cancelled assets can be retried individually.
+downloadCache:
+  approximatelyOfBrowserQuotaRemaining: Approximately $1 of browser quota remaining.
+  browserDownloadCache: Browser download cache
+  clearDownloadCache: Clear download cache
+  clearing: Clearing…
+  downloadCacheUnavailable: Download cache unavailable
+  loadingDownloadCache: Loading download cache…
+  mediaCacheEntries: Media cache $1 · $2 entries
+  refreshUsage: Refresh usage
+  retriesAfterFailureOrRefreshWillReuseCached: Retries after failure or refresh will reuse cached data and resume when the server supports it. The browser may evict cached data. Clearing removes resume data; saved files and download history are unaffected.
+  thereIsNoFixedMediaInputSizeLimit: 'There is no fixed media input size limit. Space is reserved for input, output, and a safety margin based on remaining quota. The final download also needs disk space.'
+downloadFileSettings:
+  appliesToNewTasksOnlyDuplicateFilenamesReceive: Applies to new tasks only. Duplicate filenames receive a suffix automatically.
+  bvId: BV ID
+  clickAVariableToInsertIt: Click a variable to insert it
+  fileSaving: File saving
+  filenamePreview: Filename preview
+  filenameTemplate: Filename template
+  filenameTemplatesAreLimitedTo160CharactersShorten: Filename templates are limited to 160 characters. Shorten the template before inserting a variable.
+  insertVariable: Insert $1 variable
+  insideTheBilibiliFolderInYourBrowserS: Inside the Bilibili folder in your browser’s default download location.
+  multiPartSuffix: Multi-part suffix
+  noExtensionNeeded: No extension needed
+  partNumber: Part number
+  partTitle: Part title
+  qualityAssetDescription: Quality / asset description
+  restoreDefaultTemplate: Restore default template
+  saveFileSettings: Save file settings
+  saveFolder: Save folder
+  savePreview: Save preview
+  saving: Saving…
+  setFoldersAndFilenamesToFindYourFiles: Set folders and filenames to find your files easily.
+  title: Title
+  type: Type
+downloadLauncher:
+  adding: Adding
+  closeDownloadPanel: Close download panel
+  dismissNotification: Dismiss notification
+  download: Download
+downloadLibrary:
+  afterClearingBatchImportsWillNoLongerSkip: 'After clearing $1, batch imports will no longer skip assets based on these records. Saved files are unaffected.'
+  allRecords:
+    1: all $1 record
+    n: all $1 records
+  clearDownloadHistory: Clear download history
+  clearDownloadHistory2: Clear download history?
+  clearFilters: Clear filters
+  confirmClear: Confirm clear
+  deletingRecordsPreventsBatchImportsFromSkippingThose: 'Deleting records prevents batch imports from skipping those assets. Downloading again uses the original quality, filename, and folder settings. Available assets may have changed.'
+  downloadHistoryPagination: Download history pagination
+  downloadHistoryUnavailable: Download history unavailable
+  downloadRecordsAreStoredHereRemovingARecord: Download records are stored here. Removing a record does not delete files on your computer.
+  exportCsv: Export CSV
+  exportFilteredRecords:
+    1: Export $1 filtered record
+    n: Export $1 filtered records
+  exportJson: Export JSON
+  exportRecords: Export records
+  keepRecords: Keep records
+  learnMore: Learn more
+  loadingDownloadHistory: Loading download history…
+  matchingRecords:
+    1: $1 matching record
+    n: $1 matching records
+  moreHistoryActions: More history actions
+  next: Next
+  noMatchingDownloadRecords: No matching download records
+  oldRecordsWereRemovedDueToStorageLimits:
+    1: $1 old record was removed due to storage limits. These assets may be included in future batch downloads.
+    n: $1 old records were removed due to storage limits. These assets may be included in future batch downloads.
+  page20PerPage: Page $1 / $2 · 20 per page
+  pleaseTryAgainLater: Please try again later.
+  previous: Previous
+  refreshRecords: Refresh records
+  refreshing: Refreshing…
+  successfullyDownloadedAssetsWillAppearHereAutomatically: Successfully downloaded assets will appear here automatically.
+  theMostRecentSuccessfulDownloadOfEachAsset: 'The most recent successful download of each asset is kept, up to $1 records or 3 MB. The oldest records are removed when full. Clearing queue records does not affect this history.'
+  theUnreadableDownloadHistory: the unreadable download history
+  tryDifferentKeywordsOrViewAllAssets: Try different keywords or view all assets.
+  yourSavedCollectionStartsHere: Your saved collection starts here
+downloadLibraryFilters:
+  allAssets: All assets
+  audio: Audio
+  cover: Cover
+  danmaku: Danmaku
+  filterHistoryAssets: Filter history assets
+  searchDownloadHistory: Search download history
+  searchTitleBvIdUploaderOrSavePath: 'Search title, BV ID, uploader, or save path'
+  subtitles: Subtitles
+  video: Video
+downloadLibraryItem:
+  completed: Completed
+  completedTime: Completed time
+  created: Created
+  createdTimeCompletionUnknown: Created time (completion unknown)
+  deleteRecord: Delete record
+  downloadAgain: Download again
+  hideDetails: Hide details
+  legacyRecord: Legacy record
+  moreRecordActions: 'More record actions: $1'
+  originalQualityPreference: Original quality preference
+  savePath: Save path
+  unknownUploader: Unknown uploader
+  videoAndPart: Video and part
+  viewDetails: View details
+downloadLibraryList:
+  recordsOnThisPage:
+    1: $1 record on this page
+    n: $1 records on this page
+downloadNativeBridge:
+  keepTheDownloadCenterOpenCompletedFilesAre: Keep the Download Center open. Completed files are saved to the folder chosen during installation.
+  localHelperIsProcessing: Local helper is processing…
+  saved: 'Saved: $1'
+  sendToLocalHelper: Send to local helper
+downloadNativeExport:
+  exportLocalTask: Export local task
+  exportingLocalTask: Exporting local task…
+downloadNativeHelp:
+  advancedLocalHelper: 'Advanced: local helper'
+  afterInstallingAndRegisteringTheHelperOpenView: 'After installing and registering the helper, open “View details” → “Advanced: local helper” on a paused, failed, cancelled, or completed media task, then click “Send to local helper”. The Download Center shows processing status and the save path. Keep it open during processing.'
+  browserDownloadsNeedNoPythonOrFfmpegInstallation: Browser downloads need no Python or FFmpeg installation. Large files are checked against remaining browser quota. Use the optional local helper to save beyond browser quota or use your local FFmpeg. The helper has a separate cache; browser cache is not transferred.
+  commandLineInstructions: 'In the advanced options of a failed, cancelled, or completed media task, click “Export local task”. Install Python 3.10+ and FFmpeg, then get scripts/native-downloader.py from the project repository. Run the command below from the repository folder, replacing task.bili.json with your exported task path.'
+  commandLineTasksRunIndependentlyAndDoNot: Command-line tasks run independently and do not sync browser queue status or progress. Task files contain temporary media URLs; keep them private and export again when the URLs expire.
+  handOffExtensionTasks: Hand off extension tasks
+  installationGuide: Installation guide
+  projectRepository: project repository
+  standaloneCommandLineDownload: Standalone command-line download
+downloadNotificationSettings:
+  completionNotifications: Completion notifications
+  completionNotificationsDisabled: Completion notifications disabled.
+  completionNotificationsEnabled: Completion notifications enabled.
+  getNotifiedWhenDownloadsFinish: Get notified when downloads finish.
+  notificationPermissionWasNotGrantedDownloadsAreUnaffected: Notification permission was not granted. Downloads are unaffected.
+  notificationsAlsoDependOnYourBrowserAndSystem: Notifications also depend on your browser and system settings.
+  notifyWhenAFileHasBeenSaved: Notify when a file has been saved.
+  sendASystemNotificationWhenAFileHas: Send a system notification when a file has been saved
+  systemNotifications: System notifications
+downloadPanel:
+  addedToDownloadQueue: Added to download queue
+  addingToQueue: Adding to queue…
+  bilibiliFolder: Bilibili folder
+  bundleAssets:
+    1: Bundle · $1 asset
+    n: Bundle · $1 assets
+  downloadAllParts:
+    1: Download all $1 part
+    n: Download all $1 parts
+  downloadAssetParts:
+    1: Download $1 · $2 part
+    n: Download $1 · $2 parts
+  downloadBundleAssets:
+    1: Download bundle · $1 asset
+    n: Download bundle · $1 assets
+  downloadCenter: Download Center
+  downloadCurrentPart: Download current part $1
+  downloadSelectedParts:
+    1: Download $1 selected part
+    n: Download $1 selected parts
+  downloadVideo: Download video
+  downloadVideoCover: Download video cover
+  findAVideoYouLove: Find a video you love
+  loadingVideoInformation: Loading video information…
+  oneCoverPerVideo: One cover per video
+  openABilibiliVideoToDownloadVideosAudio: 'Open a Bilibili video to download videos, audio, covers, subtitles, and danmaku.'
+  openBilibili: Open Bilibili
+  parts:
+    1: $1 · $2 part
+    n: $1 · $2 parts
+  partsSelected:
+    1: $1 part selected
+    n: $1 parts selected
+  reload: Reload
+  settingsAndHelp: Settings and help
+  theQueueIsPausedNewTasksWillWait: The queue is paused. New tasks will wait. Resume the queue in the Download Center.
+downloadPartPicker:
+  allParts: All parts
+  clear: Clear
+  clearResults: Clear results
+  currentPart: Current part
+  currentPart2: Current part $1
+  deselectPart: Deselect part $1 $2
+  downloadPartsTotalDuration: Download $1 parts · Total duration $2
+  downloadRange: Download range
+  invertResults: Invert results
+  invertSelection: Invert selection
+  moreParts:
+    1: $1 more part
+    n: $1 more parts
+  noMatchingParts: No matching parts
+  noPartsSelected: No parts selected
+  partsSelected:
+    1: $1 / $2 part selected
+    n: $1 / $2 parts selected
+  partsTotal:
+    1: $1 part total
+    n: $1 parts total
+  playing: Playing
+  searchPartTitleOrNumber: Search part title or number
+  selectAll: Select all
+  selectAtLeastOnePart: Select at least one part
+  selectParts: Select parts
+  selectResults: Select results
+  selectedOnly: Selected only
+  showAllParts: Show all parts
+downloadProgress:
+  approximately: / approximately $1
+  cancel: Cancel
+  downloadProgressEstimated: Download progress (estimated)
+  downloaded: Downloaded $1
+  pause: Pause
+  pausedResumingWillFetchThisAssetAgain: Paused. Resuming will fetch this asset again.
+  resume: Resume
+  retry: Retry
+  transferStoppedAndCacheRetainedResumingWillValidate: Transfer stopped and cache retained. Resuming will validate the asset and attempt to continue downloading.
+downloadQuality:
+  balanceQualityAndSize: Balance quality and size
+  bestAvailable: Best available
+  bestViewingExperience: Best viewing experience
+  saveStorageSpace: Save storage space
+  smallerFiles: Smaller files
+downloadQueue:
+  allTasks: All tasks
+  cancelAll: Cancel all
+  clearQueueRecords: Clear queue records
+  clickDownloadVideoOnABilibiliVideoPage: Click “Download video” on a Bilibili video page to add a task here.
+  completed: Completed
+  downloadTasks: Download tasks
+  exploreBilibili: Explore Bilibili
+  filterDownloadTasks: Filter download tasks
+  filteredRecords:
+    1: $1 filtered record
+    n: $1 filtered records
+  moreQueueActions: More queue actions
+  noMatchingTasks: No matching tasks
+  noTasksYet: No tasks yet
+  pauseQueue: Pause queue
+  paused: Paused
+  pending: Pending
+  queuePausedTheCurrentTaskWillFinishOthers: 'Queue paused: the current task will finish; others will wait. Keep the Download Center open.'
+  resumeQueue: Resume queue
+  retryAllFailed: Retry all failed
+  saveTheVideosYouLove: Save the videos you love
+  searchDownloadTasks: Search download tasks
+  searchTitleBvIdOrPart: 'Search title, BV ID, or part'
+  tryAnotherTitleBvIdOrPart: 'Try another title, BV ID, or part.'
+downloadQueueItem:
+  cacheRetainedResumingWillValidateTheAssetAnd: Cache retained. Resuming will validate the asset and attempt to continue downloading.
+  cancelTask: Cancel task
+  fileSavedSeeDetailsForThePath: File saved. See details for the path.
+  installPythonFfmpegAndTheOptionalMessagingHost: 'Install Python, FFmpeg, and the optional messaging host separately. See the advanced options under “Download cache” for installation and usage instructions.'
+  moreActionsPart: 'More actions: $1 part $2'
+  moveEarlier: Move earlier
+  moveLater: Move later
+  openFolder: Open folder
+  queuePosition: Queue position $1 / $2
+  requestedPreference: Requested preference
+  resumingWillFetchThisAssetAgain: Resuming will fetch this asset again.
+  savedToBilibiliFolder: Saved to Bilibili folder
+  singleVideo: Single video
+  uploader: Uploader
+  videoCover: Video cover
+  videoId: Video ID
+  viewOriginalVideo: View original video
+downloadQuickSettings:
+  byDefaultDownloadTheCurrentPartAtThe: 'By default, download the current part at the best available quality, regardless of your default quality setting. Actual quality depends on your account permissions. Covers are saved once per video, and subtitle languages are chosen automatically.'
+  clickThePageDownloadButtonToOpenThe: Click the page download button to open the panel. Double-click to download directly.
+  doubleClickDownloadContent: Double-click download content
+  quickDownloadOnVideoPages: Quick download on video pages
+downloadSettingsSection:
+  savedAutomatically: Saved automatically
+downloadWorkspace:
+  assetBundles: Asset bundles
+  batchImport: Batch import
+  browserDefaultDownloadFolder: Browser default download folder
+  checkBrowserStorageUsageAndManageResumableDownloads: Check browser storage usage and manage resumable downloads.
+  downloadCache: Download cache
+  downloadCenterNavigation: Download Center navigation
+  downloadHistory: Download history
+  downloadQueue: Download queue
+  eachPartIsSavedSeparatelyDownloadsRunIn: Each part is saved separately · Downloads run in queue order
+  findSavedAssetsOrDownloadThemAgainWith: Find saved assets or download them again with their original settings.
+  keepThisPageOpenWhileDownloadingYouCan: Keep this page open while downloading. You can continue browsing other tabs.
+  manageDownloadCache: Manage download cache
+  reviewVideosAndAddThemToTheQueue: Review videos and add them to the queue with your preferred settings.
+  settings: Settings
+  trackProgressAndManageYourDownloads: Track progress and manage your downloads.
+  viewAssetsAndBundleResultsByVideo: View assets and bundle results by video.
+downloads:
+  anotherDownloadCenterIsProcessingTheQueue: Another Download Center is processing the queue.
+  cannotLoadVideoInformationPleaseTryAgain: Cannot load video information. Please try again.
+  downloadTasksCanOnlyRunInTheDownload: Download tasks can only run in the Download Center.
+  enableNotificationsInSettingsAndGrantNotificationPermission: Enable notifications in Settings and grant notification permission.
+  invalidDownloadRequestParameters: Invalid download request parameters.
+  saved: $1 saved
+  theBatchSessionDoesNotExistPreviewAgain: The batch session does not exist. Preview again.
+  theBatchSessionIsCorruptAndCannotBe: The batch session is corrupt and cannot be read. Clear it and preview again.
+  theCurrentSessionIsStillReadableLoadThe: The current session is still readable. Load the saved session.
+  theDownloadCenterClosedThisImportHasStopped: The Download Center closed. This import has stopped.
+  theDownloadCenterWasClosedOrRefreshedInterrupting: 'The Download Center was closed or refreshed, interrupting the task. Retrying will validate cached data and attempt to resume.'
+  theDownloadCenterWasClosedOrRefreshedInterrupting2: 'The Download Center was closed or refreshed, interrupting the task. Please retry.'
+  theLinkedPartDoesNotExistUpdateThe: The linked part does not exist. Update the URL and try again.
+  thisSuccessfulDownloadRecordWasRemovedRefreshThe: This successful download record was removed. Refresh the list.
+  unsupportedBatchSessionAction: Unsupported batch session action.
+  unsupportedDownloadAction: Unsupported download action.
+  useBatchImportInTheDownloadCenter: Use batch import in the Download Center.
+exportNativeTask:
+  onlyVideoAndAudioTasksSupportLocalDownloading: Only video and audio tasks support local downloading.
+  theLocalTaskFileExceeds1MbChoose: The local task file exceeds 1 MB. Choose a video with fewer parts.
+extensionDescription: 'Download Bilibili videos, audio, covers, subtitles and danmaku, with multi-part batch downloads and asset bundles.'
+extensionHeader:
+  extension: Extension
+  userGuide: User guide
 extensionName: Bilibili Downloader
+fetchAsset:
+  danmakuComments:
+    1: $1 danmaku comment
+    n: $1 danmaku comments
+  invalidDanmakuXmlNoFileWasSaved: Invalid danmaku XML. No file was saved.
+  originalCover: Original cover
+  theDanmakuApiReturnedAnInvalidFormatPlease: The danmaku API returned an invalid format. Please try again later.
+  thisPartHasNoExportableDanmakuAtPresent: This part has no exportable danmaku at present.
+  thisVideoHasNoExportableCover: This video has no exportable cover.
+fetchCachedMedia:
+  allMediaSourcesFailedDownloadCacheRetained: All media sources failed. Download cache retained.
+  downloadCacheWasLostDownloadAgain: Download cache was lost. Download again.
+  downloadConnectionTimedOut: Download connection timed out.
+  invalidMediaUrlProtocol: Invalid media URL protocol.
+  mediaTransferIncompleteDownloadCacheRetained: Media transfer incomplete. Download cache retained.
+  theAssetExceedsTheRemainingSizeLimitDownload: The asset exceeds the remaining size limit. Download stopped.
+  theMediaResponseExceedsItsDeclaredSize: The media response exceeds its declared size.
+  theMediaServerCannotSafelyResumeThisDownload: The media server cannot safely resume this download.
+  theMediaServerReturnedAnEmptyFile: The media server returned an empty file.
+  theMediaServerReturnedAnInconsistentFileRange: The media server returned an inconsistent file range.
+  theMediaServerReturnedAnInvalidFileSize: The media server returned an invalid file size.
+  theMediaServerReturnedAnInvalidResumeRange: The media server returned an invalid resume range.
+  theMediaServerReturnedAnUndownloadableResponseHttp: The media server returned an undownloadable response (HTTP $1).
+  theMediaServerReturnedAnUnexpectedPartialResponse: The media server returned an unexpected partial response.
+fetchMediaBytes:
+  allMediaSourcesFailedPleaseTryAgainLater: All media sources failed. Please try again later.
+  mediaTransferIncomplete: Media transfer incomplete.
+  theAssetExceedsTheRemainingMbSizeLimit: The asset exceeds the remaining $1 MB size limit. Download stopped.
+  theMediaServerReturnedHttp: The media server returned HTTP $1.
+ffmpegDiskFile:
+  browserDiskWriteIncomplete: Browser disk write incomplete.
+fragmentSamples:
+  invalidGopStorageRange: Invalid GOP storage range.
+  invalidSampleMediaReadRange: Invalid sample media read range.
+  invalidSampleReleaseRange: Invalid sample release range.
+  invalidSampleStorageField: Invalid sample storage field.
+  invalidSampleStorageReference: Invalid sample storage reference.
+  invalidSampleStorageSize: Invalid sample storage size.
+  invalidSampleStorageType: Invalid sample storage type.
+  invalidSampleTrackId: Invalid sample track ID.
+  invalidSortedTimestampReference: Invalid sorted timestamp reference.
+  sampleStorageFileReadOrWriteIncomplete: Sample storage file read or write incomplete.
+  sampleStorageIsClosed: Sample storage is closed.
+  thisBrowserDoesNotSupportWorkerSampleDisk: This browser does not support worker sample disk storage.
+fragmentStore:
+  fragmentStorageFileIsIncomplete: Fragment storage file is incomplete.
+  fragmentStorageFileIsTooLarge: Fragment storage file is too large.
+  fragmentStorageFileReadIncomplete: Fragment storage file read incomplete.
+  fragmentStorageFileWriteMadeNoProgress: Fragment storage file write made no progress.
+  fragmentStorageHasEnteredTheReadPhase: Fragment storage has entered the read phase.
+  fragmentStorageHasNotBeenCommitted: Fragment storage has not been committed.
+  fragmentStorageIsClosed: Fragment storage is closed.
+  fragmentStorageWriteStreamIsClosed: Fragment storage write stream is closed.
+  invalidFragmentStorageReadRange: Invalid fragment storage read range.
+  invalidFragmentTrackId: Invalid fragment track ID.
+groupHistoryRecords:
+  legacyRecordsCompletionTimeUnknown: Legacy records · Completion time unknown
+  today: Today
+  yesterday: Yesterday
+home:
+  changeTheSaveLocationInYourBrowserS: 'Change the save location in your browser’s download settings. DASH, legacy videos, and separate audio tracks support browser disk remuxing, with space reserved for input and output based on remaining quota. The local helper is optional.'
+  chooseTheDefaultQualityForNewTasks: Choose the default quality for new tasks.
+  downloadQuality: Download quality
+  qualitySettingsAreUpperLimitsActualQualityDepends: Quality settings are upper limits. Actual quality depends on your account permissions.
+  setDefaultsForNewTasksQueuedTasksKeep: Set defaults for new tasks. Queued tasks keep their original settings.
+  viewFullUserGuide: View full user guide
+jobs:
+  cannotFindTheCurrentPartRefreshTheVideo: Cannot find the current part. Refresh the video page and try again.
+  selectAtLeastOnePart: Select at least one part.
+  theDownloadQueueIsFullWaitForSome: The download queue is full. Wait for some tasks to finish before adding more.
+  theDownloadQueueIsFullWaitForSome2: The download queue is full. Wait for some tasks to finish before retrying.
+  theSelectedPartsAreNoLongerValidReload: The selected parts are no longer valid. Reload the video information.
+  thisTaskDoesNotNeedRetryingOrThis: 'This task does not need retrying, or this part is already queued.'
+labels:
+  audioM4a: Audio M4A
+  automaticPreferChinese: Automatic (prefer Chinese)
+  bestAvailableQuality: Best available quality
+  cancelled: Cancelled
+  chinese: Chinese
+  danmakuXml: Danmaku XML
+  directlyInBilibili: Directly in Bilibili
+  downloadFailed: Download failed
+  downloadOnlyTheHighestBitrateAacTrackAnd: Download only the highest-bitrate AAC track and remux it losslessly as M4A. Fails if no separate AAC track is available.
+  downloading: Downloading $1
+  downloadingVideoAndAudio: Downloading video and audio
+  english: English
+  groupByUploader: Group by uploader
+  groupByUploaderVideo: Group by uploader / video
+  groupByVideo: Group by video
+  loadingAssetInformation: Loading asset information
+  localHelperDownload: Local helper download
+  mergeVideoAndAudioAutomaticallyActualQualityDepends: Merge video and audio automatically · Actual quality depends on account permissions
+  mergingMp4: Merging MP4
+  remuxingM4a: Remuxing M4A
+  resolvingAvailableQuality: Resolving available quality
+  saveOneOriginalCoverPerVideoWithoutDuplicating: 'Save one original cover per video, without duplicating it for each part.'
+  saveSubtitlesForEachPartPreferringHumanSubtitles: 'Save subtitles for each part, preferring human subtitles. Automatic subtitles are labelled. Fails if subtitles are unavailable or require sign-in.'
+  saveTheCurrentlyAvailableDanmakuXmlItDoes: Save the currently available danmaku XML. It does not contain all historical comments and is not burned into the video.
+  saved: Saved
+  savingFile: Saving file
+  subtitlesSrt: Subtitles SRT
+  upTo1080p: Up to 1080P
+  upTo480p: Up to 480P
+  upTo720p: Up to 720P
+  videoMp4: Video MP4
+  waiting: Waiting
+languageSettings:
+  description: Choose the display language. Changes apply immediately.
+  followBrowser: Follow browser
+  hint: Open extension pages and video panels update automatically.
+  label: Language
+  simplifiedChinese: 简体中文
+  title: Interface language
+library:
+  downloadHistoryIsCorruptAndCannotBeRead: Download history is corrupt and cannot be read. Clear it to rebuild the history.
+  thisAssetIsAlreadyQueued: This asset is already queued.
+  thisDownloadRecordExceedsTheHistoryStorageLimit: This download record exceeds the history storage limit.
+localeCode: en
+manifest:
+  invalidNumberOfMediaTracksInTheLocal: Invalid number of media tracks in the local task.
+  invalidOutputExtensionInTheLocalTask: Invalid output extension in the local task.
+  onlyVideoAndAudioTasksCanBeSent: Only video and audio tasks can be sent to the local FFmpeg helper.
+mediaCache:
+  cannotReadOrWriteTheBrowserDownloadCache: Cannot read or write the browser download cache. Clear it and retry.
+  downloadCacheSizeDoesNotMatchTheAsset: Download cache size does not match the asset.
+  insufficientBrowserCacheSpaceClearTheDownloadCache: Insufficient browser cache space. Clear the download cache or free disk space and retry.
+  invalidDownloadCacheBlockSize: Invalid download cache block size.
+  theAssetCacheIsCorruptClearItAnd: The asset cache is corrupt. Clear it and retry.
+  theAssetCacheIsNotFullyDownloaded: The asset cache is not fully downloaded.
+  thisBrowserDoesNotSupportLocalDownloadCaching: This browser does not support local download caching. Update your browser and retry.
+  tooManyDownloadCacheFragmentsClearThisTask: Too many download cache fragments. Clear this task’s cache and download again.
+mergeBrowserMedia:
+  browserRemuxWorkerFailedToStart: Browser remux worker failed to start.
+  browserRemuxWorkerStartupTimedOutPleaseRetry: Browser remux worker startup timed out. Please retry.
+  theBrowserCannotReceiveTheRemuxedMediaResult: The browser cannot receive the remuxed media result.
+  theBrowserRemuxOutputIsEmpty: The browser remux output is empty.
+nativeHelper:
+  cacheRevalidationFailed: Server validation of the cached asset failed.
+  cancelled: Local download stopped. Media cache retained. Send the same task to the helper to resume.
+  cannotPublishOutput: Cannot safely publish the output file. Cache retained. Check permissions or choose a local filesystem supporting hard links.
+  changedMedia: The asset or quality changed after refreshing streams. Start a new local task.
+  communicationFailed: Local helper communication failed.
+  compressedResponse: The server returned compressed media. Byte ranges cannot be safely verified.
+  configurationTooLarge: The local helper configuration is too large.
+  contentLengthOutOfRange: Media length must be greater than zero and at most 1 TiB.
+  corruptConfiguration: Invalid local helper configuration. Reinstall the helper.
+  duplicateInputId: Duplicate asset identity.
+  duplicateJsonKey: JSON contains duplicate fields.
+  excessTransfer: "Media length exceeds the server's declaration. Transfer stopped."
+  ffmpegFailed: FFmpeg remuxing failed. Media cache retained. Check the FFmpeg version and available space.
+  ffmpegTimedOut: FFmpeg remuxing exceeded one hour. Media cache retained.
+  fileOperationFailed: Local file operation failed. Check directory permissions and disk space.
+  httpError: The media server returned HTTP $1.
+  incompleteMessage: The native message is incomplete.
+  incompleteResponse: The server did not return the complete asset (HTTP $1).
+  incompleteTransfer: Media transfer incomplete. Run the task again to retry.
+  incorrectExtension: The output extension does not match the asset type.
+  incorrectInputCount: The number of media assets does not match the task type.
+  insufficientCacheSpace: Insufficient free space on the cache disk.
+  insufficientMergeSpace: Insufficient cache disk space for remuxing.
+  insufficientOutputSpace: Insufficient output disk space. Media cache retained.
+  invalidBitrate: Invalid asset bitrate.
+  invalidConfiguration: Invalid local helper configuration.
+  invalidContentLength: The server returned an invalid media length.
+  invalidCreatedAt: Invalid task creation time.
+  invalidFilename: Invalid output filename.
+  invalidFilenameUnicode: The output path contains invalid Unicode characters.
+  invalidInputCount: Invalid number of assets.
+  invalidInputId: Invalid asset identity.
+  invalidManifestJson: The task file is not valid JSON.
+  invalidMediaUrl: Invalid media URL.
+  invalidMediaUrlCharacters: The media URL contains invalid characters.
+  invalidMessageJson: The native message is not valid JSON.
+  invalidMessageType: The native message must be an object.
+  invalidQuality: Invalid task quality.
+  invalidSourceCount: Invalid number of media sources.
+  invalidVideo: Invalid video task information.
+  manifestTooLarge: The task file cannot exceed 1 MiB.
+  mismatchedTaskId: The local task ID does not match.
+  missingConfiguration: Local helper configuration was not found. Reinstall the helper.
+  missingFfmpeg: 'FFmpeg was not found. Install it and add it to PATH, or specify its path with --ffmpeg.'
+  networkInterrupted: Media network transfer interrupted ($1).
+  outputOutsideRoot: The output path must be inside the Bilibili folder.
+  redirectedResume: The resume URL redirected. This asset must be downloaded again from the beginning.
+  refreshFailed: Media URLs are still unavailable after refreshing. Cache retained. Check your sign-in status and retry.
+  relativeConfigurationPath: The local helper must use the absolute paths selected during installation.
+  requestTooLarge: Native messages cannot exceed 1 MiB.
+  responseTooLarge: The native response is too large.
+  resumeValidationFailed: Server resume validation failed. This asset will be downloaded again from the beginning.
+  retryAdvice: Export the same task again in the extension and retry using the same cache folder.
+  taskLocked: "This task is running or was forcibly stopped. Confirm the helper has exited, then delete the .lock folder in this task's cache."
+  tooManyDuplicateFiles: Too many files share this name. Choose another output folder.
+  unavailableSources: All media sources are unavailable.
+  unknownRequestFields: The local task contains unknown fields.
+  unsafeCacheDirectory: The default cache folder cannot be a symbolic link.
+  unsafeCacheFile: The cache is not a regular file with a single link. Stopped to protect local files.
+  unsafeDirectory: The directory contains a symbolic link or is not a folder.
+  unsafeFilename: The output path contains an unsafe filename.
+  unsupportedKind: Unsupported asset type.
+  unsupportedRequest: Unsupported native request. Update the helper.
+  unsupportedVersion: Unsupported local task version. Update the helper or export the task again.
+  untrustedMediaUrl: Only HTTPS Bilibili CDN URLs on port 443 are allowed.
+  unwritableCache: Cannot write to this cache file.
+pages:
+  downloadsTitle: Download Center · Bilibili Downloader
+  optionsTitle: Settings · Bilibili Downloader
+  welcomeTitle: Welcome · Bilibili Downloader
+progressiveMedia:
+  cannotLoadBrowserFfmpeg: Cannot load browser FFmpeg.
+  invalidNumberOfMediaAssets: Invalid number of media assets.
+  legacyVideoRemuxingFailedCheckThatTheAssets: Legacy video remuxing failed. Check that the assets are complete. $1
+  theBrowserFfmpegFileInterfaceIsIncompatibleUpdate: The browser FFmpeg file interface is incompatible. Update the extension.
+  thisBrowserLacksTheSynchronousFileInterfaceNeeded: This browser lacks the synchronous file interface needed for disk remuxing. Update your browser.
+queue:
+  anotherDownloadTaskExistsForThisAssetCancel: Another download task exists for this asset. Cancel the duplicate first.
+  pauseTheVideoOrAudioTaskBeforeSending: Pause the video or audio task before sending it to the local helper.
+  theDownloadQueueIsFullWaitForSome: The download queue is full. Wait for some tasks to finish.
+  theLocalHelperReturnedNoSavePathCompletion: The local helper returned no save path. Completion cannot be confirmed.
+remuxMedia:
+  cannotReadTheAacTrackInTheMp4: Cannot read the AAC track in the MP4.
+  cannotReadTheMp4VideoTrack: Cannot read the MP4 video track.
+  theAssetTrackHasNoPacketsToRemux: The asset track has no packets to remux.
+remuxWorker:
+  browserMediaRemuxingFailed: Browser media remuxing failed.
+runner:
+  aDownloadCenterIsAlreadyRunningUseThe: A Download Center is already running. Use the existing one.
+saveFile:
+  downloadRemoved: Download removed
+  fileSavingFailed: 'File saving failed: $1.'
+serializeDownloadHistory:
+  createdTimeUtc: Created time (UTC)
+  part: Part
+  qualityOrAssetDescription: Quality or asset description
+  requestedSavePath: Requested save path
+  status: Status
+session:
+  addedSkipped: Added $1 · Skipped $2
+  batchImportOptionsChangedReloadTheSavedSession: Batch import options changed. Reload the saved session.
+  previousProcessingWasInterruptedResumeManually: Previous processing was interrupted. Resume manually.
+  queuedVideosCannotBeRemovedFromThisSession: Queued videos cannot be removed from this session. Start a new preview.
+  theBatchSessionWasReplacedReloadTheSaved: The batch session was replaced. Reload the saved session.
+  theBatchSessionWasUpdatedOnAnotherPage: The batch session was updated on another page. Reload the saved session.
+storageBudget:
+  mediaSizeExceedsTheBrowserSSafeInteger: Media size exceeds the browser’s safe integer range.
+  remainingBrowserQuotaCannotHoldBothInputAnd: Remaining browser quota cannot hold both input and remuxed output. Clear download cache or free disk space and retry.
+streams:
+  noDownloadableVideoStreamWasReturnedSignIn: No downloadable video stream was returned. Sign in to Bilibili and confirm that the video plays.
+  noSeparateAacTrackIsAvailableForM4a: 'No separate AAC track is available for M4A export. Sign in and retry, or download the video as MP4.'
+  noStreamMatchesChangeTheQualitySettingAnd: No stream matches “$1”. Change the quality setting and add the task again.
+  noUsableAacTrackWasReturnedSignIn: No usable AAC track was returned. Sign in to Bilibili and try again.
+  noUsableMediaUrlWasReturned: No usable media URL was returned.
+  quality: Quality $1
+  thisVideoCdnIsNotSupportedUpdateThe: This video CDN is not supported. Update the extension and try again.
+  thisVideoProvidesOnlyPreviewOrProtectedContent: This video provides only preview or protected content. Full audio cannot be exported.
+  thisVideoProvidesOnlyPreviewOrProtectedContent2: This video provides only preview or protected content. The full video cannot be downloaded.
+subtitles:
+  automatic: ' (automatic)'
+  signInToBilibiliToAccessSubtitlesThen: 'Sign in to Bilibili to access subtitles, then try again.'
+  subtitleContentIsEmptyNoFileWasSaved: Subtitle content is empty. No file was saved.
+  subtitleEndTimeMustBeAfterStartTime: Subtitle end time must be after start time.
+  thisPartHasNoExportableSubtitles: This part has no exportable subtitles.
+  thisPartHasNoSubtitlesInTheSelected: This part has no subtitles in the selected language. Change the language and add it again.
+  thisSubtitleUrlIsNotSupportedUpdateThe: This subtitle URL is not supported. Update the extension and try again.
+useBatchImport:
+  adding: Adding…
+  anotherDownloadCenterChangedThisBatchSessionLoad: Another Download Center changed this batch session. Load the saved session to continue.
+  loadingStoppedThePreviousPreviewIsKeptYou: Loading stopped. The previous preview is kept. You can load this page again.
+  noValidVideosFoundCheckYourInputAnd: No valid videos found. Check your input and preview again.
+  previewStoppedAtTheLimitOfVideos: Preview stopped at the limit of $1 videos.
+  processedVideosTasksAddedSkipped: 'Processed $1 / $2 videos: $3 tasks added, $4 skipped.'
+  processingComplete: Processing complete
+  sourcePreview: Source preview
+  stoppedAdding: Stopped adding
+  stoppedAddingCheckTheDownloadQueueBeforeContinuing: Stopped adding. Check the download queue before continuing.
+  tasksAddedSkippedUnprocessedVideosRemainSelectedQueued: '$1: $2 tasks added, $3 skipped. Unprocessed videos remain selected. Queued tasks continue downloading.'
+  theBatchSessionCouldNotBeSavedReduce: The batch session could not be saved. Reduce the input size.
+  theCorruptBatchSessionWasClearedPreviewAgain: The corrupt batch session was cleared. Preview again to continue. Download tasks are unaffected.
+  thePreviousDraftPreviewAndProgressHaveBeen: 'The previous draft, preview, and progress have been restored. Load the next page or continue adding manually; sources are not requested automatically.'
+  theResponseCouldNotBeConfirmedLoadThe: 'The response could not be confirmed: $1 Load the saved session and continue manually.'
+  thisPageReturnedNoNewVideosLoadingStopped: This page returned no new videos. Loading stopped. Previously previewed videos can still be queued.
+  waitingForTheCurrentVideoToFinishThen: 'Waiting for the current video to finish, then adding will stop. Queued tasks continue downloading.'
+useDownloadCache:
+  downloadCacheClearedTheNextRetryWillDownload: Download cache cleared. The next retry will download media again.
+  downloadsAreUsingTheCachePauseTheQueue: Downloads are using the cache. Pause the queue and wait for the current task to finish before clearing it.
+  thisBrowserCannotSafelyClearTheCacheUpdate: This browser cannot safely clear the cache. Update your browser and try again.
+useDownloadFileSettings:
+  exampleUploader: Example uploader
+  fileSettingsSavedTheyWillApplyToNewly: File settings saved. They will apply to newly queued tasks.
+  invalidFilenameTemplate: Invalid filename template.
+  walkingAlongTheCoast: Walking along the coast
+  weekendAtTheBeach: Weekend at the beach
+useDownloadHistory:
+  bilibiliDownloadHistory: Bilibili/download-history_$1.$2
+  exportedRecords:
+    1: Exported $1 record.
+    n: Exported $1 records.
+useDownloadLibrary:
+  downloadHistoryClearedBatchImportsWillNoLonger: Download history cleared. Batch imports will no longer skip these assets.
+  downloadHistoryRecordDeleted: Download history record deleted.
+  failedToLoadDownloadHistoryRefreshAndTry: Failed to load download history. Refresh and try again.
+  requeuedUsingTheOriginalTaskSettings: Requeued using the original task settings.
+useNativeBridge:
+  assetMib: 'Asset $1/$2: $3 MiB'
+  assetsOrQualityChangedAfterRefreshingStreamsStart: Assets or quality changed after refreshing streams. Start a new local task.
+  cannotConnectToTheLocalHelperCheckIts: 'Cannot connect to the local helper: $1. Check its installation and the extension ID.'
+  connectingToLocalHelper: Connecting to local helper…
+  fileSavedButTheTaskRecordCouldNot: 'File saved, but the task record could not be updated: $1'
+  localDownloadCompleted: Local download completed.
+  localHelperDisconnectedTheMediaCacheIsRetained: Local helper disconnected. The media cache is retained. Check the installation and try again.
+  localHelperMessagingPermissionHasNotBeenGranted: Local helper messaging permission has not been granted.
+  mediaUrlRefreshLimitReachedCheckYourSign: Media URL refresh limit reached. Check your sign-in status and try again.
+  mediaUrlsExpiredFetchingStreamsAgainAndValidating: Media URLs expired. Fetching streams again and validating the cache…
+  remuxingLosslesslyWithLocalFfmpeg: Remuxing losslessly with local FFmpeg…
+  savingLocalFile: Saving local file…
+  taskStoppedVerifiedLocalCacheWillBeReused: Task stopped. Verified local cache will be reused on the next handoff.
+  theDownloadPageClosedAndTheLocalTask: The download page closed and the local task stopped. Verified cache can be reused on the next handoff.
+  theDownloadPageClosedTheLocalTaskDid: The download page closed. The local task did not start.
+  theLocalHelperDidNotRespondCheckIts: The local helper did not respond. Check its installation and the Python / FFmpeg paths.
+  theLocalHelperReceivedTheTask: The local helper received the task.
+  theLocalHelperReturnedAMismatchedTaskId: The local helper returned a mismatched task ID.
+  theLocalTaskHasNotBeenInitialized: The local task has not been initialized.
+  theLocalTaskWasCancelledOrItsExecution: The local task was cancelled or its execution identity changed.
+  theTaskWasCancelledOrItsExecutionIdentity: The task was cancelled or its execution identity changed.
+useNativeDownload:
+  localTaskExportedFollowTheLocalHelperInstructions: Local task exported. Follow the local helper instructions under “Download cache”.
+useQuickDownload:
+  addedToTheDownloadQueue: $1 added to the download queue$2.
+  cannotIdentifyTheCurrentVideoRefreshThePage: Cannot identify the current video. Refresh the page and try again.
+  clickToOpenTheDownloadPanelDoubleClick: Click to open the download panel; double-click to download $1
+  downloadStartsWhenTheQueueResumes: ; download starts when the queue resumes
+  loadingDownloadSettingsPleaseTryAgainShortly: Loading download settings. Please try again shortly.
+  thisAssetIsAlreadyInTheDownloadQueue: This asset is already in the download queue.
+  videoHint: Click to open the download panel; double-click to download video MP4 at the best available quality
+useVideoDownload:
+  addedBundleAssetsOrganizedByVideoFolder:
+    1: 'Added $1 bundle asset, organized by video folder.'
+    n: 'Added $1 bundle assets, organized by video folder.'
+  addedTasksTheDownloadCenterWillProcessThem:
+    1: Added $1 task. The Download Center will process them in the background.
+    n: Added $1 tasks. The Download Center will process them in the background.
+  allSelectedAssetsAreAlreadyQueued: All selected assets are already queued.
+  skippedQueuedAssetsTheyKeepTheirOriginalSave:
+    1: Skipped $1 queued asset. They keep their original save folders.
+    n: Skipped $1 queued assets. They keep their original save folders.
+  theCurrentPartDoesNotExistRefreshThe: The current part does not exist. Refresh the video page.
+  theSelectedVideosAreAlreadyQueued: The selected videos are already queued.
+wbi:
+  theSigningInformationFormatHasChangedPleaseTry: The signing information format has changed. Please try again later.
+welcomeFeatureCards:
+  audioIsSavedAsM4aEachVideoGets: 'Audio is saved as M4A; each video gets one original cover. Choose Chinese, English, or automatic subtitles. Danmaku is exported as the currently available XML.'
+  chooseAudioCoversSubtitlesOrDanmakuUnderDownload: 'Choose audio, covers, subtitles, or danmaku under “Download content” to save only what you need.'
+  chooseYourVideoParts: Choose your video parts
+  downloadTheCurrentPartByDefaultOrChoose: 'Download the current part by default, or choose “All parts” or “Select parts” to save multiple parts.'
+  downloadsRunInABackgroundTabWhereYou: 'Downloads run in a background tab where you can track progress, search tasks, filter failures, and retry in bulk.'
+  eachPartIsSavedAsASeparateMp4: Each part is saved as a separate MP4 file.
+  exportTheAssetsYouNeed: Export the assets you need
+  keepTheDownloadCenterOpenClosingOrRefreshing: Keep the Download Center open. Closing or refreshing it interrupts tasks; you can retry them there.
+  oneVideoOneClick: 'One video, one click'
+  openARegularBilibiliVideoAndClickDownload: Open a regular Bilibili video and click “Download video” below the player to start saving.
+  pausingTheQueueLetsTheCurrentTaskFinish: Pausing the queue lets the current task finish while the remaining tasks wait.
+  selectPartsIndividuallySelectAllOrInvertYour: 'Select parts individually, select all, or invert your selection.'
+  specificReasonsAreShownWhenAnAssetIs: Specific reasons are shown when an asset is unavailable.
+  theBestQualityAvailableToYourAccountIs: The best quality available to your account is selected by default.
+  trackProgressInTheDownloadCenter: Track progress in the Download Center
+  youCanAlsoOpenTheDownloadPanelFrom: You can also open the download panel from the extension icon in the browser toolbar.
+welcomeGuide:
+  beforeYouDownload: Before you download
+  dashLegacyVideoAndSeparateAudioTracksAre: 'DASH, legacy video, and separate audio tracks are remuxed using browser disk storage, reserving input and output space against remaining quota. Live streams, anime, interactive videos, and protected videos are not supported.'
+  filesAreSavedInTheBilibiliFolderIn: Files are saved in the Bilibili folder in your browser’s download location. Change the location in your browser’s download settings.
+  openDownloadCenter: Open Download Center
+  saveVideosAsMp4M4aOrIndividualAssets: 'Save videos as MP4, M4A, or individual assets directly from a video page.'
+  startSavingWhatYouLove: Start saving what you love
+  theBestAvailableQualityIsSelectedByDefault: 'The best available quality is selected by default. You can set a maximum of 1080P, 720P, or 480P. Preferences save automatically; queued tasks keep their original settings. SDR is preferred at the same resolution and frame rate, and more compatible codecs at the same quality. Actual quality appears in task progress.'

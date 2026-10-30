@@ -12,6 +12,7 @@ import {
 } from '~/utils/downloads/batch/session'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
+import { i18n } from '~/utils/i18n'
 import { useDownloadSettings } from './useDownloadSettings'
 import type { BatchCandidate } from '~/types/batch'
 import type {
@@ -138,7 +139,7 @@ export function useBatchImport() {
         if (!parsed.success) {
           throw new Error(
             parsed.error.issues[0]?.message
-              || '批量会话无法保存，请减少输入内容。',
+              || i18n.t('useBatchImport.theBatchSessionCouldNotBeSavedReduce'),
           )
         }
         const result = await sendDownloadMessage(
@@ -152,7 +153,9 @@ export function useBatchImport() {
         if (result.conflict || !result.session) {
           hasConflict.value = true
           throw new Error(
-            '其他下载中心已修改批量会话。请载入已保存的会话后继续。',
+            i18n.t(
+              'useBatchImport.anotherDownloadCenterChangedThisBatchSessionLoad',
+            ),
           )
         }
         revision.value = result.session.revision
@@ -187,8 +190,9 @@ export function useBatchImport() {
       if (saved) {
         shouldSeedQuality = false
         applySession(saved, true)
-        sessionNotice.value =
-          '已恢复上次的草稿、预览和进度。请手动读取下一页或继续加入；不会自动请求来源。'
+        sessionNotice.value = i18n.t(
+          'useBatchImport.thePreviousDraftPreviewAndProgressHaveBeen',
+        )
       } else {
         shouldSeedQuality = true
         session.value = createBatchSessionData()
@@ -242,8 +246,9 @@ export function useBatchImport() {
         hasConflict.value = false
         isSessionReady.value = true
         sessionError.value = ''
-        sessionNotice.value =
-          '已清除损坏的批量会话，可以重新预览。下载任务未受影响。'
+        sessionNotice.value = i18n.t(
+          'useBatchImport.theCorruptBatchSessionWasClearedPreviewAgain',
+        )
         shouldSeedQuality = true
       }
     } catch (error_) {
@@ -325,13 +330,15 @@ export function useBatchImport() {
         const parsed = parseBatchLinks(input)
         if (!parsed.items.length && session.value.hasPreview) {
           updateSession({ inputErrors: parsed.errors, isPreviewStale: true })
-          error.value = '没有识别到有效视频，请检查输入后重新预览。'
+          error.value = i18n.t(
+            'useBatchImport.noValidVideosFoundCheckYourInputAnd',
+          )
           return
         }
         resetPreview()
         const appended = appendItems(parsed.items)
         updateSession({
-          title: '链接列表',
+          title: i18n.t('batchSourceForm.linkList'),
           inputErrors: parsed.errors,
           rows: appended.rows,
           duplicateCount: parsed.duplicateCount + appended.duplicateCount,
@@ -341,7 +348,11 @@ export function useBatchImport() {
       }
       const parsed = parseBatchSource(sourceKind.value, input)
       resetPreview()
-      updateSession({ source: parsed, title: '来源预览', nextPage: 1 })
+      updateSession({
+        source: parsed,
+        title: i18n.t('useBatchImport.sourcePreview'),
+        nextPage: 1,
+      })
       if (await flushSession()) {
         await loadNextPage()
       }
@@ -394,7 +405,10 @@ export function useBatchImport() {
       let previewNotice = ''
       if (appended.rows.length >= MAX_BATCH_ITEMS) {
         nextPage = undefined
-        previewNotice = `本次最多预览 ${MAX_BATCH_ITEMS} 个视频，已停止读取。`
+        previewNotice = i18n.t(
+          'useBatchImport.previewStoppedAtTheLimitOfVideos',
+          [MAX_BATCH_ITEMS],
+        )
       } else if (
         result.nextPage
         && ((!appended.appended
@@ -402,8 +416,9 @@ export function useBatchImport() {
           || result.nextPage <= page)
       ) {
         nextPage = undefined
-        previewNotice =
-          '这一页没有继续提供新视频，已停止读取。已预览的视频仍可加入队列。'
+        previewNotice = i18n.t(
+          'useBatchImport.thisPageReturnedNoNewVideosLoadingStopped',
+        )
       }
       updateSession({
         rows: appended.rows,
@@ -431,7 +446,9 @@ export function useBatchImport() {
       requestId++
       isLoading.value = false
       updateSession({
-        previewNotice: '已停止读取，保留先前的预览。可以继续读取这一页。',
+        previewNotice: i18n.t(
+          'useBatchImport.loadingStoppedThePreviousPreviewIsKeptYou',
+        ),
       })
     }
   }
@@ -500,7 +517,11 @@ export function useBatchImport() {
         updateSession({
           rows: rows.value.map(item =>
             item.key === row.key
-              ? { ...item, status: 'adding', outcome: '正在加入…' }
+              ? {
+                  ...item,
+                  status: 'adding',
+                  outcome: i18n.t('useBatchImport.adding'),
+                }
               : item,
           ),
         })
@@ -526,24 +547,42 @@ export function useBatchImport() {
           added += reply.result.added
           skipped += reply.result.skipped
           finished++
-          notice.value = `已处理 ${finished} / ${selected.length} 个视频：加入 ${added} 个任务，跳过 ${skipped} 个任务。`
+          notice.value = i18n.t(
+            'useBatchImport.processedVideosTasksAddedSkipped',
+            [finished, selected.length, added, skipped],
+          )
           if (reply.result.shouldStop) {
             error.value =
-              reply.result.error || '已停止加入，请检查下载队列后继续。'
+              reply.result.error
+              || i18n.t(
+                'useBatchImport.stoppedAddingCheckTheDownloadQueueBeforeContinuing',
+              )
             break
           }
         } catch (error_) {
           if (!disposed) {
             // The commit may already exist. Read its durable receipt before another attempt.
             hasConflict.value = true
-            sessionError.value = `本次响应未确认：${getErrorMessage(error_)} 请载入已保存的会话后手动继续。`
+            sessionError.value = i18n.t(
+              'useBatchImport.theResponseCouldNotBeConfirmedLoadThe',
+              [getErrorMessage(error_)],
+            )
           }
           break
         }
       }
     } finally {
       if (!disposed) {
-        notice.value = `${finished < selected.length ? '已停止加入' : '本次处理完成'}：加入 ${added} 个任务，跳过 ${skipped} 个任务。未处理的视频保留勾选，已加入的任务继续下载。`
+        notice.value = i18n.t(
+          'useBatchImport.tasksAddedSkippedUnprocessedVideosRemainSelectedQueued',
+          [
+            finished < selected.length
+              ? i18n.t('useBatchImport.stoppedAdding')
+              : i18n.t('useBatchImport.processingComplete'),
+            added,
+            skipped,
+          ],
+        )
         isAdding.value = false
         isStopping.value = false
       }
@@ -553,8 +592,9 @@ export function useBatchImport() {
   function stopAdding() {
     if (isAdding.value) {
       isStopping.value = true
-      notice.value =
-        '正在等待当前视频处理完成；随后停止加入，已加入的任务继续下载。'
+      notice.value = i18n.t(
+        'useBatchImport.waitingForTheCurrentVideoToFinishThen',
+      )
     }
   }
 

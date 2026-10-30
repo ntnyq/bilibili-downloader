@@ -3,6 +3,7 @@ import {
   filenameTemplateSchema,
 } from '~/types/download'
 import { createDownloadPath } from '~/utils/downloads/files/createDownloadPath'
+import { i18n } from '~/utils/i18n'
 import { useDownloadSettings } from './useDownloadSettings'
 
 export function useDownloadFileSettings() {
@@ -29,12 +30,12 @@ export function useDownloadFileSettings() {
     }
     return createDownloadPath({
       bvid: 'BV1xx411c7mD',
-      title: '周末去海边',
-      owner: '示例 UP',
+      title: i18n.t('useDownloadFileSettings.weekendAtTheBeach'),
+      owner: i18n.t('useDownloadFileSettings.exampleUploader'),
       kind: 'video',
       pageCount: 2,
       page: 1,
-      part: '沿着海岸走',
+      part: i18n.t('useDownloadFileSettings.walkingAlongTheCoast'),
       quality: '1080P',
       filenameTemplate: validation.value.data,
       folderMode: folderMode.value,
@@ -45,7 +46,8 @@ export function useDownloadFileSettings() {
     notice.value = ''
     if (!validation.value.success) {
       error.value =
-        validation.value.error.issues[0]?.message || '命名模板无效。'
+        validation.value.error.issues[0]?.message
+        || i18n.t('useDownloadFileSettings.invalidFilenameTemplate')
       return
     }
     if (
@@ -54,7 +56,9 @@ export function useDownloadFileSettings() {
         folderMode: folderMode.value,
       })
     ) {
-      notice.value = '文件设置已保存，将用于新加入的任务。'
+      notice.value = i18n.t(
+        'useDownloadFileSettings.fileSettingsSavedTheyWillApplyToNewly',
+      )
     }
   }
   function resetDefaults() {

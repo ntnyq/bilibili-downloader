@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import { DOWNLOAD_KIND_LABELS, STATUS_LABELS } from '../labels'
 import type { DownloadJob } from '~/types/download'
 
@@ -42,17 +43,17 @@ export function serializeDownloadHistory(
   }
   return `\u{FEFF}${[
     [
-      'BV 号',
+      i18n.t('downloadFileSettings.bvId'),
       'CID',
-      '标题',
-      'UP 主',
-      '页码',
-      '分 P',
-      '类型',
-      '状态',
-      '画质或素材说明',
-      '请求保存路径',
-      '创建时间（UTC）',
+      i18n.t('downloadFileSettings.title'),
+      i18n.t('downloadQueueItem.uploader'),
+      i18n.t('downloadFileSettings.partNumber'),
+      i18n.t('serializeDownloadHistory.part'),
+      i18n.t('downloadFileSettings.type'),
+      i18n.t('serializeDownloadHistory.status'),
+      i18n.t('serializeDownloadHistory.qualityOrAssetDescription'),
+      i18n.t('serializeDownloadHistory.requestedSavePath'),
+      i18n.t('serializeDownloadHistory.createdTimeUtc'),
     ],
     ...records.map(record => Object.values(record)),
   ]

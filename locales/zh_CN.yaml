@@ -1,2 +1,837 @@
+api:
+  bilibili: B 站：$1（$2）$3
+  bilibiliApiRequestFailedHttpPleaseTryAgain: B 站接口请求失败（HTTP $1），请稍后重试。
+  bilibiliIsTemporarilyLimitingRequestsPlayTheVideo: B 站暂时限制了请求，请在网页正常播放视频后稍后重试。
+  cannotParseTheBilibiliResponsePleaseTryAgain: B 站返回的内容无法解析，请稍后重试。
+  interactiveVideosAreNotSupportedChooseARegular: 暂不支持互动视频，请选择普通单视频或多 P 视频。
+  pleaseSignInOnTheBilibiliWebsiteFirst: ，请先在 B 站网页登录。
+  requestFailed: 请求失败
+app:
+  cannotReadTheCurrentTabRefreshThePage: 无法读取当前标签页，请刷新页面后重试。
+batch:
+  bilibiliReturnedAnEmptyPageLoadingStoppedPreview: B 站返回了空分页，已停止读取；请稍后重新预览。
+  bilibiliReturnedAnInconsistentPageNumberLoadingStopped: B 站返回的页码不一致，已停止读取；请重新预览。
+  cannotRecognizeThisVideoUrl: 无法识别此视频链接。
+  collection: 合集 $1
+  enterAFullBilibiliCollectionOrSeriesUrl: 请输入包含 UP 主 UID 和合集 ID 的完整 B 站合集或系列链接。
+  enterASingleVideoUrl: 请输入单个视频链接。
+  enterAValidNumericIdOrBilibiliHttps: 请输入有效的数字 ID 或 B 站 HTTPS 链接。
+  enterAValidVideoUrlWithAPart: 请输入有效的视频链接，分 P 页码须为 1–1000。
+  importUpToLinesAtATime:
+    n: 每次最多导入 $1 行链接。
+  partNumbersMustBeBetween1And1000: 分 P 页码须为 1–1000。
+  series: 系列 $1
+  theLinkListCannotExceed1Mb: 链接列表文本不能超过 1 MB。
+  theUrlDoesNotMatchTheSelectedSource: 链接与所选来源类型不匹配，或缺少有效 ID。
+  uploadsBy: UP 主 $1 的投稿
+  useAFullBilibiliHttpsUrl: 请使用 B 站的 HTTPS 完整链接。
+batchImportOptions:
+  allPartsOfEachVideo: 每个视频的全部 P
+  downloadContent: 下载内容
+  downloadOptions: 下载选项
+  editOptions: 修改选项
+  hideOptions: 收起选项
+  linkedPartFirstPart: 链接指定 P / 首个 P
+  localHistoryPreventsDuplicateDownloadsOfTheSame: 依据本机的已下载记录，同一分 P、同一下载内容只加入一次。最多保留 5000 条、3 MiB，超出后移除最早记录；清除记录后无法识别。排队中的相同任务始终跳过。
+  oneCoverPerVideo: 每个视频一张封面
+  outputFormat: 保存格式
+  partRange: 分 P 范围
+  qualityPreference: 画质偏好
+  saveOneCoverPerVideo: 每个视频保存一张封面。
+  skipPreviouslyCompletedAssets: 跳过已完成的相同内容
+  subtitleLanguage: 字幕语言
+  thePParameterSelectsAPartFavoritesCollections: 链接中的 p 参数指定分 P；收藏夹、合集和投稿默认取首个 P。选择全部 P 后逐个展开。
+  viewOptions: 查看选项
+batchImportSteps:
+  addToQueue: 加入队列
+  batchImportSteps: 批量导入步骤
+  chooseSource: 选择来源
+  reviewVideos: 确认视频
+batchPreview:
+  failed: 失败
+  notSelected: 未选择
+  partiallyCompleted: 部分完成
+  processed: 已处理
+  selectAllPendingVideos: 全选待加入视频
+  selectPart: 选择 $1 P$2
+  selected: 已选择
+  selected2: 已选 $1 / $2
+  videoPreviewList: 预览视频列表
+batchSession:
+  theBatchSessionContainsInvalidOrDuplicateVideo: 批量会话包含无效或重复的视频标识。
+  theBatchSessionExceeds1MibReduceThe: 批量会话超过 1 MiB，请减少粘贴内容后重试。
+batchSourceForm:
+  batchImportSource: 批量导入来源
+  collectionSeries: 合集 / 系列
+  favorites: 收藏夹
+  linkList: 链接列表
+  loading: 正在读取…
+  oneVideoUrlBvIdOrAvId: 每行一个视频链接、BV 号或 av 号，最多 $1 行。请使用完整视频链接，不支持短链接。
+  openACollectionOrSeriesFromAnUploader: 从 UP 空间打开合集或系列，复制完整列表链接（包含 UP 的 UID）。
+  pasteAFavoritesUrlOrIdSignIn: 粘贴收藏夹链接或收藏夹 ID。私有收藏夹需要先登录对应的 B 站账号。
+  pasteAnUploaderProfileUrlOrUidOnly: 粘贴 UP 空间链接或 UID。只读取公开的视频投稿。
+  previewList: 预览列表
+  stopLoading: 停止读取
+  uploaderVideos: UP 投稿
+bridge:
+  theLocalTaskExceeds1MibAndCannot: 本地任务超过 1 MiB，无法直接交接。
+capacity:
+  theDownloadQueueIsFullBundleSlotsAre: 下载队列已满。素材组合全部结束后会释放名额，请先继续或取消未完成任务。
+  theDownloadQueueReachedItsStorageLimitComplete: 下载队列已达到存储上限，请先完成或取消部分任务后再添加。
+common:
+  close: 关闭
+  mobileSidebar: 移动端下载中心导航。
+  openOptions: 打开设置
+  sidebar: 侧栏
+  toggleSidebar: 切换侧栏
+control:
+  onlyPausedTasksCanBeResumed: 只有已暂停的任务可以继续。
+  onlyWaitingTasksCanBeReordered: 只有等待下载的任务可以调整顺序。
+  theFileIsBeingSavedAndCannotBe: 文件正在保存，无法暂停，请等待保存完成。
+  theTaskStateChangedThisExecutionStopped: 任务状态已变化，停止本次执行。
+  theTaskWasPausedOrTakenOverBy: 任务已暂停或已由新的执行接管。
+  thisTaskHasEndedAndCannotBePaused: 此任务已结束，无法暂停。
+  thisTaskNoLongerExistsRefreshTheList: 此任务已不存在，请刷新列表。
+cover:
+  theCoverApiReturnedNoSupportedImageNo: 封面接口没有返回受支持的图片，未保存文件。
+createDownloadPath:
+  bestQuality: 最高画质
+  unknownUploader: 未知 UP
+  unsupportedFileFormat: 不支持的文件格式。
+download:
+  enterAFilenameTemplate: 请输入命名模板。
+  theFilenameTemplateCannotContainPathSeparatorsOr: 命名模板不能包含路径分隔符或文件名禁用字符。
+  theFilenameTemplateCannotExceed160Characters: 命名模板不能超过 160 个字符。
+  theFilenameTemplateContainsUnknownVariablesOrUnmatched: 命名模板包含未知变量或不完整的花括号。
+downloadBatchImport:
+  addSelectedVideos:
+    n: 加入所选 $1 个视频
+  backToPreview: 返回预览
+  changeSource: 更换来源
+  chooseImportSource: 选择导入来源
+  clearCorruptSession: 清除损坏的会话
+  duplicatesCombined:
+    n: 合并重复 $1 条
+  ifSavedDataIsCorruptClearTheBatch: 如果保存的数据已损坏，可清除批量草稿和预览后重新开始。已加入的下载任务会保留。
+  inSource: / 来源共 $1 个
+  keepThisPageOpenDuringImportAndDownloads: 导入与下载期间请保持此页打开。已加入的结果与导入进度会保留，重新打开后可手动继续。
+  line: 第 $1 行：$2 — $3
+  linesCouldNotBeRecognizedOtherValidLines:
+    n: $1 行未能识别，其他有效行仍可导入
+  loadNextPage: 读取下一页
+  loadOnePageAtATimeAndReview: 每次只读取一页，确认后再继续。
+  loadSavedSession: 载入已保存的会话
+  loadingPreviousSession: 正在载入上次会话…
+  noVideosToAddCheckTheSourceOr: 暂无可加入的视频，请检查来源或输入内容。
+  previewedCount:
+    n: 已预览 $1 个视频
+  saveToBilibiliFolder: 保存到 Bilibili 文件夹
+  savingDraftAndProgress: 正在保存草稿和进度…
+  selectedVideoCount:
+    n: 已选择 $1 个视频
+  stopAfterTheCurrentVideo: 处理完当前视频后停止
+  thePreviousSessionIsUnavailable: 上次会话暂不可用。
+  theQueueIsPausedNewTasksWillWait: 队列已暂停，新任务将等待恢复。
+  theSourceOrInputHasChangedThisIs: 来源或输入已修改，下方仍是上一次预览。请点击「预览列表」更新后再加入队列。
+  thisSessionUsesTheDownloadOptionsFilenameTemplate: 本会话沿用首次加入时的下载选项、文件名模板「$1」和目录设置。 如需更改选项，点击「更换来源」，重新预览以开始新会话。
+  unavailableVideosSkipped:
+    n: 跳过失效 $1 个
+  videoPreview: 视频预览
+  waitingForTheCurrentVideo: 等待当前视频完成…
+  yourLatestSessionIsSavedAutomaticallyResumeManually: 自动保存最近一次会话；刷新或关闭后可手动继续。
+downloadBundlePicker:
+  bilibiliUploaderVideo: Bilibili / UP 主 / 视频
+  bilibiliVideo: Bilibili / 视频
+  bundleAssetsAreSavedToUsingYourFilename: 组合素材统一保存到 $1 目录，文件命名沿用设置。 封面每个视频仅一份，其他素材按所选分 P 下载。
+  downloadMode: 下载方式
+  missingSubtitlesOrSignInRequirementsAreRecorded: 字幕缺失或需要登录时会记录失败，其他素材继续下载。
+  selectAssets: 选择需要的素材
+  selectAtLeastOneAsset: 请至少选择一种素材。
+  singleAsset: 单项下载
+downloadBundleProgress:
+  allAssetsSavedInTheVideoFolder: 全部素材已保存到视频目录
+  allBundleAssetsSaved: 组合已全部保存
+  bundleCompletionProgress: 素材组合完成进度
+  bundleDownloadProgress: 素材组合下载进度
+  bundleRecordsIncomplete: 组合记录不完整
+  cancelled: 已取消 $1
+  created: 创建于 $1
+  downloadingBundle: 组合下载中
+  failed: 失败 $1
+  recordsForAssetsWereRemovedTheFullResult:
+    n: 有 $1 个素材的记录已移除，无法确认完整结果。
+  saved: 已保存 $1 / $2
+  savedAssets: 已保存 $1 / $2 个素材
+  someBundleAssetsCancelled: 组合有素材取消
+  someBundleAssetsFailed: 组合有素材失败
+  unfinished: 未完成 $1
+  viewUnfinishedAssets:
+    n: 查看未完成素材（$1）
+downloadBundles:
+  noBundlesYetChooseAssetBundlesOnA: 还没有素材组合。在视频页切换到「素材组合」，选择需要的素材后下载。
+  reviewBundleResultsByVideoABundleIs: 按视频查看本次组合的整体结果。仅全部素材保存成功时显示完成，失败和取消可单独重试。
+downloadCache:
+  approximatelyOfBrowserQuotaRemaining: 浏览器剩余配额约 $1。
+  browserDownloadCache: 浏览器下载缓存
+  clearDownloadCache: 清理下载缓存
+  clearing: 正在清理…
+  downloadCacheUnavailable: 下载缓存暂不可用
+  loadingDownloadCache: 正在读取下载缓存…
+  mediaCacheEntries: 媒体缓存 $1 · $2 条
+  refreshUsage: 刷新用量
+  retriesAfterFailureOrRefreshWillReuseCached: 失败或刷新页面后，重试会尽量复用缓存并续传；续传需要媒体服务器支持。 浏览器可能回收缓存。清理会移除续传数据，已保存文件与下载记录不受影响。
+  thereIsNoFixedMediaInputSizeLimit: 音视频下载不设固定输入大小上限，会按剩余配额为输入、封装输出和安全余量预留空间，最终下载文件还需额外磁盘空间。
+downloadFileSettings:
+  appliesToNewTasksOnlyDuplicateFilenamesReceive: 仅影响新任务；重名文件会自动增加后缀。
+  bvId: BV 号
+  clickAVariableToInsertIt: 点击变量插入到模板
+  fileSaving: 文件保存
+  filenamePreview: 文件名预览
+  filenameTemplate: 命名模板
+  filenameTemplatesAreLimitedTo160CharactersShorten: 命名模板最多 160 个字符，请缩短后再插入变量。
+  insertVariable: 插入$1变量
+  insideTheBilibiliFolderInYourBrowserS: 位于浏览器默认下载目录下的 Bilibili 文件夹。
+  multiPartSuffix: 多 P 后缀
+  noExtensionNeeded: 无需扩展名
+  partNumber: 页码
+  partTitle: 分 P 标题
+  qualityAssetDescription: 画质 / 素材说明
+  restoreDefaultTemplate: 恢复默认模板
+  saveFileSettings: 保存文件设置
+  saveFolder: 保存目录
+  savePreview: 保存效果预览
+  saving: 正在保存…
+  setFoldersAndFilenamesToFindYourFiles: 设置目录和文件名，方便以后查找。
+  title: 标题
+  type: 类型
+downloadLauncher:
+  adding: 加入中
+  closeDownloadPanel: 关闭下载面板
+  dismissNotification: 关闭提示
+  download: 下载
+downloadLibrary:
+  afterClearingBatchImportsWillNoLongerSkip: 清空$1后，批量导入将不再依据这些记录跳过素材。已保存文件不受影响。
+  allRecords:
+    n: 全部 $1 条记录
+  clearDownloadHistory: 清空下载历史
+  clearDownloadHistory2: 清空下载历史？
+  clearFilters: 清除筛选
+  confirmClear: 确认清空
+  deletingRecordsPreventsBatchImportsFromSkippingThose: 删除记录会让批量导入不再跳过对应素材。再次下载沿用原任务的画质、命名与目录设置，实际可用素材可能变化。
+  downloadHistoryPagination: 下载历史分页
+  downloadHistoryUnavailable: 下载历史暂不可用
+  downloadRecordsAreStoredHereRemovingARecord: 这里保存下载记录；移除记录不会删除电脑上的文件。
+  exportCsv: 导出 CSV
+  exportFilteredRecords:
+    n: 导出当前筛选的 $1 条记录
+  exportJson: 导出 JSON
+  exportRecords: 导出记录
+  keepRecords: 保留记录
+  learnMore: 了解更多
+  loadingDownloadHistory: 正在读取下载历史…
+  matchingRecords:
+    n: 筛选结果 $1 条
+  moreHistoryActions: 更多历史记录操作
+  next: 下一页
+  noMatchingDownloadRecords: 没有匹配的下载记录
+  oldRecordsWereRemovedDueToStorageLimits:
+    n: 已因存储上限移除 $1 条旧记录；这些素材可能再次加入批量下载。
+  page20PerPage: 第 $1 / $2 页 · 每页 20 条
+  pleaseTryAgainLater: 请稍后重试。
+  previous: 上一页
+  refreshRecords: 刷新记录
+  refreshing: 正在刷新…
+  successfullyDownloadedAssetsWillAppearHereAutomatically: 成功下载的素材会自动保存在这里。
+  theMostRecentSuccessfulDownloadOfEachAsset: 独立保留每份素材最近一次成功下载，最多 $1 条或 3 MB，达到上限时移除最旧记录。清除下载队列记录不会影响这里。
+  theUnreadableDownloadHistory: 无法读取的下载历史
+  tryDifferentKeywordsOrViewAllAssets: 试试其他关键词，或查看全部素材。
+  yourSavedCollectionStartsHere: 这里会记住每一份收藏
+downloadLibraryFilters:
+  allAssets: 全部素材
+  audio: 音频
+  cover: 封面
+  danmaku: 弹幕
+  filterHistoryAssets: 筛选下载历史素材
+  searchDownloadHistory: 搜索下载历史
+  searchTitleBvIdUploaderOrSavePath: 搜索标题、BV 号、UP 主或保存路径
+  subtitles: 字幕
+  video: 视频
+downloadLibraryItem:
+  completed: 完成于
+  completedTime: 完成时间
+  created: 创建于
+  createdTimeCompletionUnknown: 创建时间（完成时间未知）
+  deleteRecord: 删除记录
+  downloadAgain: 再次下载
+  hideDetails: 收起详情
+  legacyRecord: 旧记录
+  moreRecordActions: 更多记录操作：$1
+  originalQualityPreference: 原画质偏好
+  savePath: 保存路径
+  unknownUploader: 未知 UP 主
+  videoAndPart: 视频与分 P
+  viewDetails: 查看详情
+downloadLibraryList:
+  recordsOnThisPage:
+    n: 本页 $1 条记录
+downloadNativeBridge:
+  keepTheDownloadCenterOpenCompletedFilesAre: 请保持下载中心页面打开，完成文件会保存到安装时指定的目录。
+  localHelperIsProcessing: 本地助手正在处理…
+  saved: 已保存：$1
+  sendToLocalHelper: 交给本地助手
+downloadNativeExport:
+  exportLocalTask: 导出本地任务
+  exportingLocalTask: 正在导出本地任务…
+downloadNativeHelp:
+  advancedLocalHelper: 高级选项：本地助手
+  afterInstallingAndRegisteringTheHelperOpenView: 安装并注册助手后，在已暂停、失败、取消或完成的音视频任务中， 打开「查看详情」→「高级选项：本地助手」，点击「交给本地助手」。 下载中心会显示本地处理状态和保存路径；处理期间请保持下载中心打开。
+  browserDownloadsNeedNoPythonOrFfmpegInstallation: 浏览器下载无需安装 Python 或 FFmpeg，大文件按浏览器剩余配额检查空间。 如需在浏览器配额之外保存文件，或使用本机 FFmpeg，可选用本地助手。 本地助手与浏览器缓存独立，交接时不会搬运已有缓存。
+  commandLineInstructions: '在已失败、取消或完成的音视频任务详情中展开高级选项，点击「导出本地任务」。安装 Python 3.10+ 和 FFmpeg 后，从项目仓库获取 scripts/native-downloader.py，在仓库目录运行下方命令，并将 task.bili.json 替换为导出的任务文件路径。'
+  commandLineTasksRunIndependentlyAndDoNot: 命令行任务独立运行，不会同步浏览器队列状态或进度。 任务文件含临时媒体地址，请勿分享；地址过期后需重新导出。
+  handOffExtensionTasks: 从扩展交接任务
+  installationGuide: 查看安装说明
+  projectRepository: 项目仓库
+  standaloneCommandLineDownload: 独立命令行下载
+downloadNotificationSettings:
+  completionNotifications: 完成通知
+  completionNotificationsDisabled: 完成通知已关闭。
+  completionNotificationsEnabled: 完成通知已开启。
+  getNotifiedWhenDownloadsFinish: 下载完成后及时提醒。
+  notificationPermissionWasNotGrantedDownloadsAreUnaffected: 未获得通知权限；文件下载不受影响。
+  notificationsAlsoDependOnYourBrowserAndSystem: 通知是否显示，还取决于浏览器和系统设置。
+  notifyWhenAFileHasBeenSaved: 文件保存完成后发送通知。
+  sendASystemNotificationWhenAFileHas: 文件保存完成后发送系统通知
+  systemNotifications: 系统通知
+downloadPanel:
+  addedToDownloadQueue: 已加入下载队列
+  addingToQueue: 正在加入队列…
+  bilibiliFolder: Bilibili 文件夹
+  bundleAssets:
+    n: 素材组合 · $1 个素材
+  downloadAllParts:
+    n: 下载全部 $1 P
+  downloadAssetParts:
+    n: 下载$1 · $2 P
+  downloadBundleAssets:
+    n: 下载素材组合 · $1 个素材
+  downloadCenter: 下载中心
+  downloadCurrentPart: 下载当前 P$1
+  downloadSelectedParts:
+    n: 下载所选 $1 P
+  downloadVideo: 下载视频
+  downloadVideoCover: 下载视频封面
+  findAVideoYouLove: 去看看喜欢的视频
+  loadingVideoInformation: 正在读取视频信息…
+  oneCoverPerVideo: 每个视频保存一份封面
+  openABilibiliVideoToDownloadVideosAudio: 打开 B 站视频页面，即可下载视频、音频、封面、字幕和弹幕。
+  openBilibili: 打开哔哩哔哩
+  parts:
+    n: $1 · $2 个分 P
+  partsSelected:
+    n: 已选 $1 个分 P
+  reload: 重新读取
+  settingsAndHelp: 设置与说明
+  theQueueIsPausedNewTasksWillWait: 队列已暂停，加入的任务将等待恢复。请前往下载中心恢复队列。
+downloadPartPicker:
+  allParts: 全部分 P
+  clear: 清空
+  clearResults: 清空结果
+  currentPart: 当前分 P
+  currentPart2: 当前 P$1
+  deselectPart: 取消选择 P$1 $2
+  downloadPartsTotalDuration: 将下载 $1 个分 P · 总时长 $2
+  downloadRange: 下载范围
+  invertResults: 反选结果
+  invertSelection: 反选
+  moreParts:
+    n: 另 $1 P
+  noMatchingParts: 没有匹配的分 P
+  noPartsSelected: 还没有选择分 P
+  partsSelected:
+    n: 已选 $1 / $2 P
+  partsTotal:
+    n: 共 $1 个分 P
+  playing: 正在播放
+  searchPartTitleOrNumber: 搜索分 P 标题或序号
+  selectAll: 全选
+  selectAtLeastOnePart: 请至少选择一个分 P
+  selectParts: 自选分 P
+  selectResults: 全选结果
+  selectedOnly: 仅看已选
+  showAllParts: 显示全部分 P
+downloadProgress:
+  approximately: / 约 $1
+  cancel: 取消
+  downloadProgressEstimated: 下载进度（估算）
+  downloaded: 已下载 $1
+  pause: 暂停
+  pausedResumingWillFetchThisAssetAgain: 已暂停，继续后将重新读取此素材。
+  resume: 继续
+  retry: 重试
+  transferStoppedAndCacheRetainedResumingWillValidate: 已停止传输并保留缓存，继续时将校验素材并尝试续传。
+downloadQuality:
+  balanceQualityAndSize: 清晰与大小兼顾
+  bestAvailable: 最高可用
+  bestViewingExperience: 优先最佳体验
+  saveStorageSpace: 节省存储空间
+  smallerFiles: 更小的文件
+downloadQueue:
+  allTasks: 全部任务
+  cancelAll: 取消全部
+  clearQueueRecords: 清除队列记录
+  clickDownloadVideoOnABilibiliVideoPage: 在 B 站视频页点击「下载视频」，任务就会出现在这里。
+  completed: 已完成
+  downloadTasks: 下载任务
+  exploreBilibili: 去 B 站看看
+  filterDownloadTasks: 筛选下载任务
+  filteredRecords:
+    n: 当前筛选 $1 条记录
+  moreQueueActions: 更多队列操作
+  noMatchingTasks: 没有匹配的任务
+  noTasksYet: 这里还没有任务
+  pauseQueue: 暂停队列
+  paused: 已暂停
+  pending: 待处理
+  queuePausedTheCurrentTaskWillFinishOthers: 队列已暂停：当前任务会继续完成，其余任务等待恢复。请保持下载中心打开。
+  resumeQueue: 恢复队列
+  retryAllFailed: 重试全部失败
+  saveTheVideosYouLove: 喜欢的视频，慢慢收藏
+  searchDownloadTasks: 搜索下载任务
+  searchTitleBvIdOrPart: 搜索标题、BV 号或分 P
+  tryAnotherTitleBvIdOrPart: 试试其他标题、BV 号或分 P。
+downloadQueueItem:
+  cacheRetainedResumingWillValidateTheAssetAnd: 已保留缓存，继续时将校验素材并尝试续传。
+  cancelTask: 取消任务
+  fileSavedSeeDetailsForThePath: 文件已保存，路径见详情
+  installPythonFfmpegAndTheOptionalMessagingHost: 需要另行安装 Python、FFmpeg 和可选的通信宿主。安装与使用说明见「下载缓存」中的高级选项。
+  moreActionsPart: 更多操作：$1 P$2
+  moveEarlier: 提前下载
+  moveLater: 推后下载
+  openFolder: 打开文件夹
+  queuePosition: 等待顺序 $1 / $2
+  requestedPreference: 提交偏好
+  resumingWillFetchThisAssetAgain: 继续后将重新读取此素材。
+  savedToBilibiliFolder: 已保存到 Bilibili 文件夹
+  singleVideo: 单视频
+  uploader: UP 主
+  videoCover: 视频封面
+  videoId: 视频编号
+  viewOriginalVideo: 查看原视频
+downloadQuickSettings:
+  byDefaultDownloadTheCurrentPartAtThe: 默认下载当前分 P 的视频，始终使用最高可用画质，不受默认画质设置影响。实际画质取决于当前账号权限。 封面按整个视频保存一份，字幕自动选择可用语言。
+  clickThePageDownloadButtonToOpenThe: 单击页面上的下载按钮打开面板，双击直接下载。
+  doubleClickDownloadContent: 双击下载的资源
+  quickDownloadOnVideoPages: 页面快捷下载
+downloadSettingsSection:
+  savedAutomatically: 自动保存
+downloadWorkspace:
+  assetBundles: 素材组合
+  batchImport: 批量导入
+  browserDefaultDownloadFolder: 浏览器默认下载目录
+  checkBrowserStorageUsageAndManageResumableDownloads: 查看浏览器磁盘用量，管理可续传的下载缓存。
+  downloadCache: 下载缓存
+  downloadCenterNavigation: 下载中心导航
+  downloadHistory: 下载历史
+  downloadQueue: 下载队列
+  eachPartIsSavedSeparatelyDownloadsRunIn: 每个分 P 独立保存 · 按队列顺序下载
+  findSavedAssetsOrDownloadThemAgainWith: 查找保存过的素材，或按原设置再次下载。
+  keepThisPageOpenWhileDownloadingYouCan: 下载期间请保持此页打开，你可以继续浏览其他标签页。
+  manageDownloadCache: 管理下载缓存
+  reviewVideosAndAddThemToTheQueue: 先确认视频，再按你的偏好加入下载队列。
+  settings: 设置
+  trackProgressAndManageYourDownloads: 查看进度，管理每一份正在保存的内容。
+  viewAssetsAndBundleResultsByVideo: 按视频查看素材归档和组合下载结果。
+downloads:
+  anotherDownloadCenterIsProcessingTheQueue: 另一个下载中心正在处理队列。
+  cannotLoadVideoInformationPleaseTryAgain: 无法读取视频信息，请重试。
+  downloadTasksCanOnlyRunInTheDownload: 下载任务只能由下载中心执行。
+  enableNotificationsInSettingsAndGrantNotificationPermission: 请在设置页开启通知并授予通知权限。
+  invalidDownloadRequestParameters: 下载请求参数无效。
+  saved: $1已保存
+  theBatchSessionDoesNotExistPreviewAgain: 批量会话不存在，请重新预览。
+  theBatchSessionIsCorruptAndCannotBe: 批量会话格式损坏，无法读取。可以清除损坏的会话后重新预览。
+  theCurrentSessionIsStillReadableLoadThe: 当前会话仍可读取，请载入已保存的会话。
+  theDownloadCenterClosedThisImportHasStopped: 下载中心已关闭，本次导入已停止。
+  theDownloadCenterWasClosedOrRefreshedInterrupting: 下载中心已关闭或刷新，任务已中断。重试时会校验缓存并尝试续传。
+  theDownloadCenterWasClosedOrRefreshedInterrupting2: 下载中心已关闭或刷新，任务已中断，请重试。
+  theLinkedPartDoesNotExistUpdateThe: 链接指定的分 P 不存在，请修改链接后重试。
+  thisSuccessfulDownloadRecordWasRemovedRefreshThe: 这条成功记录已被移除，请刷新列表。
+  unsupportedBatchSessionAction: 不支持的批量会话操作。
+  unsupportedDownloadAction: 不支持的下载操作。
+  useBatchImportInTheDownloadCenter: 请在下载中心使用批量导入。
+exportNativeTask:
+  onlyVideoAndAudioTasksSupportLocalDownloading: 仅视频和音频任务支持本地下载。
+  theLocalTaskFileExceeds1MbChoose: 本地任务文件超过 1 MB，请选择分 P 较少的视频。
 extensionDescription: 下载 B 站视频、音频、封面、字幕和弹幕，支持多 P 批量下载与素材组合。
+extensionHeader:
+  extension: 扩展
+  userGuide: 使用说明
 extensionName: B 站下载器
+fetchAsset:
+  danmakuComments:
+    n: $1 条弹幕
+  invalidDanmakuXmlNoFileWasSaved: 弹幕 XML 格式无效，未保存文件。
+  originalCover: 封面原图
+  theDanmakuApiReturnedAnInvalidFormatPlease: 弹幕接口返回格式无效，请稍后重试。
+  thisPartHasNoExportableDanmakuAtPresent: 此分 P 当前没有可导出的弹幕。
+  thisVideoHasNoExportableCover: 此视频没有可导出的封面。
+fetchCachedMedia:
+  allMediaSourcesFailedDownloadCacheRetained: 所有素材线路均下载失败，已保留下载缓存。
+  downloadCacheWasLostDownloadAgain: 下载缓存已丢失，请重新下载。
+  downloadConnectionTimedOut: 下载连接超时。
+  invalidMediaUrlProtocol: 素材地址协议无效。
+  mediaTransferIncompleteDownloadCacheRetained: 素材传输不完整，已保留下载缓存。
+  theAssetExceedsTheRemainingSizeLimitDownload: 素材超过剩余大小限制，已停止下载。
+  theMediaResponseExceedsItsDeclaredSize: 素材响应大小超过声明的范围。
+  theMediaServerCannotSafelyResumeThisDownload: 素材服务器无法安全恢复断点下载。
+  theMediaServerReturnedAnEmptyFile: 素材服务器返回了空文件。
+  theMediaServerReturnedAnInconsistentFileRange: 素材服务器返回了不一致的文件范围。
+  theMediaServerReturnedAnInvalidFileSize: 素材服务器返回了无效的文件大小。
+  theMediaServerReturnedAnInvalidResumeRange: 素材服务器返回了无效的续传范围。
+  theMediaServerReturnedAnUndownloadableResponseHttp: 素材服务器返回无法下载的响应（HTTP $1）。
+  theMediaServerReturnedAnUnexpectedPartialResponse: 素材服务器返回了意外的部分响应。
+fetchMediaBytes:
+  allMediaSourcesFailedPleaseTryAgainLater: 所有素材线路均下载失败，请稍后重试。
+  mediaTransferIncomplete: 素材传输不完整。
+  theAssetExceedsTheRemainingMbSizeLimit: 素材超过剩余 $1 MB 的大小限制，已停止下载。
+  theMediaServerReturnedHttp: 素材服务器返回 HTTP $1。
+ffmpegDiskFile:
+  browserDiskWriteIncomplete: 浏览器磁盘写入未完成。
+fragmentSamples:
+  invalidGopStorageRange: GOP 暂存范围无效。
+  invalidSampleMediaReadRange: 样本媒体读取范围无效。
+  invalidSampleReleaseRange: 样本释放范围无效。
+  invalidSampleStorageField: 样本暂存字段无效。
+  invalidSampleStorageReference: 样本暂存引用无效。
+  invalidSampleStorageSize: 样本暂存大小无效。
+  invalidSampleStorageType: 样本暂存类型无效。
+  invalidSampleTrackId: 样本轨道编号无效。
+  invalidSortedTimestampReference: 排序时间戳引用无效。
+  sampleStorageFileReadOrWriteIncomplete: 样本暂存文件读写不完整。
+  sampleStorageIsClosed: 样本暂存已关闭。
+  thisBrowserDoesNotSupportWorkerSampleDisk: 浏览器不支持 Worker 样本磁盘暂存。
+fragmentStore:
+  fragmentStorageFileIsIncomplete: 片段暂存文件不完整。
+  fragmentStorageFileIsTooLarge: 片段暂存文件过大。
+  fragmentStorageFileReadIncomplete: 片段暂存文件读取不完整。
+  fragmentStorageFileWriteMadeNoProgress: 片段暂存文件写入未取得进展。
+  fragmentStorageHasEnteredTheReadPhase: 片段暂存已进入读取阶段。
+  fragmentStorageHasNotBeenCommitted: 片段暂存尚未提交。
+  fragmentStorageIsClosed: 片段暂存已关闭。
+  fragmentStorageWriteStreamIsClosed: 片段暂存写流已关闭。
+  invalidFragmentStorageReadRange: 片段暂存读取范围无效。
+  invalidFragmentTrackId: 片段轨道编号无效。
+groupHistoryRecords:
+  legacyRecordsCompletionTimeUnknown: 旧记录 · 完成时间未知
+  today: 今天
+  yesterday: 昨天
+home:
+  changeTheSaveLocationInYourBrowserS: 更改保存位置请使用浏览器的下载设置。DASH、旧格式视频和独立音轨均支持浏览器磁盘封装，按剩余配额动态预留输入与输出空间。本地助手可按需使用。
+  chooseTheDefaultQualityForNewTasks: 选择新任务的默认画质。
+  downloadQuality: 下载画质
+  qualitySettingsAreUpperLimitsActualQualityDepends: 画质选项为上限，实际画质取决于当前账号权限。
+  setDefaultsForNewTasksQueuedTasksKeep: 调整新任务的默认偏好，已入队的任务保持原设置。
+  viewFullUserGuide: 查看完整使用说明
+jobs:
+  cannotFindTheCurrentPartRefreshTheVideo: 找不到当前分 P，请刷新视频页面后重试。
+  selectAtLeastOnePart: 请至少选择一个分 P。
+  theDownloadQueueIsFullWaitForSome: 下载队列已满，请等待部分任务完成后再添加。
+  theDownloadQueueIsFullWaitForSome2: 下载队列已满，请等待部分任务完成后再重试。
+  theSelectedPartsAreNoLongerValidReload: 所选分 P 已失效，请重新读取视频信息。
+  thisTaskDoesNotNeedRetryingOrThis: 此任务无需重试，或此分 P 已在下载队列中。
+labels:
+  audioM4a: 音频 M4A
+  automaticPreferChinese: 自动（优先中文字幕）
+  bestAvailableQuality: 最高可用画质
+  cancelled: 已取消
+  chinese: 中文
+  danmakuXml: 弹幕 XML
+  directlyInBilibili: 直接放入 Bilibili
+  downloadFailed: 下载失败
+  downloadOnlyTheHighestBitrateAacTrackAnd: 只下载最高码率 AAC 音轨，无损封装为 M4A；无独立 AAC 音轨时提示失败。
+  downloading: 下载$1
+  downloadingVideoAndAudio: 下载音视频
+  english: 英文
+  groupByUploader: 按 UP 主建目录
+  groupByUploaderVideo: 按 UP 主 / 视频建目录
+  groupByVideo: 按视频建目录
+  loadingAssetInformation: 读取素材信息
+  localHelperDownload: 本地助手下载
+  mergeVideoAndAudioAutomaticallyActualQualityDepends: 自动合并音视频 · 实际画质取决于当前账号权限
+  mergingMp4: 合并 MP4
+  remuxingM4a: 封装 M4A
+  resolvingAvailableQuality: 解析可用画质
+  saveOneOriginalCoverPerVideoWithoutDuplicating: 每个视频只保存一份封面原图，不随分 P 重复下载。
+  saveSubtitlesForEachPartPreferringHumanSubtitles: 每个分 P 保存一份字幕，优先人工字幕；自动字幕会标注。无字幕或需要登录时提示失败。
+  saveTheCurrentlyAvailableDanmakuXmlItDoes: 保存当前可获取的弹幕 XML，不包含全部历史弹幕，也不会烧录到视频中。
+  saved: 已保存
+  savingFile: 保存文件
+  subtitlesSrt: 字幕 SRT
+  upTo1080p: 最高 1080P
+  upTo480p: 最高 480P
+  upTo720p: 最高 720P
+  videoMp4: 视频 MP4
+  waiting: 等待下载
+languageSettings:
+  description: 选择扩展界面的显示语言，修改后立即生效。
+  followBrowser: 跟随浏览器
+  hint: 已打开的扩展页面和视频页面板会自动同步。
+  label: 语言
+  simplifiedChinese: 简体中文
+  title: 界面语言
+library:
+  downloadHistoryIsCorruptAndCannotBeRead: 长期下载记录格式损坏，无法读取。可清空长期记录后重新建立。
+  thisAssetIsAlreadyQueued: 此素材已在下载队列中。
+  thisDownloadRecordExceedsTheHistoryStorageLimit: 单条下载记录超出长期记录存储上限。
+localeCode: zh-CN
+manifest:
+  invalidNumberOfMediaTracksInTheLocal: 本地任务的媒体轨数量无效。
+  invalidOutputExtensionInTheLocalTask: 本地任务的输出扩展名无效。
+  onlyVideoAndAudioTasksCanBeSent: 仅视频和音频任务可交给本地 FFmpeg 助手。
+mediaCache:
+  cannotReadOrWriteTheBrowserDownloadCache: 无法读写浏览器下载缓存，请清理缓存后重试。
+  downloadCacheSizeDoesNotMatchTheAsset: 下载缓存大小与素材不一致。
+  insufficientBrowserCacheSpaceClearTheDownloadCache: 浏览器本地缓存空间不足，请清理下载缓存或释放磁盘空间后重试。
+  invalidDownloadCacheBlockSize: 下载缓存块大小无效。
+  theAssetCacheIsCorruptClearItAnd: 素材缓存已损坏，请清理缓存后重试。
+  theAssetCacheIsNotFullyDownloaded: 素材缓存尚未完整下载。
+  thisBrowserDoesNotSupportLocalDownloadCaching: 当前浏览器不支持本地下载缓存，请更新浏览器后重试。
+  tooManyDownloadCacheFragmentsClearThisTask: 下载缓存碎片过多，请清理该任务缓存后重新下载。
+mergeBrowserMedia:
+  browserRemuxWorkerFailedToStart: 浏览器封装 Worker 启动失败。
+  browserRemuxWorkerStartupTimedOutPleaseRetry: 浏览器封装 Worker 启动超时，请重试。
+  theBrowserCannotReceiveTheRemuxedMediaResult: 浏览器无法接收音视频封装结果。
+  theBrowserRemuxOutputIsEmpty: 浏览器封装结果为空。
+nativeHelper:
+  cacheRevalidationFailed: 已缓存素材的服务器校验失败。
+  cancelled: 本地下载已停止；素材缓存已保留，可重新交接同一任务。
+  cannotPublishOutput: 无法安全发布输出文件，缓存已保留；请检查权限，或选择支持硬链接的本地文件系统。
+  changedMedia: 重新取流后的素材或画质发生变化，请重新发起本地任务。
+  communicationFailed: 本地助手通信失败。
+  compressedResponse: 服务器返回压缩素材，无法安全校验字节范围。
+  configurationTooLarge: 本地助手配置过大。
+  contentLengthOutOfRange: 素材长度必须大于 0 且不超过 1 TiB。
+  corruptConfiguration: 本地助手配置无效，请重新安装。
+  duplicateInputId: 素材身份重复。
+  duplicateJsonKey: JSON 包含重复字段。
+  excessTransfer: 素材长度超过服务器声明，已停止。
+  ffmpegFailed: FFmpeg 封装失败，素材缓存已保留；请检查 FFmpeg 版本与可用空间。
+  ffmpegTimedOut: FFmpeg 封装超过 1 小时，素材缓存已保留。
+  fileOperationFailed: 本地文件操作失败，请检查目录权限及磁盘空间。
+  httpError: 素材服务器返回 HTTP $1。
+  incompleteMessage: 本地通信消息不完整。
+  incompleteResponse: 服务器未返回完整素材（HTTP $1）。
+  incompleteTransfer: 素材传输不完整，可再次运行以重试。
+  incorrectExtension: 输出文件扩展名与素材类型不符。
+  incorrectInputCount: 音视频素材数量与类型不符。
+  insufficientCacheSpace: 缓存磁盘剩余空间不足。
+  insufficientMergeSpace: 合并所需缓存磁盘空间不足。
+  insufficientOutputSpace: 输出磁盘空间不足，素材缓存已保留。
+  invalidBitrate: 素材码率无效。
+  invalidConfiguration: 本地助手配置无效。
+  invalidContentLength: 服务器返回无效的素材长度。
+  invalidCreatedAt: 任务创建时间无效。
+  invalidFilename: 输出文件名无效。
+  invalidFilenameUnicode: 输出路径包含无效 Unicode 字符。
+  invalidInputCount: 素材数量无效。
+  invalidInputId: 素材身份无效。
+  invalidManifestJson: 任务文件不是有效 JSON。
+  invalidMediaUrl: 素材链接无效。
+  invalidMediaUrlCharacters: 素材链接包含无效字符。
+  invalidMessageJson: 本地通信消息不是有效 JSON。
+  invalidMessageType: 本地通信消息必须是对象。
+  invalidQuality: 任务画质无效。
+  invalidSourceCount: 素材线路数量无效。
+  invalidVideo: 视频任务信息无效。
+  manifestTooLarge: 任务文件不能超过 1 MiB。
+  mismatchedTaskId: 本地任务标识不匹配。
+  missingConfiguration: 找不到本地助手配置，请重新安装。
+  missingFfmpeg: 找不到 FFmpeg，请先安装并加入 PATH，或用 --ffmpeg 指定路径。
+  networkInterrupted: 素材网络读取中断（$1）。
+  outputOutsideRoot: 输出路径必须位于 Bilibili 目录下。
+  redirectedResume: 续传地址发生重定向，需从头下载此素材。
+  refreshFailed: 素材链接刷新后仍然不可用，缓存已保留；请检查登录状态后重试。
+  relativeConfigurationPath: 本地助手必须使用安装时设置的绝对路径。
+  requestTooLarge: 本地通信消息不能超过 1 MiB。
+  responseTooLarge: 本地通信响应过大。
+  resumeValidationFailed: 服务器续传校验失败，将从头下载此素材。
+  retryAdvice: 请在扩展中重新导出同一任务，使用相同缓存目录重试。
+  taskLocked: 此任务已在运行或上次被强制终止；确认助手已退出后，手动删除该任务缓存中的 .lock 目录。
+  tooManyDuplicateFiles: 同名文件过多，请更换输出目录。
+  unavailableSources: 所有素材线路均不可用。
+  unknownRequestFields: 本地任务包含未知字段。
+  unsafeCacheDirectory: 默认缓存目录不能是符号链接。
+  unsafeCacheFile: 缓存文件不是普通独立文件，已停止以保护本地文件。
+  unsafeDirectory: 目录包含符号链接或不是文件夹。
+  unsafeFilename: 输出路径包含不安全的文件名。
+  unsupportedKind: 不支持的素材类型。
+  unsupportedRequest: 不支持的本地通信请求，请更新助手。
+  unsupportedVersion: 不支持此本地任务版本，请更新助手或重新导出。
+  untrustedMediaUrl: 只接受 HTTPS Bilibili 素材 CDN 链接（443 端口）。
+  unwritableCache: 不能写入此缓存文件。
+pages:
+  downloadsTitle: 下载中心 · B 站下载器
+  optionsTitle: 设置 · B 站下载器
+  welcomeTitle: 欢迎使用 · B 站下载器
+progressiveMedia:
+  cannotLoadBrowserFfmpeg: 无法加载浏览器内 FFmpeg。
+  invalidNumberOfMediaAssets: 音视频素材数量无效。
+  legacyVideoRemuxingFailedCheckThatTheAssets: 旧格式视频封装失败，请检查素材是否完整。$1
+  theBrowserFfmpegFileInterfaceIsIncompatibleUpdate: 浏览器内 FFmpeg 文件接口不兼容，请更新扩展。
+  thisBrowserLacksTheSynchronousFileInterfaceNeeded: 当前浏览器不支持磁盘封装所需的同步文件接口，请更新浏览器。
+queue:
+  anotherDownloadTaskExistsForThisAssetCancel: 此素材已有其他下载任务，请先取消重复任务。
+  pauseTheVideoOrAudioTaskBeforeSending: 请先暂停音视频任务，再交给本地助手。
+  theDownloadQueueIsFullWaitForSome: 下载队列已满，请等待部分任务完成。
+  theLocalHelperReturnedNoSavePathCompletion: 本地助手未返回保存路径，无法确认完成。
+remuxMedia:
+  cannotReadTheAacTrackInTheMp4: 无法读取 MP4 中的 AAC 音轨。
+  cannotReadTheMp4VideoTrack: 无法读取 MP4 视频轨道。
+  theAssetTrackHasNoPacketsToRemux: 素材轨道没有可封装的数据包。
+remuxWorker:
+  browserMediaRemuxingFailed: 浏览器音视频封装失败。
+runner:
+  aDownloadCenterIsAlreadyRunningUseThe: 已有下载中心正在运行，请使用原来的下载中心。
+saveFile:
+  downloadRemoved: 下载已被移除
+  fileSavingFailed: 文件保存失败：$1。
+serializeDownloadHistory:
+  createdTimeUtc: 创建时间（UTC）
+  part: 分 P
+  qualityOrAssetDescription: 画质或素材说明
+  requestedSavePath: 请求保存路径
+  status: 状态
+session:
+  addedSkipped: 加入 $1 个 · 跳过 $2 个
+  batchImportOptionsChangedReloadTheSavedSession: 批量导入选项已变化，请重新载入已保存的会话。
+  previousProcessingWasInterruptedResumeManually: 上次处理已中断，可手动继续。
+  queuedVideosCannotBeRemovedFromThisSession: 已加入的视频不能从当前会话移除，请开始新的预览。
+  theBatchSessionWasReplacedReloadTheSaved: 批量会话已被替换，请重新载入已保存的会话。
+  theBatchSessionWasUpdatedOnAnotherPage: 批量会话已在其他页面更新，请重新载入已保存的会话。
+storageBudget:
+  mediaSizeExceedsTheBrowserSSafeInteger: 媒体大小超出浏览器可安全计数的范围。
+  remainingBrowserQuotaCannotHoldBothInputAnd: 浏览器剩余磁盘配额不足以同时容纳输入和封装输出，请清理下载缓存或释放磁盘空间后重试。
+streams:
+  noDownloadableVideoStreamWasReturnedSignIn: 未获得可下载的视频流，请登录 B 站并确认视频可以播放。
+  noSeparateAacTrackIsAvailableForM4a: 未获得独立 AAC 音轨，无法导出 M4A。请登录后重试，或下载视频 MP4。
+  noStreamMatchesChangeTheQualitySettingAnd: 未返回符合「$1」的流，请更改画质后重新添加任务。
+  noUsableAacTrackWasReturnedSignIn: 未获得可用 AAC 音轨，请登录 B 站后重试。
+  noUsableMediaUrlWasReturned: 未获得可用媒体地址。
+  quality: 画质 $1
+  thisVideoCdnIsNotSupportedUpdateThe: 视频 CDN 尚未支持，请更新扩展后重试。
+  thisVideoProvidesOnlyPreviewOrProtectedContent: 此视频只返回试看或受保护内容，无法导出完整音频。
+  thisVideoProvidesOnlyPreviewOrProtectedContent2: 此视频只返回试看或受保护内容，无法下载完整视频。
+subtitles:
+  automatic: （自动）
+  signInToBilibiliToAccessSubtitlesThen: 字幕需要登录 B 站后才能获取，请登录后重试。
+  subtitleContentIsEmptyNoFileWasSaved: 字幕内容为空，未保存文件。
+  subtitleEndTimeMustBeAfterStartTime: 字幕结束时间必须晚于开始时间。
+  thisPartHasNoExportableSubtitles: 此分 P 没有可导出的字幕。
+  thisPartHasNoSubtitlesInTheSelected: 此分 P 没有所选语言的字幕，请更换语言后重新添加。
+  thisSubtitleUrlIsNotSupportedUpdateThe: 字幕地址不受支持，请更新扩展后重试。
+useBatchImport:
+  adding: 正在加入…
+  anotherDownloadCenterChangedThisBatchSessionLoad: 其他下载中心已修改批量会话。请载入已保存的会话后继续。
+  loadingStoppedThePreviousPreviewIsKeptYou: 已停止读取，保留先前的预览。可以继续读取这一页。
+  noValidVideosFoundCheckYourInputAnd: 没有识别到有效视频，请检查输入后重新预览。
+  previewStoppedAtTheLimitOfVideos: 本次最多预览 $1 个视频，已停止读取。
+  processedVideosTasksAddedSkipped: 已处理 $1 / $2 个视频：加入 $3 个任务，跳过 $4 个任务。
+  processingComplete: 本次处理完成
+  sourcePreview: 来源预览
+  stoppedAdding: 已停止加入
+  stoppedAddingCheckTheDownloadQueueBeforeContinuing: 已停止加入，请检查下载队列后继续。
+  tasksAddedSkippedUnprocessedVideosRemainSelectedQueued: $1：加入 $2 个任务，跳过 $3 个任务。未处理的视频保留勾选，已加入的任务继续下载。
+  theBatchSessionCouldNotBeSavedReduce: 批量会话无法保存，请减少输入内容。
+  theCorruptBatchSessionWasClearedPreviewAgain: 已清除损坏的批量会话，可以重新预览。下载任务未受影响。
+  thePreviousDraftPreviewAndProgressHaveBeen: 已恢复上次的草稿、预览和进度。请手动读取下一页或继续加入；不会自动请求来源。
+  theResponseCouldNotBeConfirmedLoadThe: 本次响应未确认：$1 请载入已保存的会话后手动继续。
+  thisPageReturnedNoNewVideosLoadingStopped: 这一页没有继续提供新视频，已停止读取。已预览的视频仍可加入队列。
+  waitingForTheCurrentVideoToFinishThen: 正在等待当前视频处理完成；随后停止加入，已加入的任务继续下载。
+useDownloadCache:
+  downloadCacheClearedTheNextRetryWillDownload: 下载缓存已清理，下次重试将重新下载媒体。
+  downloadsAreUsingTheCachePauseTheQueue: 下载正在使用缓存，请暂停队列并等待当前任务结束后再清理。
+  thisBrowserCannotSafelyClearTheCacheUpdate: 当前浏览器无法安全清理缓存，请更新浏览器后重试。
+useDownloadFileSettings:
+  exampleUploader: 示例 UP
+  fileSettingsSavedTheyWillApplyToNewly: 文件设置已保存，将用于新加入的任务。
+  invalidFilenameTemplate: 命名模板无效。
+  walkingAlongTheCoast: 沿着海岸走
+  weekendAtTheBeach: 周末去海边
+useDownloadHistory:
+  bilibiliDownloadHistory: Bilibili/下载记录_$1.$2
+  exportedRecords:
+    n: 已导出 $1 条记录。
+useDownloadLibrary:
+  downloadHistoryClearedBatchImportsWillNoLonger: 下载历史已清空，批量导入将不再跳过这些素材。
+  downloadHistoryRecordDeleted: 已删除这条下载历史。
+  failedToLoadDownloadHistoryRefreshAndTry: 下载历史读取失败，请刷新重试。
+  requeuedUsingTheOriginalTaskSettings: 已按原任务设置重新加入队列。
+useNativeBridge:
+  assetMib: 素材 $1/$2：$3 MiB
+  assetsOrQualityChangedAfterRefreshingStreamsStart: 重新取流后的素材或画质发生变化，请重新发起本地任务。
+  cannotConnectToTheLocalHelperCheckIts: 无法连接本地助手：$1。请检查助手安装和扩展 ID。
+  connectingToLocalHelper: 正在连接本地助手…
+  fileSavedButTheTaskRecordCouldNot: 文件已保存，任务记录更新失败：$1
+  localDownloadCompleted: 本地下载已完成。
+  localHelperDisconnectedTheMediaCacheIsRetained: 本地助手连接已断开，素材缓存已保留。请检查安装后重试。
+  localHelperMessagingPermissionHasNotBeenGranted: 尚未授予本地助手通信权限。
+  mediaUrlRefreshLimitReachedCheckYourSign: 素材链接刷新次数已达上限，请检查登录状态后重试。
+  mediaUrlsExpiredFetchingStreamsAgainAndValidating: 素材链接已过期，正在重新取流并校验缓存…
+  remuxingLosslesslyWithLocalFfmpeg: 正在使用本地 FFmpeg 无损封装…
+  savingLocalFile: 正在保存本地文件…
+  taskStoppedVerifiedLocalCacheWillBeReused: 任务已停止，已验证的本地缓存会在下次交接时复用。
+  theDownloadPageClosedAndTheLocalTask: 下载页面已关闭，本地任务停止；再次交接可重用已验证的缓存。
+  theDownloadPageClosedTheLocalTaskDid: 下载页面已关闭，本地任务未开始。
+  theLocalHelperDidNotRespondCheckIts: 本地助手未响应，请检查安装和 Python / FFmpeg 路径。
+  theLocalHelperReceivedTheTask: 本地助手已接收任务。
+  theLocalHelperReturnedAMismatchedTaskId: 本地助手返回了不匹配的任务标识。
+  theLocalTaskHasNotBeenInitialized: 本地任务尚未初始化。
+  theLocalTaskWasCancelledOrItsExecution: 本地任务已取消或执行身份已变更。
+  theTaskWasCancelledOrItsExecutionIdentity: 任务已取消或执行身份已变更。
+useNativeDownload:
+  localTaskExportedFollowTheLocalHelperInstructions: 本地任务已导出，请按上方「下载缓存与大型任务」说明运行。
+useQuickDownload:
+  addedToTheDownloadQueue: $1已加入下载队列$2。
+  cannotIdentifyTheCurrentVideoRefreshThePage: 无法识别当前视频，请刷新页面后重试。
+  clickToOpenTheDownloadPanelDoubleClick: 单击打开下载面板；双击下载$1
+  downloadStartsWhenTheQueueResumes: ，队列恢复后开始下载
+  loadingDownloadSettingsPleaseTryAgainShortly: 正在读取下载设置，请稍后重试。
+  thisAssetIsAlreadyInTheDownloadQueue: 该资源已在下载队列中。
+  videoHint: 单击打开下载面板；双击下载视频 MP4（最高可用画质）
+useVideoDownload:
+  addedBundleAssetsOrganizedByVideoFolder:
+    n: 已加入 $1 个组合素材，按视频目录保存。
+  addedTasksTheDownloadCenterWillProcessThem:
+    n: 已加入 $1 个任务，下载中心将在后台处理。
+  allSelectedAssetsAreAlreadyQueued: 所选素材都已在下载队列中。
+  skippedQueuedAssetsTheyKeepTheirOriginalSave:
+    n: 已跳过 $1 个排队中的素材，这些任务沿用原来的保存目录。
+  theCurrentPartDoesNotExistRefreshThe: 当前分 P 不存在，请刷新视频页面。
+  theSelectedVideosAreAlreadyQueued: 所选视频已在下载队列中。
+wbi:
+  theSigningInformationFormatHasChangedPleaseTry: 签名信息格式已变化，请稍后重试。
+welcomeFeatureCards:
+  audioIsSavedAsM4aEachVideoGets: 音频保存为 M4A；每个视频保留一份原始封面；字幕支持中文、英文或自动选择；弹幕导出为当前可获取的 XML。
+  chooseAudioCoversSubtitlesOrDanmakuUnderDownload: 在「下载内容」中选择音频、封面、字幕或弹幕，只保存你需要的内容。
+  chooseYourVideoParts: 多 P，自由切换
+  downloadTheCurrentPartByDefaultOrChoose: 默认下载当前分 P，也可以选择「全部分 P」或「自选分 P」，一次保存多个分段。
+  downloadsRunInABackgroundTabWhereYou: 下载会在新建的后台标签页中进行，可查看进度、搜索任务、筛选失败项和批量重试。
+  eachPartIsSavedAsASeparateMp4: 每个分 P 都会保存为独立的 MP4 文件。
+  exportTheAssetsYouNeed: 按需导出素材
+  keepTheDownloadCenterOpenClosingOrRefreshing: 请保持下载中心打开；关闭或刷新会中断任务，可在下载中心重试。
+  oneVideoOneClick: 单视频，一键下载
+  openARegularBilibiliVideoAndClickDownload: 打开 B 站普通视频页面，在播放器下方点击「下载视频」，即可开始保存。
+  pausingTheQueueLetsTheCurrentTaskFinish: 暂停队列后，当前任务继续完成，其余任务等待恢复。
+  selectPartsIndividuallySelectAllOrInvertYour: 支持逐个勾选、全选或反选，按需要灵活组合。
+  specificReasonsAreShownWhenAnAssetIs: 素材不可用时，会显示具体原因。
+  theBestQualityAvailableToYourAccountIs: 默认选择当前账号可用的最高画质。
+  trackProgressInTheDownloadCenter: 下载中心，查看进度
+  youCanAlsoOpenTheDownloadPanelFrom: 也可以点击浏览器工具栏中的扩展图标，打开下载面板。
+welcomeGuide:
+  beforeYouDownload: 下载前，了解这些
+  dashLegacyVideoAndSeparateAudioTracksAre: DASH、旧格式视频和独立音轨均使用浏览器磁盘封装，按剩余配额动态预留输入与封装输出空间。 暂不支持直播、番剧、互动视频或受保护的视频。
+  filesAreSavedInTheBilibiliFolderIn: 文件保存在浏览器下载目录的 Bilibili 文件夹。更改保存位置请使用浏览器的下载设置。
+  openDownloadCenter: 打开下载中心
+  saveVideosAsMp4M4aOrIndividualAssets: 在视频页面，把喜欢的内容保存为 MP4、M4A 或独立素材。
+  startSavingWhatYouLove: 开始保存喜欢的内容
+  theBestAvailableQualityIsSelectedByDefault: 默认选择最高可用画质，也可设置最高 1080P / 720P / 480P。偏好自动保存，已入队任务保留原设置。同分辨率和帧率下优先 SDR，同画质优先兼容性较好的编码。实际画质显示在任务进度中。

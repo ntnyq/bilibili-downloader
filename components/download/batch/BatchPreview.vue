@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { CheckIcon, LoaderCircleIcon } from '@lucide/vue'
+import { i18n } from '~/utils/i18n'
 import type { BatchImportRow } from '~/composables/useBatchImport'
 
 const props = defineProps<{
@@ -48,15 +49,17 @@ function getRowBadgeClasses(row: BatchImportRow) {
 function getRowStatusLabel(row: BatchImportRow) {
   switch (row.status) {
     case 'adding':
-      return '加入中'
+      return i18n.t('downloadLauncher.adding')
     case 'done':
-      return '已处理'
+      return i18n.t('batchPreview.processed')
     case 'partial':
-      return '部分完成'
+      return i18n.t('batchPreview.partiallyCompleted')
     case 'failed':
-      return '失败'
+      return i18n.t('batchPreview.failed')
     default:
-      return row.selected ? '已选择' : '未选择'
+      return row.selected
+        ? i18n.t('batchPreview.selected')
+        : i18n.t('batchPreview.notSelected')
   }
 }
 </script>
@@ -73,16 +76,15 @@ function getRowStatusLabel(row: BatchImportRow) {
         "
         :disabled="disabled || !available.length"
         class="h-3.75 w-3.75 shrink-0 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      />
-      全选待加入视频
-      <span class="ml-auto text-muted-foreground"
-        >已选 {{ selectedCount }} / {{ rows.length }}</span
-      >
+      />{{ i18n.t('batchPreview.selectAllPendingVideos')
+      }}<span class="ml-auto text-muted-foreground">{{
+        i18n.t('batchPreview.selected2', [selectedCount, rows.length])
+      }}</span>
     </Label>
     <ScrollArea :style="{ height: `${Math.min(rows.length * 84, 384)}px` }"
       ><ul
+        :aria-label="i18n.t('batchPreview.videoPreviewList')"
         class="divide-y divide-border"
-        aria-label="预览视频列表"
       >
         <li
           v-for="row in rows"
@@ -94,7 +96,9 @@ function getRowStatusLabel(row: BatchImportRow) {
             @update:model-value="emit('toggle', row.key)"
             :model-value="row.selected"
             :disabled="isRowDisabled(row)"
-            :aria-label="`选择 ${row.item.title} P${row.item.page}`"
+            :aria-label="
+              i18n.t('batchPreview.selectPart', [row.item.title, row.item.page])
+            "
             class="mt-0.75 h-3.75 w-3.75 shrink-0 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           />
           <div class="min-w-0 flex-1">

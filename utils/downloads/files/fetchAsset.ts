@@ -2,6 +2,7 @@ import { getSubtitle } from '~/utils/bilibili/api'
 import { detectCoverFormat } from '~/utils/bilibili/cover'
 import { normalizeMediaUrl } from '~/utils/bilibili/streams'
 import { subtitlesToSrt } from '~/utils/bilibili/subtitles'
+import { i18n } from '~/utils/i18n'
 import { fetchMediaBytes } from '../media/fetchMediaBytes'
 import type { DownloadJob } from '~/types/download'
 
@@ -49,7 +50,7 @@ export async function fetchAsset(
     url = `https://comment.bilibili.com/${job.cid}.xml`
   }
   if (!url) {
-    throw new Error('此视频没有可导出的封面。')
+    throw new Error(i18n.t('fetchAsset.thisVideoHasNoExportableCover'))
   }
   const bytes = await fetchMediaBytes(
     [url],
@@ -63,7 +64,7 @@ export async function fetchAsset(
     return {
       blob: new Blob([bytes], { type: format.mime }),
       extension: format.extension,
-      quality: '封面原图',
+      quality: i18n.t('fetchAsset.originalCover'),
     }
   }
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
@@ -77,22 +78,26 @@ export async function fetchAsset(
     }
   }
   if (/<!DOCTYPE|<!ENTITY/i.test(text)) {
-    throw new Error('弹幕 XML 格式无效，未保存文件。')
+    throw new Error(i18n.t('fetchAsset.invalidDanmakuXmlNoFileWasSaved'))
   }
   const document = new DOMParser().parseFromString(text, 'application/xml')
   if (
     document.querySelector('parsererror')
     || document.documentElement.tagName !== 'i'
   ) {
-    throw new Error('弹幕接口返回格式无效，请稍后重试。')
+    throw new Error(
+      i18n.t('fetchAsset.theDanmakuApiReturnedAnInvalidFormatPlease'),
+    )
   }
   const count = document.querySelectorAll('d').length
   if (!count) {
-    throw new Error('此分 P 当前没有可导出的弹幕。')
+    throw new Error(
+      i18n.t('fetchAsset.thisPartHasNoExportableDanmakuAtPresent'),
+    )
   }
   return {
     blob: new Blob([text], { type: 'application/xml;charset=utf-8' }),
     extension: 'xml',
-    quality: `${count} 条弹幕`,
+    quality: i18n.t('fetchAsset.danmakuComments', count),
   }
 }

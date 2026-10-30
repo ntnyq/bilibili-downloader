@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { i18n } from '~/utils/i18n'
 import { cn } from 'cn'
 import { Sheet, SheetContent } from '~/components/ui/sheet'
 import SheetDescription from '~/components/ui/sheet/SheetDescription.vue'
@@ -52,8 +53,10 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
       data-slot="sidebar"
     >
       <SheetHeader class="sr-only">
-        <SheetTitle>Sidebar</SheetTitle>
-        <SheetDescription>Displays the mobile sidebar.</SheetDescription>
+        <SheetTitle>{{ i18n.t('common.sidebar') }}</SheetTitle>
+        <SheetDescription>{{
+          i18n.t('common.mobileSidebar')
+        }}</SheetDescription>
       </SheetHeader>
       <div class="flex h-full w-full flex-col">
         <slot />

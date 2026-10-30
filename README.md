@@ -10,6 +10,10 @@ English · [简体中文](README.zh-CN.md) · [Documentation](https://bilibili-d
 
 Built with **WXT + Vue 3 + TypeScript + Tailwind CSS + shadcn-vue**.
 
+Choose Follow browser, 简体中文, or English in Settings. Your preference is saved
+and applies immediately across open extension pages and video panels. Other
+browser languages fall back to English when following the browser.
+
 ## 📦 Install
 
 <a href="https://chromewebstore.google.com/detail/bilibili-downloader/jinmimeepeceajjjgmgaggabikcabkmf">

@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { i18n } from '~/utils/i18n'
 import {
   batchCandidateSchema,
   batchSourceSchema,
@@ -86,7 +87,7 @@ export const batchSessionDataSchema = z
     session =>
       new TextEncoder().encode(JSON.stringify(session)).byteLength
       <= MAX_BATCH_SESSION_BYTES,
-    '批量会话超过 1 MiB，请减少粘贴内容后重试。',
+    { error: () => i18n.t('batchSession.theBatchSessionExceeds1MibReduceThe') },
   )
   .refine(
     session =>
@@ -94,7 +95,13 @@ export const batchSessionDataSchema = z
       && session.rows.every(
         row => row.key === `${row.item.videoId}:${row.item.page}`,
       ),
-    '批量会话包含无效或重复的视频标识。',
+    {
+      error() {
+        return i18n.t(
+          'batchSession.theBatchSessionContainsInvalidOrDuplicateVideo',
+        )
+      },
+    },
   )
 
 export const batchSessionSchema = batchSessionDataSchema.safeExtend({

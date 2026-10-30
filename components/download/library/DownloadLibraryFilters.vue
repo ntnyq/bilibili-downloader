@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { SearchIcon } from '@lucide/vue'
 import { filterLibraryRecords } from '~/utils/downloads/history/library'
+import { i18n } from '~/utils/i18n'
 import type { VNode } from 'vue'
 import type { DownloadKind } from '~/types/download'
 import type { DownloadHistoryRecord } from '~/types/downloadHistory'
@@ -14,12 +15,42 @@ defineSlots<{
 const search = defineModel<string>('search', { required: true })
 const kind = defineModel<DownloadKind | 'all'>('kind', { required: true })
 const kinds = [
-  { value: 'all', label: '全部素材' },
-  { value: 'video', label: '视频' },
-  { value: 'audio', label: '音频' },
-  { value: 'cover', label: '封面' },
-  { value: 'subtitle', label: '字幕' },
-  { value: 'danmaku', label: '弹幕' },
+  {
+    value: 'all',
+    get label() {
+      return i18n.t('downloadLibraryFilters.allAssets')
+    },
+  },
+  {
+    value: 'video',
+    get label() {
+      return i18n.t('downloadLibraryFilters.video')
+    },
+  },
+  {
+    value: 'audio',
+    get label() {
+      return i18n.t('downloadLibraryFilters.audio')
+    },
+  },
+  {
+    value: 'cover',
+    get label() {
+      return i18n.t('downloadLibraryFilters.cover')
+    },
+  },
+  {
+    value: 'subtitle',
+    get label() {
+      return i18n.t('downloadLibraryFilters.subtitles')
+    },
+  },
+  {
+    value: 'danmaku',
+    get label() {
+      return i18n.t('downloadLibraryFilters.danmaku')
+    },
+  },
 ] as const
 const filters = computed(() => {
   const matching = filterLibraryRecords(props.records, search.value, 'all')
@@ -43,18 +74,20 @@ const filters = computed(() => {
         />
         <Input
           v-model="search"
+          :aria-label="i18n.t('downloadLibraryFilters.searchDownloadHistory')"
+          :placeholder="
+            i18n.t('downloadLibraryFilters.searchTitleBvIdUploaderOrSavePath')
+          "
           type="search"
-          aria-label="搜索下载历史"
-          placeholder="搜索标题、BV 号、UP 主或保存路径"
           class="h-10 pl-9 text-sm"
         />
       </div>
       <slot name="actions" />
     </div>
     <div
+      :aria-label="i18n.t('downloadLibraryFilters.filterHistoryAssets')"
       class="flex flex-wrap gap-1"
       role="group"
-      aria-label="筛选下载历史素材"
     >
       <Button
         @click="kind = item.value"

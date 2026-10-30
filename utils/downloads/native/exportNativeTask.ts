@@ -1,4 +1,5 @@
 import { getVideoMedia } from '~/utils/bilibili/api'
+import { i18n } from '~/utils/i18n'
 import { saveFile } from '../files/saveFile'
 import { createNativeManifest } from './manifest'
 import type { DownloadJob } from '~/types/download'
@@ -22,7 +23,9 @@ import type { DownloadJob } from '~/types/download'
  */
 export async function exportNativeTask(job: DownloadJob, signal: AbortSignal) {
   if (!['video', 'audio'].includes(job.kind)) {
-    throw new Error('仅视频和音频任务支持本地下载。')
+    throw new Error(
+      i18n.t('exportNativeTask.onlyVideoAndAudioTasksSupportLocalDownloading'),
+    )
   }
   const media = await getVideoMedia(
     job.bvid,
@@ -36,7 +39,7 @@ export async function exportNativeTask(job: DownloadJob, signal: AbortSignal) {
     type: 'application/json',
   })
   if (blob.size > 1024 * 1024) {
-    throw new Error('本地任务文件超过 1 MB，请选择分 P 较少的视频。')
+    throw new Error(i18n.t('exportNativeTask.theLocalTaskFileExceeds1MbChoose'))
   }
   await saveFile(
     blob,

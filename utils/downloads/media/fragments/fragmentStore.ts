@@ -1,3 +1,5 @@
+import { i18n } from '~/utils/i18n'
+
 const FRAGMENT_PAGE_SIZE = 64 * 1024
 
 /**
@@ -58,7 +60,10 @@ export function createDiskFragmentStore(
   ): Promise<Result> {
     if (disposed) {
       return Promise.reject(
-        new DOMException('片段暂存已关闭。', 'InvalidStateError'),
+        new DOMException(
+          i18n.t('fragmentStore.fragmentStorageIsClosed'),
+          'InvalidStateError',
+        ),
       )
     }
     const result = queue.then(() => {
@@ -77,7 +82,7 @@ export function createDiskFragmentStore(
 
   async function getTrack(trackId: number) {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 0xffff_ffff) {
-      throw new RangeError('片段轨道编号无效。')
+      throw new RangeError(i18n.t('fragmentStore.invalidFragmentTrackId'))
     }
     let track = tracks.get(trackId)
     if (!track) {
@@ -100,7 +105,9 @@ export function createDiskFragmentStore(
       const data = track.buffer.subarray(offset, track.used)
       const written = await track.file.write(data, track.written)
       if (!Number.isInteger(written) || written <= 0 || written > data.length) {
-        throw new Error('片段暂存文件写入未取得进展。')
+        throw new Error(
+          i18n.t('fragmentStore.fragmentStorageFileWriteMadeNoProgress'),
+        )
       }
       offset += written
       track.written += written
@@ -114,12 +121,14 @@ export function createDiskFragmentStore(
         const track = await getTrack(trackId)
         if (track.sealed) {
           throw new DOMException(
-            '片段暂存已进入读取阶段。',
+            i18n.t('fragmentStore.fragmentStorageHasEnteredTheReadPhase'),
             'InvalidStateError',
           )
         }
         if (!Number.isSafeInteger(track.written + track.used + data.length)) {
-          throw new RangeError('片段暂存文件过大。')
+          throw new RangeError(
+            i18n.t('fragmentStore.fragmentStorageFileIsTooLarge'),
+          )
         }
         let offset = 0
         while (offset < data.length) {
@@ -145,11 +154,15 @@ export function createDiskFragmentStore(
           || length < 0
           || length > FRAGMENT_PAGE_SIZE
         ) {
-          throw new RangeError('片段暂存读取范围无效。')
+          throw new RangeError(
+            i18n.t('fragmentStore.invalidFragmentStorageReadRange'),
+          )
         }
         const track = await getTrack(trackId)
         if (offset + length > track.written + track.used) {
-          throw new RangeError('片段暂存文件不完整。')
+          throw new RangeError(
+            i18n.t('fragmentStore.fragmentStorageFileIsIncomplete'),
+          )
         }
         if (!track.sealed) {
           await flushTrack(track)
@@ -166,7 +179,9 @@ export function createDiskFragmentStore(
             || count <= 0
             || count > remaining.length
           ) {
-            throw new RangeError('片段暂存文件读取不完整。')
+            throw new RangeError(
+              i18n.t('fragmentStore.fragmentStorageFileReadIncomplete'),
+            )
           }
           consumed += count
         }
@@ -230,7 +245,10 @@ export function createOpfsFragmentStore(
     return {
       async write(data, position) {
         if (!writer) {
-          throw new DOMException('片段暂存写流已关闭。', 'InvalidStateError')
+          throw new DOMException(
+            i18n.t('fragmentStore.fragmentStorageWriteStreamIsClosed'),
+            'InvalidStateError',
+          )
         }
         await writer.write({ type: 'write', position, data })
         return data.length
@@ -242,7 +260,10 @@ export function createOpfsFragmentStore(
       },
       async read(data, position) {
         if (!snapshot) {
-          throw new DOMException('片段暂存尚未提交。', 'InvalidStateError')
+          throw new DOMException(
+            i18n.t('fragmentStore.fragmentStorageHasNotBeenCommitted'),
+            'InvalidStateError',
+          )
         }
         const bytes = await snapshot
           .slice(position, position + data.length)

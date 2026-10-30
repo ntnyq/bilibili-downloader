@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 /**
  * Trust image signatures, not URL suffixes or CDN error response headers.
  *
@@ -37,5 +38,5 @@ export function detectCoverFormat(bytes: Uint8Array): {
       mime: 'image/gif',
     }
   }
-  throw new Error('封面接口没有返回受支持的图片，未保存文件。')
+  throw new Error(i18n.t('cover.theCoverApiReturnedNoSupportedImageNo'))
 }

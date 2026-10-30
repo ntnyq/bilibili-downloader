@@ -1,3 +1,4 @@
+import { i18n, initializeWorkerI18n } from '~/utils/i18n'
 import { createOpfsFragmentIndex } from './fragments/fragmentIndex'
 import { createOpfsFragmentSamples } from './fragments/fragmentSamples'
 import { mergeProgressiveMedia } from './progressiveMedia'
@@ -6,6 +7,7 @@ import type { StreamTargetChunk } from 'mediabunny'
 import type { RemuxKind } from './remuxMedia'
 
 export interface RemuxRequest {
+  messages: Record<string, string>
   kind: RemuxKind
   inputs: Blob[]
   handle: FileSystemFileHandle
@@ -21,6 +23,7 @@ export type RemuxResponse =
 self.addEventListener(
   'message',
   async ({ data }: MessageEvent<RemuxRequest>) => {
+    initializeWorkerI18n(data.messages)
     let writer: FileSystemWritableFileStream | undefined
     let index: ReturnType<typeof createOpfsFragmentIndex> | undefined
     let samples: ReturnType<typeof createOpfsFragmentSamples> | undefined
@@ -70,7 +73,9 @@ self.addEventListener(
         type: 'error',
         name: error instanceof Error ? error.name : 'Error',
         message:
-          error instanceof Error ? error.message : '浏览器音视频封装失败。',
+          error instanceof Error
+            ? error.message
+            : i18n.t('remuxWorker.browserMediaRemuxingFailed'),
       })
     }
   },

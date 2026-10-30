@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { i18n } from '~/utils/i18n'
 import { QUALITY_LABELS } from '../downloads/labels'
 import { QUALITY_RESOLUTIONS } from '../downloads/media/quality'
 import type { QualityPreference } from '../../types/download'
@@ -113,7 +114,9 @@ export function selectAudio(
   data: z.infer<typeof playDataSchema>,
 ): SelectedMedia {
   if (data.is_preview || data.is_drm) {
-    throw new Error('此视频只返回试看或受保护内容，无法导出完整音频。')
+    throw new Error(
+      i18n.t('streams.thisVideoProvidesOnlyPreviewOrProtectedContent'),
+    )
   }
   const audio = (data.dash?.audio || [])
     .filter(
@@ -122,9 +125,7 @@ export function selectAudio(
     )
     .toSorted((a, b) => b.bandwidth - a.bandwidth)[0]
   if (!audio) {
-    throw new Error(
-      '未获得独立 AAC 音轨，无法导出 M4A。请登录后重试，或下载视频 MP4。',
-    )
+    throw new Error(i18n.t('streams.noSeparateAacTrackIsAvailableForM4a'))
   }
   return {
     kind: 'audio',
@@ -168,7 +169,7 @@ function toMediaInput(stream: Stream): MediaInput {
   const urls = streamUrls(stream)
   const firstUrl = urls[0]
   if (!firstUrl) {
-    throw new Error('未获得可用媒体地址。')
+    throw new Error(i18n.t('streams.noUsableMediaUrlWasReturned'))
   }
   return {
     id: JSON.stringify([
@@ -236,7 +237,9 @@ export function selectMedia(
   preference: QualityPreference = 'best',
 ): SelectedMedia {
   if (data.is_preview || data.is_drm) {
-    throw new Error('此视频只返回试看或受保护内容，无法下载完整视频。')
+    throw new Error(
+      i18n.t('streams.thisVideoProvidesOnlyPreviewOrProtectedContent2'),
+    )
   }
   const videos = (data.dash?.video || []).filter(
     stream =>
@@ -258,7 +261,11 @@ export function selectMedia(
   )[0]
   const qualityName = (id: number) => {
     const format = data.support_formats.find(item => item.quality === id)
-    return format?.new_description || format?.display_desc || `画质 ${id}`
+    return (
+      format?.new_description
+      || format?.display_desc
+      || i18n.t('streams.quality', [id])
+    )
   }
   if (video) {
     const audio = (data.dash?.audio || [])
@@ -268,7 +275,7 @@ export function selectMedia(
       )
       .toSorted((a, b) => b.bandwidth - a.bandwidth)[0]
     if (!audio) {
-      throw new Error('未获得可用 AAC 音轨，请登录 B 站后重试。')
+      throw new Error(i18n.t('streams.noUsableAacTrackWasReturnedSignIn'))
     }
     return {
       kind: 'dash',
@@ -283,7 +290,9 @@ export function selectMedia(
       && (!resolution || resolution > Number(preference))
     ) {
       throw new Error(
-        `未返回符合「${QUALITY_LABELS[preference]}」的流，请更改画质后重新添加任务。`,
+        i18n.t('streams.noStreamMatchesChangeTheQualitySettingAnd', [
+          QUALITY_LABELS[preference],
+        ]),
       )
     }
     const inputs = data.durl.map((stream, index) => ({
@@ -300,7 +309,7 @@ export function selectMedia(
       bandwidth: 0,
     }))
     if (inputs.some(input => !input.urls.length)) {
-      throw new Error('视频 CDN 尚未支持，请更新扩展后重试。')
+      throw new Error(i18n.t('streams.thisVideoCdnIsNotSupportedUpdateThe'))
     }
     return {
       kind: 'progressive',
@@ -310,8 +319,10 @@ export function selectMedia(
   }
   if (preference !== 'best') {
     throw new Error(
-      `未返回符合「${QUALITY_LABELS[preference]}」的流，请更改画质后重新添加任务。`,
+      i18n.t('streams.noStreamMatchesChangeTheQualitySettingAnd', [
+        QUALITY_LABELS[preference],
+      ]),
     )
   }
-  throw new Error('未获得可下载的视频流，请登录 B 站并确认视频可以播放。')
+  throw new Error(i18n.t('streams.noDownloadableVideoStreamWasReturnedSignIn'))
 }

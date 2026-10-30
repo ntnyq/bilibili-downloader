@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { CircleHelpIcon } from '@lucide/vue'
+import { i18n } from '~/utils/i18n'
 
 const isDownloadCenter = window.location.pathname === '/downloads.html'
 </script>
@@ -15,12 +16,12 @@ const isDownloadCenter = window.location.pathname === '/downloads.html'
       class="flex min-w-0 items-center gap-3 rounded-md font-semibold"
     >
       <ExtensionLogo class="size-8" />
-      <span class="text-[15px]">B 站下载器</span>
+      <span class="text-[15px]">{{ i18n.t('extensionName') }}</span>
     </a>
     <Badge
       variant="outline"
       class="hidden text-[10px] font-normal text-muted-foreground sm:inline-flex"
-      >扩展</Badge
+      >{{ i18n.t('extensionHeader.extension') }}</Badge
     >
     <Button
       as="a"
@@ -30,9 +31,9 @@ const isDownloadCenter = window.location.pathname === '/downloads.html'
       variant="ghost"
       size="sm"
       class="ml-auto"
-      ><CircleHelpIcon class="size-4" /><span class="hidden sm:inline"
-        >使用说明</span
-      ></Button
+      ><CircleHelpIcon class="size-4" /><span class="hidden sm:inline">{{
+        i18n.t('extensionHeader.userGuide')
+      }}</span></Button
     >
   </header>
 </template>

@@ -1,4 +1,5 @@
 import { md5 } from 'js-md5'
+import { i18n } from '~/utils/i18n'
 
 const MIXIN_KEY_TABLE = [
   46, 47, 18, 2, 53, 8, 23, 32, 15, 50, 10, 31, 58, 3, 45, 35, 27, 43, 5, 49,
@@ -24,7 +25,9 @@ export function createMixinKey(imageUrl: string, subUrl: string): string {
     .map(url => new URL(url).pathname.split('/').at(-1)?.split('.')[0] || '')
     .join('')
   if (key.length !== 64) {
-    throw new Error('签名信息格式已变化，请稍后重试。')
+    throw new Error(
+      i18n.t('wbi.theSigningInformationFormatHasChangedPleaseTry'),
+    )
   }
   return MIXIN_KEY_TABLE.map(index => key[index])
     .join('')

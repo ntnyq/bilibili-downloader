@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { i18n } from '~/utils/i18n'
 
 export const videoIdSchema = z.string().regex(/^(?:BV[\dA-Za-z]{10}|av\d+)$/)
 
@@ -21,8 +22,12 @@ export const DEFAULT_FILENAME_TEMPLATE = '{title}_{bvid}{partSuffix}_{quality}'
 export const filenameTemplateSchema = z
   .string()
   .trim()
-  .min(1, '请输入命名模板。')
-  .max(160, '命名模板不能超过 160 个字符。')
+  .min(1, { error: () => i18n.t('download.enterAFilenameTemplate') })
+  .max(160, {
+    error() {
+      return i18n.t('download.theFilenameTemplateCannotExceed160Characters')
+    },
+  })
   .refine(
     value =>
       !/[{}]/.test(
@@ -31,12 +36,19 @@ export const filenameTemplateSchema = z
           '',
         ),
       ),
-    '命名模板包含未知变量或不完整的花括号。',
+    {
+      error() {
+        return i18n.t(
+          'download.theFilenameTemplateContainsUnknownVariablesOrUnmatched',
+        )
+      },
+    },
   )
-  .refine(
-    value => !/[<>:"/\\|?*\p{Cc}]/u.test(value),
-    '命名模板不能包含路径分隔符或文件名禁用字符。',
-  )
+  .refine(value => !/[<>:"/\\|?*\p{Cc}]/u.test(value), {
+    error() {
+      return i18n.t('download.theFilenameTemplateCannotContainPathSeparatorsOr')
+    },
+  })
 export const downloadSettingsSchema = z.object({
   quality: qualityPreferenceSchema.default('best'),
   doubleClickKind: downloadKindSchema.default('video'),

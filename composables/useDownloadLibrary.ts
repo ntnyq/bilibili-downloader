@@ -10,6 +10,7 @@ import {
   filterLibraryRecords,
 } from '~/utils/downloads/history/library'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
+import { i18n } from '~/utils/i18n'
 import type { Browser } from '#imports'
 import type { DownloadKind } from '~/types/download'
 import type { requestSchema } from '~/utils/downloads/messages'
@@ -58,7 +59,9 @@ export function useDownloadLibrary() {
       library.value = result.data
       isReady.value = true
     } else {
-      error.value = '下载历史读取失败，请刷新重试。'
+      error.value = i18n.t(
+        'useDownloadLibrary.failedToLoadDownloadHistoryRefreshAndTry',
+      )
     }
   }
 
@@ -142,16 +145,21 @@ export function useDownloadLibrary() {
     requeue(identity: string) {
       return act(
         { type: 'library.requeue', identity },
-        '已按原任务设置重新加入队列。',
+        i18n.t('useDownloadLibrary.requeuedUsingTheOriginalTaskSettings'),
       )
     },
     remove(identity: string) {
-      return act({ type: 'library.delete', identity }, '已删除这条下载历史。')
+      return act(
+        { type: 'library.delete', identity },
+        i18n.t('useDownloadLibrary.downloadHistoryRecordDeleted'),
+      )
     },
     clear() {
       return act(
         { type: 'library.clear' },
-        '下载历史已清空，批量导入将不再跳过这些素材。',
+        i18n.t(
+          'useDownloadLibrary.downloadHistoryClearedBatchImportsWillNoLonger',
+        ),
       )
     },
   }

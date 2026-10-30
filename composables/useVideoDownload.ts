@@ -6,6 +6,7 @@ import { sendDownloadMessage } from '~/utils/downloads/messages'
 import { parseVideoLocation } from '~/utils/downloads/parseVideoLocation'
 import { getBundleTaskCount } from '~/utils/downloads/queue/bundles'
 import { selectVideoPages } from '~/utils/downloads/queue/jobs'
+import { i18n } from '~/utils/i18n'
 import { useDownloadSettings } from './useDownloadSettings'
 import type { MaybeRefOrGetter } from 'vue'
 import type {
@@ -80,7 +81,9 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
         return
       }
       if (!result.pages.some(page => page.page === target.page)) {
-        throw new Error('当前分 P 不存在，请刷新视频页面。')
+        throw new Error(
+          i18n.t('useVideoDownload.theCurrentPartDoesNotExistRefreshThe'),
+        )
       }
       video.value = result
       selectedPages.value = [target.page]
@@ -126,10 +129,19 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
         )
         if (requestId === id) {
           notice.value = result.added
-            ? `已加入 ${result.added} 个组合素材，按视频目录保存。`
-            : '所选素材都已在下载队列中。'
+            ? i18n.t(
+                'useVideoDownload.addedBundleAssetsOrganizedByVideoFolder',
+                result.added,
+              )
+            : i18n.t('useVideoDownload.allSelectedAssetsAreAlreadyQueued')
           if (result.skipped) {
-            notice.value += ` 已跳过 ${result.skipped} 个排队中的素材，这些任务沿用原来的保存目录。`
+            notice.value = [
+              notice.value,
+              i18n.t(
+                'useVideoDownload.skippedQueuedAssetsTheyKeepTheirOriginalSave',
+                result.skipped,
+              ),
+            ].join(' ')
           }
         }
         return
@@ -149,8 +161,11 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
       )
       if (requestId === id) {
         notice.value = result.added
-          ? `已加入 ${result.added} 个任务，下载中心将在后台处理。`
-          : '所选视频已在下载队列中。'
+          ? i18n.t(
+              'useVideoDownload.addedTasksTheDownloadCenterWillProcessThem',
+              result.added,
+            )
+          : i18n.t('useVideoDownload.theSelectedVideosAreAlreadyQueued')
       }
     } catch (error_) {
       if (requestId === id) {

@@ -12,6 +12,7 @@ import {
 } from '@lucide/vue'
 import SidebarMenuButton from '~/components/ui/sidebar/SidebarMenuButtonChild.vue'
 import { useDownloadQueue } from '~/composables/useDownloadQueue'
+import { i18n } from '~/utils/i18n'
 import DownloadBatchImport from './batch/DownloadBatchImport.vue'
 
 defineProps<{
@@ -21,32 +22,54 @@ const { jobs } = useDownloadQueue()
 const sections = [
   {
     id: 'queue',
-    label: '下载队列',
-    description: '查看进度，管理每一份正在保存的内容。',
+    get label() {
+      return i18n.t('downloadWorkspace.downloadQueue')
+    },
+    get description() {
+      return i18n.t('downloadWorkspace.trackProgressAndManageYourDownloads')
+    },
     icon: ListVideoIcon,
   },
   {
     id: 'bundles',
-    label: '素材组合',
-    description: '按视频查看素材归档和组合下载结果。',
+    get label() {
+      return i18n.t('downloadWorkspace.assetBundles')
+    },
+    get description() {
+      return i18n.t('downloadWorkspace.viewAssetsAndBundleResultsByVideo')
+    },
     icon: LayersIcon,
   },
   {
     id: 'batch',
-    label: '批量导入',
-    description: '先确认视频，再按你的偏好加入下载队列。',
+    get label() {
+      return i18n.t('downloadWorkspace.batchImport')
+    },
+    get description() {
+      return i18n.t('downloadWorkspace.reviewVideosAndAddThemToTheQueue')
+    },
     icon: ListPlusIcon,
   },
   {
     id: 'library',
-    label: '下载历史',
-    description: '查找保存过的素材，或按原设置再次下载。',
+    get label() {
+      return i18n.t('downloadWorkspace.downloadHistory')
+    },
+    get description() {
+      return i18n.t('downloadWorkspace.findSavedAssetsOrDownloadThemAgainWith')
+    },
     icon: HistoryIcon,
   },
   {
     id: 'local',
-    label: '下载缓存',
-    description: '查看浏览器磁盘用量，管理可续传的下载缓存。',
+    get label() {
+      return i18n.t('downloadWorkspace.downloadCache')
+    },
+    get description() {
+      return i18n.t(
+        'downloadWorkspace.checkBrowserStorageUsageAndManageResumableDownloads',
+      )
+    },
     icon: HardDriveIcon,
   },
 ] as const
@@ -66,8 +89,8 @@ const currentSection = computed(
     >
       <SidebarContent class="overflow-visible">
         <nav
+          :aria-label="i18n.t('downloadWorkspace.downloadCenterNavigation')"
           class="flex flex-1 flex-col"
-          aria-label="下载中心导航"
         >
           <SidebarMenu class="flex-row flex-wrap md:flex-1 md:flex-col">
             <SidebarMenuItem
@@ -98,7 +121,9 @@ const currentSection = computed(
                 target="_blank"
                 rel="noreferrer"
                 class="h-9 gap-2.5 text-xs"
-                ><Settings2Icon /><span>设置</span></SidebarMenuButton
+                ><Settings2Icon /><span>{{
+                  i18n.t('downloadWorkspace.settings')
+                }}</span></SidebarMenuButton
               ></SidebarMenuItem
             >
           </SidebarMenu>
@@ -109,7 +134,9 @@ const currentSection = computed(
       >
         <Separator class="mb-2" />
         <div><FolderIcon class="mr-1 inline size-4" />Bilibili</div>
-        <span>浏览器默认下载目录</span>
+        <span>{{
+          i18n.t('downloadWorkspace.browserDefaultDownloadFolder')
+        }}</span>
       </SidebarFooter>
     </aside>
     <main class="flex min-w-0 bg-muted p-3 sm:p-5 lg:p-6">
@@ -126,7 +153,9 @@ const currentSection = computed(
           <Button
             @click="activeSection = 'batch'"
             v-if="activeSection === 'queue'"
-            ><PlusIcon class="size-4" />批量导入</Button
+            ><PlusIcon class="size-4" />{{
+              i18n.t('downloadWorkspace.batchImport')
+            }}</Button
           >
         </header>
         <p
@@ -136,8 +165,9 @@ const currentSection = computed(
           <InfoIcon
             class="size-4 shrink-0"
             aria-hidden="true"
-          />
-          下载期间请保持此页打开，你可以继续浏览其他标签页。
+          />{{
+            i18n.t('downloadWorkspace.keepThisPageOpenWhileDownloadingYouCan')
+          }}
         </p>
         <Alert
           v-if="runnerError"
@@ -154,8 +184,8 @@ const currentSection = computed(
         <DownloadLibrary v-show="activeSection === 'library'" />
         <section
           v-show="activeSection === 'local'"
+          :aria-label="i18n.t('downloadWorkspace.downloadCache')"
           class="space-y-5"
-          aria-label="下载缓存"
         >
           <DownloadCache />
           <DownloadNativeHelp />
@@ -164,13 +194,15 @@ const currentSection = computed(
           v-if="activeSection !== 'batch' && activeSection !== 'library'"
           class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs text-muted-foreground"
         >
-          <span>每个分 P 独立保存 · 按队列顺序下载</span>
+          <span>{{
+            i18n.t('downloadWorkspace.eachPartIsSavedSeparatelyDownloadsRunIn')
+          }}</span>
           <Button
             @click="activeSection = 'local'"
             variant="ghost"
             size="sm"
             class="text-primary"
-            >管理下载缓存</Button
+            >{{ i18n.t('downloadWorkspace.manageDownloadCache') }}</Button
           >
         </footer>
       </div>

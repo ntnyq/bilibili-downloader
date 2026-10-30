@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import { MAX_PENDING_JOBS } from '../constants'
 import { isJobActive } from './jobs'
 import type { DownloadJob } from '~/types/download'
@@ -53,15 +54,15 @@ export function assertDownloadQueueCapacity(
   }
   const retained = clearFinishedDownloadJobs(nextJobs)
   if (retained.length > MAX_PENDING_JOBS) {
-    throw new Error(
-      '下载队列已满。素材组合全部结束后会释放名额，请先继续或取消未完成任务。',
-    )
+    throw new Error(i18n.t('capacity.theDownloadQueueIsFullBundleSlotsAre'))
   }
   const bytes = encoder.encode(JSON.stringify(retained)).byteLength
   const reserve =
     retained.filter(isJobActive).length * ACTIVE_JOB_RESERVED_BYTES
   if (bytes + reserve > MAX_DOWNLOAD_QUEUE_BYTES) {
-    throw new Error('下载队列已达到存储上限，请先完成或取消部分任务后再添加。')
+    throw new Error(
+      i18n.t('capacity.theDownloadQueueReachedItsStorageLimitComplete'),
+    )
   }
 }
 

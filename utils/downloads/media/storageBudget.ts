@@ -1,3 +1,5 @@
+import { i18n } from '~/utils/i18n'
+
 const OUTPUT_SIZE_FACTOR = 1.05
 const STORAGE_RESERVE_BYTES = 64 * 1024 * 1024
 const QUOTA_REFRESH_BYTES = 8 * 1024 * 1024
@@ -33,7 +35,9 @@ function getRequiredStorageBytes(
     + remainingInputBytes
     + STORAGE_RESERVE_BYTES
   if (!Number.isSafeInteger(required) || required < 0) {
-    throw new RangeError('媒体大小超出浏览器可安全计数的范围。')
+    throw new RangeError(
+      i18n.t('storageBudget.mediaSizeExceedsTheBrowserSSafeInteger'),
+    )
   }
   return required
 }
@@ -83,7 +87,7 @@ export async function getAvailableMediaStorageBytes(
 function assertStorageCapacity(available: number | null, required: number) {
   if (available !== null && required > available) {
     throw new RangeError(
-      '浏览器剩余磁盘配额不足以同时容纳输入和封装输出，请清理下载缓存或释放磁盘空间后重试。',
+      i18n.t('storageBudget.remainingBrowserQuotaCannotHoldBothInputAnd'),
     )
   }
 }

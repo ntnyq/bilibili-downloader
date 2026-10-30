@@ -53,6 +53,7 @@ import {
   isJobActive,
   retryDownloadJobs,
 } from '~/utils/downloads/queue/jobs'
+import { i18n } from '~/utils/i18n'
 import type { Browser } from '#imports'
 import type { BatchAddResult } from '~/types/batchSession'
 import type { DownloadJob, VideoInfo } from '~/types/download'
@@ -115,9 +116,7 @@ async function readBatchSession() {
   }
   const result = batchSessionSchema.safeParse(stored[BATCH_SESSION_STORAGE_KEY])
   if (!result.success) {
-    throw new Error(
-      '批量会话格式损坏，无法读取。可以清除损坏的会话后重新预览。',
-    )
+    throw new Error(i18n.t('downloads.theBatchSessionIsCorruptAndCannotBe'))
   }
   return result.data
 }
@@ -248,8 +247,8 @@ async function recoverInterruptedJobs(
     }
     job.status = 'failed'
     job.error = ['video', 'audio'].includes(job.kind)
-      ? '下载中心已关闭或刷新，任务已中断。重试时会校验缓存并尝试续传。'
-      : '下载中心已关闭或刷新，任务已中断，请重试。'
+      ? i18n.t('downloads.theDownloadCenterWasClosedOrRefreshedInterrupting')
+      : i18n.t('downloads.theDownloadCenterWasClosedOrRefreshedInterrupting2')
   }
 }
 
@@ -264,7 +263,9 @@ async function ensureBatchTabOpen(sender: Browser.runtime.MessageSender) {
   const tabId = sender.tab?.id
   const tab = tabId === undefined ? undefined : await browser.tabs.get(tabId)
   if (tab?.url !== browser.runtime.getURL('/downloads.html')) {
-    throw new Error('下载中心已关闭，本次导入已停止。')
+    throw new Error(
+      i18n.t('downloads.theDownloadCenterClosedThisImportHasStopped'),
+    )
   }
 }
 
@@ -274,7 +275,7 @@ async function handleRequest(
 ) {
   if (message.type.startsWith('batch.session.')) {
     if (!isRunner(sender)) {
-      throw new Error('请在下载中心使用批量导入。')
+      throw new Error(i18n.t('downloads.useBatchImportInTheDownloadCenter'))
     }
     return serialize(async () => {
       if (message.type === 'batch.session.reset') {
@@ -285,7 +286,9 @@ async function handleRequest(
           batchSessionSchema.safeParse(stored[BATCH_SESSION_STORAGE_KEY])
             .success
         ) {
-          throw new Error('当前会话仍可读取，请载入已保存的会话。')
+          throw new Error(
+            i18n.t('downloads.theCurrentSessionIsStillReadableLoadThe'),
+          )
         }
         const result = saveBatchSession(null, createBatchSessionData(), null)
         await browser.storage.local.set({
@@ -298,7 +301,7 @@ async function handleRequest(
         return current
       }
       if (message.type !== 'batch.session.save') {
-        throw new Error('不支持的批量会话操作。')
+        throw new Error(i18n.t('downloads.unsupportedBatchSessionAction'))
       }
       const result = saveBatchSession(
         current,
@@ -315,7 +318,7 @@ async function handleRequest(
   }
   if (message.type === 'batch.page' || message.type === 'batch.add') {
     if (!isRunner(sender)) {
-      throw new Error('请在下载中心使用批量导入。')
+      throw new Error(i18n.t('downloads.useBatchImportInTheDownloadCenter'))
     }
     if (message.type === 'batch.page') {
       await ensureHeaders()
@@ -384,7 +387,7 @@ async function handleRequest(
       failure = {
         added: 0,
         skipped: 0,
-        error: '链接指定的分 P 不存在，请修改链接后重试。',
+        error: i18n.t('downloads.theLinkedPartDoesNotExistUpdateThe'),
         shouldStop: false,
       }
     }
@@ -392,7 +395,9 @@ async function handleRequest(
       const session = await readBatchSession()
       const row = getBatchSessionRow(session, message)
       if (!session) {
-        throw new Error('批量会话不存在，请重新预览。')
+        throw new Error(
+          i18n.t('downloads.theBatchSessionDoesNotExistPreviewAgain'),
+        )
       }
       if (row.receipt) {
         return {
@@ -438,7 +443,9 @@ async function handleRequest(
             }
           }
         } else {
-          throw new Error('无法读取视频信息，请重试。')
+          throw new Error(
+            i18n.t('downloads.cannotLoadVideoInformationPleaseTryAgain'),
+          )
         }
       } catch (error) {
         result = {
@@ -487,7 +494,11 @@ async function handleRequest(
           permissions: ['notifications'],
         }))
       ) {
-        throw new Error('请在设置页开启通知并授予通知权限。')
+        throw new Error(
+          i18n.t(
+            'downloads.enableNotificationsInSettingsAndGrantNotificationPermission',
+          ),
+        )
       }
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: settings })
       if (message.settings.isPaused === false) {
@@ -519,7 +530,11 @@ async function handleRequest(
           item => item.identity === message.identity,
         )
         if (!record) {
-          throw new Error('这条成功记录已被移除，请刷新列表。')
+          throw new Error(
+            i18n.t(
+              'downloads.thisSuccessfulDownloadRecordWasRemovedRefreshThe',
+            ),
+          )
         }
         const job = createJobFromHistory(record, jobs)
         await openRunner(false)
@@ -613,7 +628,7 @@ async function handleRequest(
       return null
     }
     if (!isRunner(sender)) {
-      throw new Error('下载任务只能由下载中心执行。')
+      throw new Error(i18n.t('downloads.downloadTasksCanOnlyRunInTheDownload'))
     }
     if (message.type === 'runner.ready') {
       await ensureHeaders()
@@ -624,7 +639,9 @@ async function handleRequest(
     }
     const stored = await browser.storage.local.get(RUNNER_STORAGE_KEY)
     if (stored[RUNNER_STORAGE_KEY] !== sender.tab?.id) {
-      throw new Error('另一个下载中心正在处理队列。')
+      throw new Error(
+        i18n.t('downloads.anotherDownloadCenterIsProcessingTheQueue'),
+      )
     }
     if (message.type === 'native.start') {
       const job = startNativeJob(jobs, message.id)
@@ -666,7 +683,7 @@ async function handleRequest(
       }
       return true
     }
-    throw new Error('不支持的下载操作。')
+    throw new Error(i18n.t('downloads.unsupportedDownloadAction'))
   })
 }
 
@@ -680,12 +697,12 @@ async function notifyCompleted(job: DownloadJob) {
   await browser.notifications.create(`download:${job.id}`, {
     type: 'basic',
     iconUrl: browser.runtime.getURL('/icons/128.png'),
-    title: `${DOWNLOAD_KIND_LABELS[job.kind]}已保存`,
+    title: i18n.t('downloads.saved', [DOWNLOAD_KIND_LABELS[job.kind]]),
     message: `${job.title}${job.kind !== 'cover' && job.pageCount > 1 ? ` · P${job.page} ${job.part}` : ''}`,
   })
 }
 
-export function registerDownloads() {
+export function registerDownloads(ready: Promise<void> = Promise.resolve()) {
   browser.runtime.onMessage.addListener(
     (raw: unknown, sender, sendResponse) => {
       const channel = z
@@ -694,16 +711,22 @@ export function registerDownloads() {
       if (!channel.success || sender.id !== browser.runtime.id) {
         return
       }
-      const parsed = requestSchema.safeParse(raw)
-      if (!parsed.success) {
-        sendResponse({ ok: false, error: '下载请求参数无效。' })
-        return
-      }
-      handleRequest(parsed.data, sender)
-        .then(data => sendResponse({ ok: true, data }))
-        .catch(error =>
-          sendResponse({ ok: false, error: getErrorMessage(error) }),
-        )
+      ready
+        .then(async () => {
+          const parsed = requestSchema.safeParse(raw)
+          if (!parsed.success) {
+            sendResponse({
+              ok: false,
+              error: i18n.t('downloads.invalidDownloadRequestParameters'),
+            })
+            return
+          }
+          const data = await handleRequest(parsed.data, sender)
+          sendResponse({ ok: true, data })
+        })
+        .catch(error => {
+          sendResponse({ ok: false, error: getErrorMessage(error) })
+        })
       return true
     },
   )

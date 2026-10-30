@@ -1,6 +1,7 @@
 import { saveFile } from '~/utils/downloads/files/saveFile'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { serializeDownloadHistory } from '~/utils/downloads/history/serializeDownloadHistory'
+import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
 
 export function useDownloadHistory() {
@@ -23,11 +24,14 @@ export function useDownloadHistory() {
       })
       await saveFile(
         blob,
-        `Bilibili/下载记录_${new Date().toISOString().replace(/[:.]/g, '-')}.${format}`,
+        i18n.t('useDownloadHistory.bilibiliDownloadHistory', [
+          new Date().toISOString().replace(/[:.]/g, '-'),
+          format,
+        ]),
         controller.signal,
         async () => {},
       )
-      notice.value = `已导出 ${jobs.length} 条记录。`
+      notice.value = i18n.t('useDownloadHistory.exportedRecords', jobs.length)
     } catch (error_) {
       error.value = getErrorMessage(error_)
     } finally {

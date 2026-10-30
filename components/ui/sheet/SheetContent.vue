@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { i18n } from '~/utils/i18n'
 import { X } from '@lucide/vue'
 import { reactiveOmit } from '@vueuse/core'
 import { cn } from 'cn'
@@ -62,7 +63,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emit)
         data-slot="sheet-content"
       >
         <X class="size-4" />
-        <span class="sr-only">Close</span>
+        <span class="sr-only">{{ i18n.t('common.close') }}</span>
       </DialogClose>
     </DialogContent>
   </DialogPortal>

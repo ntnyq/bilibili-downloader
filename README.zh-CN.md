@@ -10,6 +10,9 @@
 
 基于 **WXT + Vue 3 + TypeScript + Tailwind CSS + shadcn-vue** 构建。
 
+设置页支持「跟随浏览器 / 简体中文 / English」，选择后自动保存并立即同步到已打开的扩展页面和视频页面板。
+跟随浏览器时，其他语言回退到英文。
+
 ## 📦 安装
 
 <a href="https://chromewebstore.google.com/detail/bilibili-downloader/jinmimeepeceajjjgmgaggabikcabkmf">

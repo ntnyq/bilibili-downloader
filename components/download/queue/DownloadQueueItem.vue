@@ -20,6 +20,7 @@ import {
 } from '~/utils/downloads/labels'
 import { canPauseJob } from '~/utils/downloads/queue/control'
 import { isJobActive } from '~/utils/downloads/queue/jobs'
+import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
 
 interface Props {
@@ -123,7 +124,11 @@ const statusClass = computed(() => {
           class="min-w-0 wrap-break-word"
           >P{{ job.page }} · {{ job.part }}</span
         >
-        <span v-else>{{ job.kind === 'cover' ? '视频封面' : '单视频' }}</span>
+        <span v-else>{{
+          job.kind === 'cover'
+            ? i18n.t('downloadQueueItem.videoCover')
+            : i18n.t('downloadQueueItem.singleVideo')
+        }}</span>
         <span v-if="job.kind === 'video'">{{
           job.quality || QUALITY_LABELS[job.qualityPreference]
         }}</span>
@@ -139,10 +144,15 @@ const statusClass = computed(() => {
           class="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"
         >
           <span v-if="['downloading', 'paused', 'native'].includes(job.status)"
-            >已下载 {{ formatBytes(job.receivedBytes)
-            }}<template v-if="job.totalBytes">
-              / 约 {{ formatBytes(job.totalBytes) }}</template
-            ></span
+            >{{
+              i18n.t('downloadProgress.downloaded', [
+                formatBytes(job.receivedBytes),
+              ])
+            }}<template v-if="job.totalBytes">{{
+              i18n.t('downloadProgress.approximately', [
+                formatBytes(job.totalBytes),
+              ])
+            }}</template></span
           >
           <span v-else>{{
             getJobStatusLabel(job) || STATUS_LABELS[job.status]
@@ -155,8 +165,8 @@ const statusClass = computed(() => {
         </div>
         <Progress
           :model-value="job.status === 'native' ? null : progress"
+          :aria-label="i18n.t('downloadProgress.downloadProgressEstimated')"
           class="mt-2 h-1.5"
-          aria-label="下载进度（估算）"
         />
       </div>
       <p
@@ -166,7 +176,12 @@ const statusClass = computed(() => {
         <ClockIcon
           class="size-3.5"
           aria-hidden="true"
-        />等待顺序 {{ waitingPosition }} / {{ waitingCount }}
+        />{{
+          i18n.t('downloadQueueItem.queuePosition', [
+            waitingPosition ?? 0,
+            waitingCount,
+          ])
+        }}
       </p>
       <p
         v-if="job.status === 'paused'"
@@ -174,8 +189,10 @@ const statusClass = computed(() => {
       >
         {{
           ['video', 'audio'].includes(job.kind)
-            ? '已保留缓存，继续时将校验素材并尝试续传。'
-            : '继续后将重新读取此素材。'
+            ? i18n.t(
+                'downloadQueueItem.cacheRetainedResumingWillValidateTheAssetAnd',
+              )
+            : i18n.t('downloadQueueItem.resumingWillFetchThisAssetAgain')
         }}
       </p>
       <p
@@ -187,8 +204,8 @@ const statusClass = computed(() => {
           aria-hidden="true"
         />{{
           job.downloadId === undefined
-            ? '文件已保存，路径见详情'
-            : '已保存到 Bilibili 文件夹'
+            ? i18n.t('downloadQueueItem.fileSavedSeeDetailsForThePath')
+            : i18n.t('downloadQueueItem.savedToBilibiliFolder')
         }}
       </p>
       <div
@@ -211,7 +228,10 @@ const statusClass = computed(() => {
           size="sm"
           class="mr-auto text-xs text-muted-foreground sm:mr-0"
           type="button"
-          >{{ isDetailsOpen ? '收起详情' : '查看详情'
+          >{{
+            isDetailsOpen
+              ? i18n.t('downloadLibraryItem.hideDetails')
+              : i18n.t('downloadLibraryItem.viewDetails')
           }}<ChevronDownIcon
             :class="isDetailsOpen && 'rotate-180'"
             class="size-3"
@@ -226,7 +246,7 @@ const statusClass = computed(() => {
           ><PauseIcon
             class="size-3.5"
             aria-hidden="true"
-          />暂停</Button
+          />{{ i18n.t('downloadProgress.pause') }}</Button
         >
         <Button
           @click="emit('resume', job.id)"
@@ -237,7 +257,7 @@ const statusClass = computed(() => {
           ><PlayIcon
             class="size-3.5"
             aria-hidden="true"
-          />继续</Button
+          />{{ i18n.t('downloadProgress.resume') }}</Button
         >
         <Button
           @click="emit('retry', job.id)"
@@ -249,7 +269,7 @@ const statusClass = computed(() => {
           ><RotateCcwIcon
             class="size-3.5"
             aria-hidden="true"
-          />重试</Button
+          />{{ i18n.t('downloadProgress.retry') }}</Button
         >
         <Button
           @click="emit('showFile', job.downloadId)"
@@ -260,12 +280,17 @@ const statusClass = computed(() => {
           ><FolderIcon
             class="size-3.5"
             aria-hidden="true"
-          />打开文件夹</Button
+          />{{ i18n.t('downloadQueueItem.openFolder') }}</Button
         >
         <DropdownMenu>
           <DropdownMenuTrigger as-child
             ><Button
-              :aria-label="`更多操作：${job.title} P${job.page}`"
+              :aria-label="
+                i18n.t('downloadQueueItem.moreActionsPart', [
+                  job.title,
+                  job.page,
+                ])
+              "
               variant="outline"
               size="icon-sm"
               ><EllipsisIcon
@@ -278,26 +303,26 @@ const statusClass = computed(() => {
                 :href="`https://www.bilibili.com/video/${job.bvid}/?p=${job.page}`"
                 target="_blank"
                 rel="noreferrer"
-                >查看原视频</a
+                >{{ i18n.t('downloadQueueItem.viewOriginalVideo') }}</a
               ></DropdownMenuItem
             >
             <template v-if="job.status === 'queued'">
               <DropdownMenuItem
                 @select="emit('move', job.id, 'up')"
                 :disabled="waitingPosition === 1"
-                >提前下载</DropdownMenuItem
+                >{{ i18n.t('downloadQueueItem.moveEarlier') }}</DropdownMenuItem
               >
               <DropdownMenuItem
                 @select="emit('move', job.id, 'down')"
                 :disabled="waitingPosition === waitingCount"
-                >推后下载</DropdownMenuItem
+                >{{ i18n.t('downloadQueueItem.moveLater') }}</DropdownMenuItem
               >
             </template>
             <template v-if="isActive"
               ><DropdownMenuSeparator /><DropdownMenuItem
                 @select="emit('cancel', job.id)"
                 class="text-destructive"
-                >取消任务</DropdownMenuItem
+                >{{ i18n.t('downloadQueueItem.cancelTask') }}</DropdownMenuItem
               ></template
             >
           </DropdownMenuContent>
@@ -309,18 +334,18 @@ const statusClass = computed(() => {
         class="mt-3 rounded-lg bg-muted/70 p-3 text-xs text-muted-foreground"
       >
         <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2">
-          <dt>视频编号</dt>
+          <dt>{{ i18n.t('downloadQueueItem.videoId') }}</dt>
           <dd>{{ job.bvid }}</dd>
           <template v-if="job.owner"
-            ><dt>UP 主</dt>
+            ><dt>{{ i18n.t('downloadQueueItem.uploader') }}</dt>
             <dd>{{ job.owner }}</dd></template
           >
           <template v-if="job.kind === 'video'"
-            ><dt>提交偏好</dt>
+            ><dt>{{ i18n.t('downloadQueueItem.requestedPreference') }}</dt>
             <dd>{{ QUALITY_LABELS[job.qualityPreference] }}</dd></template
           >
           <template v-if="job.filename"
-            ><dt>保存路径</dt>
+            ><dt>{{ i18n.t('downloadLibraryItem.savePath') }}</dt>
             <dd class="break-all">{{ job.filename }}</dd></template
           >
         </dl>
@@ -335,9 +360,8 @@ const statusClass = computed(() => {
               size="sm"
               type="button"
               class="text-xs text-muted-foreground"
-            >
-              高级选项：本地助手
-              <ChevronDownIcon
+              >{{ i18n.t('downloadNativeHelp.advancedLocalHelper')
+              }}<ChevronDownIcon
                 :class="isNativeOptionsOpen && 'rotate-180'"
                 class="size-3"
                 aria-hidden="true"
@@ -350,8 +374,11 @@ const statusClass = computed(() => {
             force-mount
           >
             <p class="mt-2 leading-5">
-              需要另行安装 Python、FFmpeg
-              和可选的通信宿主。安装与使用说明见「下载缓存」中的高级选项。
+              {{
+                i18n.t(
+                  'downloadQueueItem.installPythonFfmpegAndTheOptionalMessagingHost',
+                )
+              }}
             </p>
             <DownloadNativeExport :job />
             <DownloadNativeBridge :job />

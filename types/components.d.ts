@@ -47,6 +47,7 @@ declare module 'vue' {
     DownloadBundles: typeof import('./../components/download/bundles/DownloadBundles.vue')['default']
     DownloadCache: typeof import('./../components/download/local/DownloadCache.vue')['default']
     DownloadFileSettings: typeof import('./../components/download/settings/DownloadFileSettings.vue')['default']
+    DownloadLanguageSettings: typeof import('./../components/download/settings/DownloadLanguageSettings.vue')['default']
     DownloadLauncher: typeof import('./../components/download/DownloadLauncher.vue')['default']
     DownloadLibrary: typeof import('./../components/download/library/DownloadLibrary.vue')['default']
     DownloadLibraryFilters: typeof import('./../components/download/library/DownloadLibraryFilters.vue')['default']

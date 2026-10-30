@@ -18,6 +18,7 @@ import {
   DOWNLOAD_KIND_LABELS,
   SUBTITLE_LANGUAGE_LABELS,
 } from '~/utils/downloads/labels'
+import { i18n } from '~/utils/i18n'
 import type { DownloadKind, SubtitleLanguage } from '~/types/download'
 
 defineProps<{
@@ -30,18 +31,50 @@ const subtitleLanguage = defineModel<SubtitleLanguage>('subtitleLanguage', {
 const groupId = useId()
 
 const ASSETS = [
-  { value: 'video', label: '视频', icon: VideoIcon },
-  { value: 'audio', label: '音频', icon: Music2Icon },
-  { value: 'cover', label: '封面', icon: ImageIcon },
-  { value: 'subtitle', label: '字幕', icon: CaptionsIcon },
-  { value: 'danmaku', label: '弹幕', icon: MessageSquareIcon },
+  {
+    value: 'video',
+    get label() {
+      return i18n.t('downloadLibraryFilters.video')
+    },
+    icon: VideoIcon,
+  },
+  {
+    value: 'audio',
+    get label() {
+      return i18n.t('downloadLibraryFilters.audio')
+    },
+    icon: Music2Icon,
+  },
+  {
+    value: 'cover',
+    get label() {
+      return i18n.t('downloadLibraryFilters.cover')
+    },
+    icon: ImageIcon,
+  },
+  {
+    value: 'subtitle',
+    get label() {
+      return i18n.t('downloadLibraryFilters.subtitles')
+    },
+    icon: CaptionsIcon,
+  },
+  {
+    value: 'danmaku',
+    get label() {
+      return i18n.t('downloadLibraryFilters.danmaku')
+    },
+    icon: MessageSquareIcon,
+  },
 ] as const
 </script>
 
 <template>
   <div class="mt-3 space-y-2">
     <fieldset :disabled>
-      <legend class="mb-2 text-xs font-medium">下载内容</legend>
+      <legend class="mb-2 text-xs font-medium">
+        {{ i18n.t('batchImportOptions.downloadContent') }}
+      </legend>
       <div class="grid grid-cols-5 gap-1.5">
         <label
           v-for="asset in ASSETS"
@@ -76,15 +109,17 @@ const ASSETS = [
       <Label
         as="span"
         class="shrink-0 text-muted-foreground"
-        >字幕语言</Label
+        >{{ i18n.t('batchImportOptions.subtitleLanguage') }}</Label
       >
       <Select
         v-model="subtitleLanguage"
         :disabled
         ><SelectTrigger
-          aria-label="字幕语言"
+          :aria-label="i18n.t('batchImportOptions.subtitleLanguage')"
           class="w-47.5 max-w-full"
-          ><SelectValue /></SelectTrigger
+          ><SelectValue>{{
+            SUBTITLE_LANGUAGE_LABELS[subtitleLanguage]
+          }}</SelectValue></SelectTrigger
         ><SelectContent>
           <SelectItem
             v-for="(label, value) in SUBTITLE_LANGUAGE_LABELS"

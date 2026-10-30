@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { i18n } from '~/utils/i18n'
 import { videoPageSchema } from '../../types/download'
 import { QUALITY_REQUEST_IDS } from '../downloads/media/quality'
 import {
@@ -82,7 +83,9 @@ export async function requestApi(
   })
   if (!response.ok) {
     throw new BilibiliApiError(
-      `B 站接口请求失败（HTTP ${response.status}），请稍后重试。`,
+      i18n.t('api.bilibiliApiRequestFailedHttpPleaseTryAgain', [
+        response.status,
+      ]),
       { code: response.status, shouldStopBatch: response.status !== 404 },
     )
   }
@@ -90,22 +93,31 @@ export async function requestApi(
   try {
     payload = await response.json()
   } catch (error) {
-    throw new BilibiliApiError('B 站返回的内容无法解析，请稍后重试。', {
-      code: response.status,
-      shouldStopBatch: true,
-      cause: error,
-    })
+    throw new BilibiliApiError(
+      i18n.t('api.cannotParseTheBilibiliResponsePleaseTryAgain'),
+      {
+        code: response.status,
+        shouldStopBatch: true,
+        cause: error,
+      },
+    )
   }
   const result = responseSchema.parse(payload)
   if (result.code !== 0 && (!allowGuest || result.code !== -101)) {
     if ([-352, -412, -401].includes(result.code)) {
       throw new BilibiliApiError(
-        'B 站暂时限制了请求，请在网页正常播放视频后稍后重试。',
+        i18n.t('api.bilibiliIsTemporarilyLimitingRequestsPlayTheVideo'),
         { code: result.code, shouldStopBatch: true },
       )
     }
     throw new BilibiliApiError(
-      `B 站：${result.message || '请求失败'}（${result.code}）${result.code === -101 ? '，请先在 B 站网页登录。' : ''}`,
+      i18n.t('api.bilibili', [
+        result.message || i18n.t('api.requestFailed'),
+        result.code,
+        result.code === -101
+          ? i18n.t('api.pleaseSignInOnTheBilibiliWebsiteFirst')
+          : '',
+      ]),
       {
         code: result.code,
         shouldStopBatch: ![-404, 62002, 62004].includes(result.code),
@@ -138,7 +150,9 @@ export async function getVideoInfo(
     await requestApi(`/x/web-interface/view?${param}`, signal),
   )
   if (data.rights?.is_stein_gate) {
-    throw new Error('暂不支持互动视频，请选择普通单视频或多 P 视频。')
+    throw new Error(
+      i18n.t('api.interactiveVideosAreNotSupportedChooseARegular'),
+    )
   }
   return {
     bvid: data.bvid,

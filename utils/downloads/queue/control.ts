@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
 
 /**
@@ -49,7 +50,7 @@ export function canApplyJobUpdate(
 function requireJob(jobs: DownloadJob[], id: string): DownloadJob {
   const job = jobs.find(item => item.id === id)
   if (!job) {
-    throw new Error('此任务已不存在，请刷新列表。')
+    throw new Error(i18n.t('control.thisTaskNoLongerExistsRefreshTheList'))
   }
   return job
 }
@@ -70,10 +71,10 @@ export function pauseJob(jobs: DownloadJob[], id: string): DownloadJob[] {
     return jobs
   }
   if (job.status === 'saving') {
-    throw new Error('文件正在保存，无法暂停，请等待保存完成。')
+    throw new Error(i18n.t('control.theFileIsBeingSavedAndCannotBe'))
   }
   if (!canPauseJob(job)) {
-    throw new Error('此任务已结束，无法暂停。')
+    throw new Error(i18n.t('control.thisTaskHasEndedAndCannotBePaused'))
   }
   return jobs.map(item =>
     item.id === id ? { ...item, status: 'paused', runId: undefined } : item,
@@ -92,7 +93,7 @@ export function pauseJob(jobs: DownloadJob[], id: string): DownloadJob[] {
 export function resumeJob(jobs: DownloadJob[], id: string): DownloadJob[] {
   const job = requireJob(jobs, id)
   if (job.status !== 'paused') {
-    throw new Error('只有已暂停的任务可以继续。')
+    throw new Error(i18n.t('control.onlyPausedTasksCanBeResumed'))
   }
   return jobs.map(item =>
     item.id === id
@@ -126,7 +127,7 @@ export function moveQueuedJob(
 ): DownloadJob[] {
   const job = requireJob(jobs, id)
   if (job.status !== 'queued') {
-    throw new Error('只有等待下载的任务可以调整顺序。')
+    throw new Error(i18n.t('control.onlyWaitingTasksCanBeReordered'))
   }
   const waiting = jobs.filter(item => item.status === 'queued')
   const position = waiting.findIndex(item => item.id === id)
@@ -163,7 +164,11 @@ export function confirmJobUpdate(
   controller: AbortController,
 ) {
   if (!accepted) {
-    controller.abort(new JobPausedError('任务状态已变化，停止本次执行。'))
+    controller.abort(
+      new JobPausedError(
+        i18n.t('control.theTaskStateChangedThisExecutionStopped'),
+      ),
+    )
   }
   controller.signal.throwIfAborted()
 }
@@ -188,7 +193,9 @@ export function abortStaleJobRun(
   if (!current || current.status === 'cancelled') {
     controller.abort()
   } else if (current.status === 'paused' || current.runId !== claimed.runId) {
-    controller.abort(new JobPausedError('任务已暂停或已由新的执行接管。'))
+    controller.abort(
+      new JobPausedError(i18n.t('control.theTaskWasPausedOrTakenOverBy')),
+    )
   }
 }
 

@@ -9,6 +9,7 @@ import {
   Output,
   StreamTarget,
 } from 'mediabunny'
+import { i18n } from '~/utils/i18n'
 import type { EncodedPacket, StreamTargetChunk } from 'mediabunny'
 import type { FragmentIndexStore } from './fragments/fragmentIndex'
 import type { FragmentSampleStore } from './fragments/fragmentSamples'
@@ -92,7 +93,7 @@ export async function remuxMedia(
 ) {
   signal.throwIfAborted()
   if (blobs.length !== (kind === 'dash' ? 2 : 1)) {
-    throw new Error('音视频素材数量无效。')
+    throw new Error(i18n.t('progressiveMedia.invalidNumberOfMediaAssets'))
   }
   const inputs = blobs.map(
     blob =>
@@ -167,7 +168,7 @@ export async function remuxMedia(
       const codec = await track?.getCodec()
       const config = await track?.getDecoderConfig()
       if (!track || !codec || !config) {
-        throw new Error('无法读取 MP4 视频轨道。')
+        throw new Error(i18n.t('remuxMedia.cannotReadTheMp4VideoTrack'))
       }
       const source = new EncodedVideoPacketSource(codec)
       output.addVideoTrack(source, {
@@ -184,7 +185,7 @@ export async function remuxMedia(
     const track = await inputs.at(-1)!.getPrimaryAudioTrack()
     const config = await track?.getDecoderConfig()
     if (!track || (await track.getCodec()) !== 'aac' || !config) {
-      throw new Error('无法读取 MP4 中的 AAC 音轨。')
+      throw new Error(i18n.t('remuxMedia.cannotReadTheAacTrackInTheMp4'))
     }
     const source = new EncodedAudioPacketSource('aac')
     output.addAudioTrack(source, { decoderConfig: config })
@@ -197,7 +198,7 @@ export async function remuxMedia(
     for (const entry of tracks) {
       entry.packet = await entry.sink.getFirstPacket()
       if (!entry.packet) {
-        throw new Error('素材轨道没有可封装的数据包。')
+        throw new Error(i18n.t('remuxMedia.theAssetTrackHasNoPacketsToRemux'))
       }
     }
     signal.throwIfAborted()

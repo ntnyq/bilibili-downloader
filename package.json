@@ -23,7 +23,7 @@
     "postinstall": "wxt prepare",
     "prepare": "husky",
     "release": "bumpp",
-    "test": "tsx --test tests/bilibili/*.test.ts tests/downloads/*.test.ts",
+    "test": "tsx --import ./tests/support/i18n.ts --test tests/bilibili/*.test.ts tests/downloads/*.test.ts",
     "test:native": "python3 -m unittest discover -s tests/native -p '*_test.py'",
     "typecheck": "vue-tsc --noEmit",
     "zip": "wxt zip",

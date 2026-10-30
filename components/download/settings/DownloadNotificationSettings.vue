@@ -3,6 +3,7 @@ import { BellIcon } from '@lucide/vue'
 import { browser } from '#imports'
 import { useDownloadSettings } from '~/composables/useDownloadSettings'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
+import { i18n } from '~/utils/i18n'
 
 const {
   settings,
@@ -30,10 +31,16 @@ async function toggleNotifications(enabled: boolean) {
         permissions: ['notifications'],
       }))
     ) {
-      throw new Error('未获得通知权限；文件下载不受影响。')
+      throw new Error(
+        i18n.t(
+          'downloadNotificationSettings.notificationPermissionWasNotGrantedDownloadsAreUnaffected',
+        ),
+      )
     }
     if (await updateSettings({ notifyOnComplete: enabled })) {
-      notice.value = enabled ? '完成通知已开启。' : '完成通知已关闭。'
+      notice.value = enabled
+        ? i18n.t('downloadNotificationSettings.completionNotificationsEnabled')
+        : i18n.t('downloadNotificationSettings.completionNotificationsDisabled')
     }
   } catch (error_) {
     notificationError.value = getErrorMessage(error_)
@@ -45,27 +52,41 @@ async function toggleNotifications(enabled: boolean) {
 
 <template>
   <DownloadSettingsSection
-    title="完成通知"
-    description="下载完成后及时提醒。"
+    :title="i18n.t('downloadNotificationSettings.completionNotifications')"
+    :description="
+      i18n.t('downloadNotificationSettings.getNotifiedWhenDownloadsFinish')
+    "
     auto-save
   >
     <template #icon><BellIcon class="size-4.5" /></template>
     <div class="flex items-center justify-between gap-4">
       <div>
-        <h3 class="text-sm font-medium">系统通知</h3>
+        <h3 class="text-sm font-medium">
+          {{ i18n.t('downloadNotificationSettings.systemNotifications') }}
+        </h3>
         <p class="mt-1 text-xs text-muted-foreground">
-          文件保存完成后发送通知。
+          {{
+            i18n.t('downloadNotificationSettings.notifyWhenAFileHasBeenSaved')
+          }}
         </p>
       </div>
       <Switch
         @update:model-value="toggleNotifications"
         :model-value="settings.notifyOnComplete"
         :disabled="!isReady || isSaving || isRequesting"
-        aria-label="文件保存完成后发送系统通知"
+        :aria-label="
+          i18n.t(
+            'downloadNotificationSettings.sendASystemNotificationWhenAFileHas',
+          )
+        "
       />
     </div>
     <p class="mt-4 text-[11px] text-muted-foreground leading-5">
-      通知是否显示，还取决于浏览器和系统设置。
+      {{
+        i18n.t(
+          'downloadNotificationSettings.notificationsAlsoDependOnYourBrowserAndSystem',
+        )
+      }}
     </p>
     <Alert
       v-if="notificationError || settingsError"

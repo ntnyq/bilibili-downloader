@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 /**
  * The small Emscripten boundary used by the bundled FFmpeg core (0.12.x).
  */
@@ -138,7 +139,7 @@ export function createFFmpegDiskFile(
             { at: position + written },
           )
           if (count <= 0 || count > length - written) {
-            throw new Error('浏览器磁盘写入未完成。')
+            throw new Error(i18n.t('ffmpegDiskFile.browserDiskWriteIncomplete'))
           }
           written += count
         }

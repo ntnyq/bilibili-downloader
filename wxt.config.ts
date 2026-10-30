@@ -8,6 +8,7 @@ import { dirname, join } from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import vueComponents from 'unplugin-vue-components/vite'
 import { defineConfig } from 'wxt'
+import { createI18nCatalogModule, runtimeI18nPlugin } from './scripts/i18n'
 import { resolve } from './scripts/utils'
 
 const require = createRequire(import.meta.url)
@@ -15,6 +16,9 @@ const require = createRequire(import.meta.url)
 export default defineConfig({
   manifestVersion: 3,
   outDir: 'dist',
+  alias: {
+    '#i18n-catalogs': resolve('.wxt/i18n/catalogs.ts'),
+  },
   autoIcons: {
     baseIconPath: 'assets/images/icon.png',
     developmentIndicator: false,
@@ -33,11 +37,20 @@ export default defineConfig({
     'prepare:publicPaths': function (_wxt, paths) {
       paths.push('/ffmpeg/ffmpeg-core.js', '/ffmpeg/ffmpeg-core.wasm')
     },
+    'prepare:types': async function (_wxt, entries) {
+      entries.push({
+        path: 'i18n/catalogs.ts',
+        text: await createI18nCatalogModule(),
+      })
+    },
   },
 
   imports: {
     addons: {
       vueTemplate: true,
+    },
+    dirsScanOptions: {
+      fileFilter: file => !file.endsWith('/utils/i18n.ts'),
     },
     presets: [
       'vue',
@@ -120,6 +133,7 @@ export default defineConfig({
       },
 
       plugins: [
+        runtimeI18nPlugin(),
         tailwindcss(),
         vueComponents({
           dirs: [resolve('components')],

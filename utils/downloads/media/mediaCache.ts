@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { i18n } from '~/utils/i18n'
 
 export const MEDIA_CACHE_DIRECTORY = 'media-cache-v1'
 const MANIFEST_FILE = 'manifest.json'
@@ -129,7 +130,9 @@ function appendChunkRun(
     return [...runs.slice(0, -1), { size, count: last.count + 1 }]
   }
   if (runs.length >= MAX_CHUNK_RUNS) {
-    throw new MediaCacheError('下载缓存碎片过多，请清理该任务缓存后重新下载。')
+    throw new MediaCacheError(
+      i18n.t('mediaCache.tooManyDownloadCacheFragmentsClearThisTask'),
+    )
   }
   return [...runs, { size, count: 1 }]
 }
@@ -239,8 +242,8 @@ function toMediaCacheError(error: unknown): MediaCacheError {
   }
   return new MediaCacheError(
     error instanceof Error && error.name === 'QuotaExceededError'
-      ? '浏览器本地缓存空间不足，请清理下载缓存或释放磁盘空间后重试。'
-      : '无法读写浏览器下载缓存，请清理缓存后重试。',
+      ? i18n.t('mediaCache.insufficientBrowserCacheSpaceClearTheDownloadCache')
+      : i18n.t('mediaCache.cannotReadOrWriteTheBrowserDownloadCache'),
     { cause: error },
   )
 }
@@ -257,7 +260,7 @@ function toMediaCacheError(error: unknown): MediaCacheError {
 async function getStorageRoot(): Promise<MediaCacheDirectory> {
   if (!globalThis.navigator?.storage?.getDirectory) {
     throw new MediaCacheError(
-      '当前浏览器不支持本地下载缓存，请更新浏览器后重试。',
+      i18n.t('mediaCache.thisBrowserDoesNotSupportLocalDownloadCaching'),
     )
   }
   return navigator.storage.getDirectory()
@@ -508,7 +511,9 @@ export async function createMediaCache(
     const required = async (inputKey: string) => {
       const entry = await load(inputKey)
       if (!entry) {
-        throw new MediaCacheError('下载缓存已丢失，请重新下载。')
+        throw new MediaCacheError(
+          i18n.t('fetchCachedMedia.downloadCacheWasLostDownloadAgain'),
+        )
       }
       return entry
     }
@@ -556,7 +561,9 @@ export async function createMediaCache(
       append(inputKey, bytes) {
         return guarded(async () => {
           if (!bytes.byteLength || bytes.byteLength > MEDIA_CACHE_CHUNK_BYTES) {
-            throw new MediaCacheError('下载缓存块大小无效。')
+            throw new MediaCacheError(
+              i18n.t('mediaCache.invalidDownloadCacheBlockSize'),
+            )
           }
           const entry = await required(inputKey)
           const previous = entry.manifest
@@ -566,7 +573,9 @@ export async function createMediaCache(
             || previous.complete
             || (previous.total !== null && received > previous.total)
           ) {
-            throw new MediaCacheError('下载缓存大小与素材不一致。')
+            throw new MediaCacheError(
+              i18n.t('mediaCache.downloadCacheSizeDoesNotMatchTheAsset'),
+            )
           }
           const chunks = appendChunkRun(previous.chunks, bytes.byteLength)
           const chunkCount = previous.chunks.reduce(
@@ -590,7 +599,9 @@ export async function createMediaCache(
             !previous.received
             || (previous.total !== null && previous.total !== previous.received)
           ) {
-            throw new MediaCacheError('素材缓存尚未完整下载。')
+            throw new MediaCacheError(
+              i18n.t('mediaCache.theAssetCacheIsNotFullyDownloaded'),
+            )
           }
           await commit(entry, {
             ...previous,
@@ -610,7 +621,9 @@ export async function createMediaCache(
             || total < previous.received
             || (previous.total !== null && previous.total !== total)
           ) {
-            throw new MediaCacheError('下载缓存大小与素材不一致。')
+            throw new MediaCacheError(
+              i18n.t('mediaCache.downloadCacheSizeDoesNotMatchTheAsset'),
+            )
           }
           await commit(entry, { ...previous, total, updatedAt: Date.now() })
         })
@@ -619,7 +632,9 @@ export async function createMediaCache(
         return guarded(async () => {
           const { directory, manifest } = await required(inputKey)
           if (!manifest.complete) {
-            throw new MediaCacheError('素材缓存尚未完整下载。')
+            throw new MediaCacheError(
+              i18n.t('mediaCache.theAssetCacheIsNotFullyDownloaded'),
+            )
           }
           const chunks: File[] = []
           for (const { index, size } of iterateManifestChunks(manifest)) {
@@ -628,7 +643,9 @@ export async function createMediaCache(
             )
             const file = await handle.getFile()
             if (file.size !== size) {
-              throw new MediaCacheError('素材缓存已损坏，请清理缓存后重试。')
+              throw new MediaCacheError(
+                i18n.t('mediaCache.theAssetCacheIsCorruptClearItAnd'),
+              )
             }
             chunks.push(file)
           }

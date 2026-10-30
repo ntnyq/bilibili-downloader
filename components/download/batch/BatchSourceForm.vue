@@ -2,6 +2,7 @@
 import { ListVideoIcon, LoaderCircleIcon } from '@lucide/vue'
 import { MAX_BATCH_ITEMS } from '~/types/batch'
 import { MAX_BATCH_DRAFT_LENGTH } from '~/types/batchSession'
+import { i18n } from '~/utils/i18n'
 import type { BatchSourceKind } from '~/types/batchSession'
 
 defineProps<{
@@ -25,27 +26,43 @@ const sources: {
 }[] = [
   {
     kind: 'links',
-    label: '链接列表',
-    hint: `每行一个视频链接、BV 号或 av 号，最多 ${MAX_BATCH_ITEMS} 行。请使用完整视频链接，不支持短链接。`,
+    get label() {
+      return i18n.t('batchSourceForm.linkList')
+    },
+    get hint() {
+      return i18n.t('batchSourceForm.oneVideoUrlBvIdOrAvId', [MAX_BATCH_ITEMS])
+    },
     placeholder:
       'https://www.bilibili.com/video/BV1xx411c7mD/?p=2\nBV1xx411c7mD',
   },
   {
     kind: 'favorites',
-    label: '收藏夹',
-    hint: '粘贴收藏夹链接或收藏夹 ID。私有收藏夹需要先登录对应的 B 站账号。',
+    get label() {
+      return i18n.t('batchSourceForm.favorites')
+    },
+    get hint() {
+      return i18n.t('batchSourceForm.pasteAFavoritesUrlOrIdSignIn')
+    },
     placeholder: 'https://space.bilibili.com/123/favlist?fid=456',
   },
   {
     kind: 'collection',
-    label: '合集 / 系列',
-    hint: '从 UP 空间打开合集或系列，复制完整列表链接（包含 UP 的 UID）。',
+    get label() {
+      return i18n.t('batchSourceForm.collectionSeries')
+    },
+    get hint() {
+      return i18n.t('batchSourceForm.openACollectionOrSeriesFromAnUploader')
+    },
     placeholder: 'https://space.bilibili.com/123/lists/456?type=season',
   },
   {
     kind: 'uploads',
-    label: 'UP 投稿',
-    hint: '粘贴 UP 空间链接或 UID。只读取公开的视频投稿。',
+    get label() {
+      return i18n.t('batchSourceForm.uploaderVideos')
+    },
+    get hint() {
+      return i18n.t('batchSourceForm.pasteAnUploaderProfileUrlOrUidOnly')
+    },
     placeholder: 'https://space.bilibili.com/123/upload/video',
   },
 ]
@@ -57,11 +74,13 @@ const activeSource = computed(
 <template>
   <form @submit.prevent="emit('preview')">
     <fieldset :disabled="disabled || loading">
-      <legend class="sr-only">批量导入来源</legend>
+      <legend class="sr-only">
+        {{ i18n.t('batchSourceForm.batchImportSource') }}
+      </legend>
       <Tabs v-model="sourceKind">
         <TabsList
+          :aria-label="i18n.t('batchSourceForm.batchImportSource')"
           class="mt-4 grid h-auto w-full grid-cols-2 sm:grid-cols-4"
-          aria-label="批量导入来源"
         >
           <TabsTrigger
             v-for="source in sources"
@@ -114,7 +133,11 @@ const activeSource = computed(
               aria-hidden="true"
               class="size-4 shrink-0"
             />
-            {{ loading ? '正在读取…' : '预览列表' }}
+            {{
+              loading
+                ? i18n.t('batchSourceForm.loading')
+                : i18n.t('batchSourceForm.previewList')
+            }}
           </Button>
         </TabsContent>
       </Tabs>
@@ -126,8 +149,7 @@ const activeSource = computed(
       size="sm"
       type="button"
       class="mt-2.5 text-muted-foreground hover:text-primary text-[12px]"
+      >{{ i18n.t('batchSourceForm.stopLoading') }}</Button
     >
-      停止读取
-    </Button>
   </form>
 </template>

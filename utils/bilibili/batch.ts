@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { i18n } from '~/utils/i18n'
 import {
   batchCandidateSchema,
   batchPageSchema,
@@ -79,7 +80,7 @@ function parseBilibiliUrl(input: string): URL {
       url.hostname,
     )
   ) {
-    throw new Error('请使用 B 站的 HTTPS 完整链接。')
+    throw new Error(i18n.t('batch.useAFullBilibiliHttpsUrl'))
   }
   return url
 }
@@ -113,8 +114,8 @@ export function parseBatchSource(
   } catch (error) {
     throw new Error(
       kind === 'collection'
-        ? '请输入包含 UP 主 UID 和合集 ID 的完整 B 站合集或系列链接。'
-        : '请输入有效的数字 ID 或 B 站 HTTPS 链接。',
+        ? i18n.t('batch.enterAFullBilibiliCollectionOrSeriesUrl')
+        : i18n.t('batch.enterAValidNumericIdOrBilibiliHttps'),
       { cause: error },
     )
   }
@@ -161,7 +162,7 @@ export function parseBatchSource(
       return parsed.data
     }
   }
-  throw new Error('链接与所选来源类型不匹配，或缺少有效 ID。')
+  throw new Error(i18n.t('batch.theUrlDoesNotMatchTheSelectedSource'))
 }
 
 /**
@@ -183,7 +184,7 @@ function parseBatchLink(input: string): BatchCandidate {
   }
   const url = parseBilibiliUrl(input)
   if (url.hostname === 'space.bilibili.com') {
-    throw new Error('请输入单个视频链接。')
+    throw new Error(i18n.t('batch.enterASingleVideoUrl'))
   }
   const videoId = /^\/video\/(BV[\dA-Za-z]{10}|av[1-9]\d*)\/?$/.exec(
     url.pathname,
@@ -194,7 +195,7 @@ function parseBatchLink(input: string): BatchCandidate {
     || (pageValue !== null && !/^[1-9]\d{0,3}$/.test(pageValue))
     || url.searchParams.getAll('p').length > 1
   ) {
-    throw new Error('请输入有效的视频链接，分 P 页码须为 1–1000。')
+    throw new Error(i18n.t('batch.enterAValidVideoUrlWithAPart'))
   }
   const parsed = batchCandidateSchema.safeParse({
     videoId,
@@ -202,7 +203,7 @@ function parseBatchLink(input: string): BatchCandidate {
     page: pageValue ? Number(pageValue) : 1,
   })
   if (!parsed.success) {
-    throw new Error('分 P 页码须为 1–1000。')
+    throw new Error(i18n.t('batch.partNumbersMustBeBetween1And1000'))
   }
   return parsed.data
 }
@@ -220,11 +221,11 @@ function parseBatchLink(input: string): BatchCandidate {
  */
 export function parseBatchLinks(text: string): BatchLinksResult {
   if (text.length > 1024 * 1024) {
-    throw new Error('链接列表文本不能超过 1 MB。')
+    throw new Error(i18n.t('batch.theLinkListCannotExceed1Mb'))
   }
   const lines = text.split(/\r?\n/)
   if (lines.filter(line => line.trim()).length > MAX_BATCH_ITEMS) {
-    throw new Error(`每次最多导入 ${MAX_BATCH_ITEMS} 行链接。`)
+    throw new Error(i18n.t('batch.importUpToLinesAtATime', MAX_BATCH_ITEMS))
   }
   const result: BatchLinksResult = { items: [], errors: [], duplicateCount: 0 }
   const seen = new Set<string>()
@@ -246,7 +247,10 @@ export function parseBatchLinks(text: string): BatchLinksResult {
       result.errors.push({
         line: index + 1,
         input,
-        error: error instanceof Error ? error.message : '无法识别此视频链接。',
+        error:
+          error instanceof Error
+            ? error.message
+            : i18n.t('batch.cannotRecognizeThisVideoUrl'),
       })
     }
   }
@@ -319,7 +323,9 @@ function createBatchPage(
   hasMore: boolean,
 ): BatchPage {
   if (hasMore && !rows.length) {
-    throw new Error('B 站返回了空分页，已停止读取；请稍后重新预览。')
+    throw new Error(
+      i18n.t('batch.bilibiliReturnedAnEmptyPageLoadingStoppedPreview'),
+    )
   }
   return batchPageSchema.parse({
     title,
@@ -342,7 +348,9 @@ function createBatchPage(
  */
 function validatePageNumber(actual: number | undefined, requested: number) {
   if (actual !== undefined && actual !== requested) {
-    throw new Error('B 站返回的页码不一致，已停止读取；请重新预览。')
+    throw new Error(
+      i18n.t('batch.bilibiliReturnedAnInconsistentPageNumberLoadingStopped'),
+    )
   }
 }
 
@@ -397,7 +405,7 @@ export async function getBatchPage(
     validatePageNumber(data.page.page_num, page)
     return createBatchPage(
       source,
-      data.meta?.name || `合集 ${source.id}`,
+      data.meta?.name || i18n.t('batch.collection', [source.id]),
       data.archives,
       page,
       data.page.total,
@@ -414,7 +422,7 @@ export async function getBatchPage(
     validatePageNumber(data.page.num, page)
     return createBatchPage(
       source,
-      `系列 ${source.id}`,
+      i18n.t('batch.series', [source.id]),
       data.archives,
       page,
       data.page.total,
@@ -441,7 +449,7 @@ export async function getBatchPage(
   validatePageNumber(data.page.pn, page)
   return createBatchPage(
     source,
-    `UP 主 ${source.mid} 的投稿`,
+    i18n.t('batch.uploadsBy', [source.mid]),
     data.list.vlist,
     page,
     data.page.count,

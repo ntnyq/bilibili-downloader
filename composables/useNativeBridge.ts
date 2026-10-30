@@ -10,7 +10,9 @@ import {
   createNativeRequest,
   isSameNativeTask,
 } from '~/utils/downloads/native/bridge'
+import { localizeNativeError } from '~/utils/downloads/native/localizeNativeError'
 import { createNativeManifest } from '~/utils/downloads/native/manifest'
+import { i18n } from '~/utils/i18n'
 import type { Browser } from '#imports'
 import type { DownloadJob } from '~/types/download'
 import type { requestSchema } from '~/utils/downloads/messages'
@@ -86,8 +88,12 @@ function createNativeSession(onSettled: () => void) {
     if (!isFinishing) {
       finishFailure(
         detail
-          ? `无法连接本地助手：${detail}。请检查助手安装和扩展 ID。`
-          : '本地助手连接已断开，素材缓存已保留。请检查安装后重试。',
+          ? i18n.t('useNativeBridge.cannotConnectToTheLocalHelperCheckIts', [
+              detail,
+            ])
+          : i18n.t(
+              'useNativeBridge.localHelperDisconnectedTheMediaCacheIsRetained',
+            ),
       )
     }
   }
@@ -148,7 +154,9 @@ function createNativeSession(onSettled: () => void) {
         z.boolean(),
       )
       if (!accepted) {
-        throw new Error('本地任务已取消或执行身份已变更。')
+        throw new Error(
+          i18n.t('useNativeBridge.theLocalTaskWasCancelledOrItsExecution'),
+        )
       }
     })
     return writes
@@ -176,7 +184,9 @@ function createNativeSession(onSettled: () => void) {
     const job = claimedJob
     const signal = controller?.signal
     if (!job || !signal) {
-      throw new Error('本地任务尚未初始化。')
+      throw new Error(
+        i18n.t('useNativeBridge.theLocalTaskHasNotBeenInitialized'),
+      )
     }
     const media = await getVideoMedia(
       job.bvid,
@@ -191,19 +201,27 @@ function createNativeSession(onSettled: () => void) {
 
   async function refreshManifest() {
     if (isRefreshing || !manifest || refreshCount >= 2) {
-      throw new Error('素材链接刷新次数已达上限，请检查登录状态后重试。')
+      throw new Error(
+        i18n.t('useNativeBridge.mediaUrlRefreshLimitReachedCheckYourSign'),
+      )
     }
     isRefreshing = true
     const currentGeneration = generation
     refreshCount++
-    status.value = '素材链接已过期，正在重新取流并校验缓存…'
+    status.value = i18n.t(
+      'useNativeBridge.mediaUrlsExpiredFetchingStreamsAgainAndValidating',
+    )
     try {
       const next = await resolveManifest()
       if (isFinishing || currentGeneration !== generation) {
         return
       }
       if (!isSameNativeTask(manifest, next)) {
-        throw new Error('重新取流后的素材或画质发生变化，请重新发起本地任务。')
+        throw new Error(
+          i18n.t(
+            'useNativeBridge.assetsOrQualityChangedAfterRefreshingStreamsStart',
+          ),
+        )
       }
       manifest = next
       port?.postMessage(createNativeRequest('refresh', requestId, next))
@@ -222,20 +240,26 @@ function createNativeSession(onSettled: () => void) {
     try {
       const event = nativeEventSchema.parse(value)
       if (event.requestId !== requestId) {
-        throw new Error('本地助手返回了不匹配的任务标识。')
+        throw new Error(
+          i18n.t('useNativeBridge.theLocalHelperReturnedAMismatchedTaskId'),
+        )
       }
       clearTimeout(startupTimer)
       switch (event.type) {
         case 'started':
-          status.value = '本地助手已接收任务。'
+          status.value = i18n.t('useNativeBridge.theLocalHelperReceivedTheTask')
           break
         case 'progress':
           status.value =
             event.status === 'downloading'
-              ? `素材 ${event.inputIndex ?? 1}/${event.inputCount ?? 1}：${((event.receivedBytes ?? 0) / 1024 ** 2).toFixed(1)} MiB`
+              ? i18n.t('useNativeBridge.assetMib', [
+                  event.inputIndex ?? 1,
+                  event.inputCount ?? 1,
+                  ((event.receivedBytes ?? 0) / 1024 ** 2).toFixed(1),
+                ])
               : event.status === 'merging'
-                ? '正在使用本地 FFmpeg 无损封装…'
-                : '正在保存本地文件…'
+                ? i18n.t('useNativeBridge.remuxingLosslesslyWithLocalFfmpeg')
+                : i18n.t('useNativeBridge.savingLocalFile')
           await persist({
             status: 'native',
             ...(event.receivedBytes === undefined
@@ -250,7 +274,7 @@ function createNativeSession(onSettled: () => void) {
         case 'completed':
           isFinishing = true
           outputPath.value = event.filename
-          status.value = '本地下载已完成。'
+          status.value = i18n.t('useNativeBridge.localDownloadCompleted')
           releasePort()
           try {
             await persist({
@@ -261,12 +285,15 @@ function createNativeSession(onSettled: () => void) {
               error: '',
             })
           } catch (error_) {
-            error.value = `文件已保存，任务记录更新失败：${getErrorMessage(error_)}`
+            error.value = i18n.t(
+              'useNativeBridge.fileSavedButTheTaskRecordCouldNot',
+              [getErrorMessage(error_)],
+            )
           }
           settle()
           break
         case 'failed':
-          await finishFailure(event.error)
+          await finishFailure(localizeNativeError(event.error))
           break
       }
     } catch (error_) {
@@ -287,7 +314,7 @@ function createNativeSession(onSettled: () => void) {
     claimedJob = undefined
     error.value = ''
     outputPath.value = ''
-    status.value = '正在连接本地助手…'
+    status.value = i18n.t('useNativeBridge.connectingToLocalHelper')
     writes = Promise.resolve()
     refreshCount = 0
     isRefreshing = false
@@ -297,7 +324,11 @@ function createNativeSession(onSettled: () => void) {
         permissions: ['nativeMessaging'],
       })
       if (!granted) {
-        throw new Error('尚未授予本地助手通信权限。')
+        throw new Error(
+          i18n.t(
+            'useNativeBridge.localHelperMessagingPermissionHasNotBeenGranted',
+          ),
+        )
       }
       if (isFinishing || currentGeneration !== generation) {
         return
@@ -315,7 +346,9 @@ function createNativeSession(onSettled: () => void) {
               runId: claimed.runId,
               update: {
                 status: 'failed',
-                error: '下载页面已关闭，本地任务未开始。',
+                error: i18n.t(
+                  'useNativeBridge.theDownloadPageClosedTheLocalTaskDid',
+                ),
               },
             },
             z.boolean(),
@@ -340,7 +373,9 @@ function createNativeSession(onSettled: () => void) {
         return
       }
       if (current?.status !== 'native' || current.runId !== claimedJob.runId) {
-        throw new Error('任务已取消或执行身份已变更。')
+        throw new Error(
+          i18n.t('useNativeBridge.theTaskWasCancelledOrItsExecutionIdentity'),
+        )
       }
       controller.signal.throwIfAborted()
       requestId = crypto.randomUUID()
@@ -350,7 +385,9 @@ function createNativeSession(onSettled: () => void) {
       port.postMessage(createNativeRequest('start', requestId, manifest))
       startupTimer = setTimeout(
         () =>
-          finishFailure('本地助手未响应，请检查安装和 Python / FFmpeg 路径。'),
+          finishFailure(
+            i18n.t('useNativeBridge.theLocalHelperDidNotRespondCheckIts'),
+          ),
         15000,
       )
     } catch (error_) {
@@ -384,7 +421,9 @@ function createNativeSession(onSettled: () => void) {
       return
     }
     if (current?.status !== 'native' || current.runId !== claimedJob.runId) {
-      finishFailure('任务已停止，已验证的本地缓存会在下次交接时复用。')
+      finishFailure(
+        i18n.t('useNativeBridge.taskStoppedVerifiedLocalCacheWillBeReused'),
+      )
     }
   }
 
@@ -392,7 +431,7 @@ function createNativeSession(onSettled: () => void) {
   function handlePageHide() {
     if (isRunning.value && !isFinishing) {
       finishFailure(
-        '下载页面已关闭，本地任务停止；再次交接可重用已验证的缓存。',
+        i18n.t('useNativeBridge.theDownloadPageClosedAndTheLocalTask'),
       )
     } else {
       releasePort()

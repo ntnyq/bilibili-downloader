@@ -12,6 +12,7 @@ import {
   SUBTITLE_LANGUAGE_LABELS,
 } from '~/utils/downloads/labels'
 import { getBundleFolderMode } from '~/utils/downloads/queue/bundles'
+import { i18n } from '~/utils/i18n'
 import type { VNode } from 'vue'
 import type {
   DownloadKind,
@@ -43,8 +44,8 @@ const downloadMode = computed({
 
 const folderHint = computed(() =>
   getBundleFolderMode(props.folderMode) === 'owner-video'
-    ? 'Bilibili / UP 主 / 视频'
-    : 'Bilibili / 视频',
+    ? i18n.t('downloadBundlePicker.bilibiliUploaderVideo')
+    : i18n.t('downloadBundlePicker.bilibiliVideo'),
 )
 
 function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
@@ -62,18 +63,18 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
       class="gap-0"
     >
       <TabsList
+        :aria-label="i18n.t('downloadBundlePicker.downloadMode')"
         class="grid w-full grid-cols-2"
-        aria-label="下载方式"
       >
         <TabsTrigger
           :disabled
           value="single"
-          >单项下载</TabsTrigger
+          >{{ i18n.t('downloadBundlePicker.singleAsset') }}</TabsTrigger
         >
         <TabsTrigger
           :disabled
           value="bundle"
-          >素材组合</TabsTrigger
+          >{{ i18n.t('downloadWorkspace.assetBundles') }}</TabsTrigger
         >
       </TabsList>
       <TabsContent value="single"><slot name="single" /></TabsContent>
@@ -83,7 +84,7 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
       >
         <fieldset :disabled>
           <legend class="mb-2 text-[12px] text-muted-foreground">
-            选择需要的素材
+            {{ i18n.t('downloadBundlePicker.selectAssets') }}
           </legend>
           <div class="grid grid-cols-2 gap-2">
             <Label
@@ -108,15 +109,17 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
           <Label
             as="span"
             class="shrink-0 text-muted-foreground"
-            >字幕语言</Label
+            >{{ i18n.t('batchImportOptions.subtitleLanguage') }}</Label
           >
           <Select
             v-model="subtitleLanguage"
             :disabled
             ><SelectTrigger
-              aria-label="字幕语言"
+              :aria-label="i18n.t('batchImportOptions.subtitleLanguage')"
               class="w-47.5 max-w-full"
-              ><SelectValue /></SelectTrigger
+              ><SelectValue>{{
+                SUBTITLE_LANGUAGE_LABELS[subtitleLanguage]
+              }}</SelectValue></SelectTrigger
             ><SelectContent>
               <SelectItem
                 v-for="(label, value) in SUBTITLE_LANGUAGE_LABELS"
@@ -129,21 +132,29 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
           >
         </div>
         <p class="text-[11px] text-muted-foreground leading-4.5">
-          组合素材统一保存到 {{ folderHint }} 目录，文件命名沿用设置。
-          封面每个视频仅一份，其他素材按所选分 P 下载。
+          {{
+            i18n.t(
+              'downloadBundlePicker.bundleAssetsAreSavedToUsingYourFilename',
+              [folderHint],
+            )
+          }}
         </p>
         <p
           v-if="kinds.includes('subtitle')"
           class="text-[11px] text-muted-foreground leading-4.5"
         >
-          字幕缺失或需要登录时会记录失败，其他素材继续下载。
+          {{
+            i18n.t(
+              'downloadBundlePicker.missingSubtitlesOrSignInRequirementsAreRecorded',
+            )
+          }}
         </p>
         <p
           v-if="!kinds.length"
           class="text-[12px] text-destructive"
           role="status"
         >
-          请至少选择一种素材。
+          {{ i18n.t('downloadBundlePicker.selectAtLeastOneAsset') }}
         </p>
       </TabsContent>
     </Tabs>

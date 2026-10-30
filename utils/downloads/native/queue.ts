@@ -1,4 +1,5 @@
 import { downloadJobSchema, jobUpdateSchema } from '~/types/download'
+import { i18n } from '~/utils/i18n'
 import { MAX_PENDING_JOBS } from '../constants'
 import { getJobIdentity } from '../queue/identity'
 import { isJobActive } from '../queue/jobs'
@@ -23,14 +24,14 @@ export function startNativeJob(jobs: DownloadJob[], id: string): DownloadJob {
     || !['video', 'audio'].includes(job.kind)
     || !['paused', 'failed', 'cancelled', 'completed'].includes(job.status)
   ) {
-    throw new Error('请先暂停音视频任务，再交给本地助手。')
+    throw new Error(i18n.t('queue.pauseTheVideoOrAudioTaskBeforeSending'))
   }
   const active = jobs.filter(item => item.id !== id && isJobActive(item))
   if (active.some(item => getJobIdentity(item) === getJobIdentity(job))) {
-    throw new Error('此素材已有其他下载任务，请先取消重复任务。')
+    throw new Error(i18n.t('queue.anotherDownloadTaskExistsForThisAssetCancel'))
   }
   if (active.length >= MAX_PENDING_JOBS) {
-    throw new Error('下载队列已满，请等待部分任务完成。')
+    throw new Error(i18n.t('queue.theDownloadQueueIsFullWaitForSome'))
   }
   return {
     ...job,
@@ -75,7 +76,7 @@ export function applyNativeJobUpdate(
     ),
   )
   if (patch.status === 'completed' && !patch.filename) {
-    throw new Error('本地助手未返回保存路径，无法确认完成。')
+    throw new Error(i18n.t('queue.theLocalHelperReturnedNoSavePathCompletion'))
   }
   const next = downloadJobSchema.parse({
     ...job,

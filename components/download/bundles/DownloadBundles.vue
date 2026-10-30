@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useDownloadBundle } from '~/composables/useDownloadBundle'
 import { useDownloadQueue } from '~/composables/useDownloadQueue'
+import { i18n } from '~/utils/i18n'
 
 const {
   jobs,
@@ -10,14 +11,17 @@ const {
   pause,
   resume,
 } = useDownloadQueue()
+
 const { bundles } = useDownloadBundle(jobs)
 </script>
 
 <template>
-  <section aria-label="素材组合">
-    <h2 class="text-[14px] font-semibold">素材组合</h2>
+  <section :aria-label="i18n.t('downloadWorkspace.assetBundles')">
+    <h2 class="text-[14px] font-semibold">
+      {{ i18n.t('downloadWorkspace.assetBundles') }}
+    </h2>
     <p class="mt-1.25 text-[12px] text-muted-foreground leading-5">
-      按视频查看本次组合的整体结果。仅全部素材保存成功时显示完成，失败和取消可单独重试。
+      {{ i18n.t('downloadBundles.reviewBundleResultsByVideoABundleIs') }}
     </p>
     <Alert
       v-if="queueError"
@@ -31,7 +35,7 @@ const { bundles } = useDownloadBundle(jobs)
       v-if="!bundles.length"
       class="rounded-lg border border-dashed p-12 text-center text-sm text-muted-foreground"
     >
-      还没有素材组合。在视频页切换到「素材组合」，选择需要的素材后下载。
+      {{ i18n.t('downloadBundles.noBundlesYetChooseAssetBundlesOnA') }}
     </p>
     <div class="mt-3 space-y-3">
       <DownloadBundleProgress

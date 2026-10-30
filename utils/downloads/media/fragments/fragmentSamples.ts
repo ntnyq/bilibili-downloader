@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import type { IsobmffOutputFormatOptions } from 'mediabunny'
 
 export type FragmentSampleStore = NonNullable<
@@ -80,7 +81,10 @@ export function createDiskFragmentSamples(
   ): Promise<Result> {
     if (disposed) {
       return Promise.reject(
-        new DOMException('样本暂存已关闭。', 'InvalidStateError'),
+        new DOMException(
+          i18n.t('fragmentSamples.sampleStorageIsClosed'),
+          'InvalidStateError',
+        ),
       )
     }
     const result = queue.then(() => {
@@ -110,7 +114,9 @@ export function createDiskFragmentSamples(
         ? file.write(remaining, position + consumed)
         : file.read(remaining, position + consumed))
       if (!Number.isInteger(count) || count <= 0 || count > remaining.length) {
-        throw new RangeError('样本暂存文件读写不完整。')
+        throw new RangeError(
+          i18n.t('fragmentSamples.sampleStorageFileReadOrWriteIncomplete'),
+        )
       }
       consumed += count
     }
@@ -118,7 +124,7 @@ export function createDiskFragmentSamples(
 
   async function getTrack(trackId: number) {
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 0xffff_ffff) {
-      throw new RangeError('样本轨道编号无效。')
+      throw new RangeError(i18n.t('fragmentSamples.invalidSampleTrackId'))
     }
     let track = tracks.get(trackId)
     if (track) {
@@ -192,7 +198,9 @@ export function createDiskFragmentSamples(
 
   async function getSamplePage(track: Track, id: number) {
     if (!Number.isSafeInteger(id) || id < track.base || id >= track.end) {
-      throw new RangeError('样本暂存引用无效。')
+      throw new RangeError(
+        i18n.t('fragmentSamples.invalidSampleStorageReference'),
+      )
     }
     const index = Math.floor((id - track.base) / RECORDS_PER_PAGE)
     let page = track.pages.find(page => page.index === index)
@@ -247,7 +255,7 @@ export function createDiskFragmentSamples(
       || !isNonnegativeSafeInteger(sample.mediaOffset)
       || !['key', 'delta'].includes(sample.type)
     ) {
-      throw new RangeError('样本暂存字段无效。')
+      throw new RangeError(i18n.t('fragmentSamples.invalidSampleStorageField'))
     }
   }
 
@@ -256,7 +264,7 @@ export function createDiskFragmentSamples(
     const view = getSampleView(track, page, id)
     const type = view.getUint8(48)
     if (type > 1) {
-      throw new RangeError('样本暂存类型无效。')
+      throw new RangeError(i18n.t('fragmentSamples.invalidSampleStorageType'))
     }
     const sample: FragmentSample = {
       timestamp: view.getFloat64(0),
@@ -333,7 +341,9 @@ export function createDiskFragmentSamples(
           || !Number.isSafeInteger((track.end + 1) * RECORD_SIZE)
           || !Number.isSafeInteger(track.mediaEnd + data.length)
         ) {
-          throw new RangeError('样本暂存大小无效。')
+          throw new RangeError(
+            i18n.t('fragmentSamples.invalidSampleStorageSize'),
+          )
         }
         for (let offset = 0; offset < data.length;) {
           const length = Math.min(
@@ -373,7 +383,7 @@ export function createDiskFragmentSamples(
           || start < track.base
           || start + count > track.end
         ) {
-          throw new RangeError('GOP 暂存范围无效。')
+          throw new RangeError(i18n.t('fragmentSamples.invalidGopStorageRange'))
         }
         track.sortedPage = undefined
         track.sortedCount = count
@@ -504,7 +514,9 @@ export function createDiskFragmentSamples(
           || index < 0
           || index >= track.sortedCount
         ) {
-          throw new RangeError('排序时间戳引用无效。')
+          throw new RangeError(
+            i18n.t('fragmentSamples.invalidSortedTimestampReference'),
+          )
         }
         if (track.sortedCount <= SORT_RUN) {
           return track.sortedMemory[index]!
@@ -540,7 +552,9 @@ export function createDiskFragmentSamples(
           || length > IO_SIZE
           || offset + length > track.mediaEnd
         ) {
-          throw new RangeError('样本媒体读取范围无效。')
+          throw new RangeError(
+            i18n.t('fragmentSamples.invalidSampleMediaReadRange'),
+          )
         }
         await flushMedia(track)
         const bytes = new Uint8Array(length)
@@ -561,7 +575,9 @@ export function createDiskFragmentSamples(
           || before < track.base
           || before > track.end
         ) {
-          throw new RangeError('样本释放范围无效。')
+          throw new RangeError(
+            i18n.t('fragmentSamples.invalidSampleReleaseRange'),
+          )
         }
         if (before === track.base) {
           return
@@ -665,7 +681,9 @@ export function createOpfsFragmentSamples(
       { create: true },
     )
     if (!isSyncAccessFileHandle(handle)) {
-      throw new Error('浏览器不支持 Worker 样本磁盘暂存。')
+      throw new Error(
+        i18n.t('fragmentSamples.thisBrowserDoesNotSupportWorkerSampleDisk'),
+      )
     }
     const file = await handle.createSyncAccessHandle()
     return {

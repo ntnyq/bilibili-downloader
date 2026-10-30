@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { SearchIcon, XIcon } from '@lucide/vue'
 import { formatDuration } from '~/utils/downloads/format'
+import { i18n } from '~/utils/i18n'
 import type { DownloadMode, VideoPage } from '~/types/download'
 
 const props = defineProps<{
@@ -10,9 +11,24 @@ const props = defineProps<{
 const mode = defineModel<DownloadMode>('mode', { required: true })
 const selectedPages = defineModel<number[]>('selectedPages', { required: true })
 const modes = [
-  { value: 'current', label: '当前分 P' },
-  { value: 'all', label: '全部分 P' },
-  { value: 'selected', label: '自选分 P' },
+  {
+    value: 'current',
+    get label() {
+      return i18n.t('downloadPartPicker.currentPart')
+    },
+  },
+  {
+    value: 'all',
+    get label() {
+      return i18n.t('downloadPartPicker.allParts')
+    },
+  },
+  {
+    value: 'selected',
+    get label() {
+      return i18n.t('downloadPartPicker.selectParts')
+    },
+  },
 ] as const
 const selected = computed(() => new Set(selectedPages.value))
 const search = shallowRef('')
@@ -80,23 +96,27 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
 <template>
   <div class="mt-3 border-t pt-3">
     <div class="mb-2 flex justify-between text-xs">
-      <span>下载范围</span
-      ><span class="text-muted-foreground">共 {{ pages.length }} 个分 P</span>
+      <span>{{ i18n.t('downloadPartPicker.downloadRange') }}</span
+      ><span class="text-muted-foreground">{{
+        i18n.t('downloadPartPicker.partsTotal', pages.length)
+      }}</span>
     </div>
     <Tabs
       v-model="mode"
       class="gap-0"
     >
       <TabsList
+        :aria-label="i18n.t('downloadPartPicker.downloadRange')"
         class="grid w-full grid-cols-3"
-        aria-label="下载范围"
       >
         <TabsTrigger
           v-for="item in modes"
           :key="item.value"
           :value="item.value"
           >{{
-            item.value === 'current' ? `当前 P${currentPage}` : item.label
+            item.value === 'current'
+              ? i18n.t('downloadPartPicker.currentPart2', [currentPage])
+              : item.label
           }}</TabsTrigger
         >
       </TabsList>
@@ -112,9 +132,11 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
             />
             <Input
               v-model="search"
+              :aria-label="i18n.t('downloadPartPicker.searchPartTitleOrNumber')"
+              :placeholder="
+                i18n.t('downloadPartPicker.searchPartTitleOrNumber')
+              "
               type="search"
-              aria-label="搜索分 P 标题或序号"
-              placeholder="搜索分 P 标题或序号"
               class="h-9 pl-9 text-xs"
             />
           </div>
@@ -122,9 +144,12 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
             class="mb-2 flex flex-wrap items-center justify-between gap-1 text-[11px]"
           >
             <div class="flex items-center gap-1">
-              <span class="text-primary"
-                >已选 {{ targetPages.length }} / {{ pages.length }} P</span
-              >
+              <span class="text-primary">{{
+                i18n.t('downloadPartPicker.partsSelected', pages.length, [
+                  targetPages.length,
+                  pages.length,
+                ])
+              }}</span>
               <Button
                 @click="isSelectedOnly = !isSelectedOnly"
                 :aria-pressed="isSelectedOnly"
@@ -132,7 +157,7 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
                 variant="ghost"
                 size="xs"
                 type="button"
-                >仅看已选</Button
+                >{{ i18n.t('downloadPartPicker.selectedOnly') }}</Button
               >
             </div>
             <div class="flex gap-0.5">
@@ -144,7 +169,11 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
                 type="button"
                 class="text-muted-foreground hover:text-primary"
               >
-                {{ isFiltered ? '全选结果' : '全选' }}
+                {{
+                  isFiltered
+                    ? i18n.t('downloadPartPicker.selectResults')
+                    : i18n.t('downloadPartPicker.selectAll')
+                }}
               </Button>
               <Button
                 @click="invertSelection"
@@ -154,7 +183,11 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
                 type="button"
                 class="text-muted-foreground hover:text-primary"
               >
-                {{ isFiltered ? '反选结果' : '反选' }}
+                {{
+                  isFiltered
+                    ? i18n.t('downloadPartPicker.invertResults')
+                    : i18n.t('downloadPartPicker.invertSelection')
+                }}
               </Button>
               <Button
                 @click="clearVisible"
@@ -164,7 +197,11 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
                 type="button"
                 class="text-muted-foreground hover:text-primary"
               >
-                {{ isFiltered ? '清空结果' : '清空' }}
+                {{
+                  isFiltered
+                    ? i18n.t('downloadPartPicker.clearResults')
+                    : i18n.t('downloadPartPicker.clear')
+                }}
               </Button>
             </div>
           </div>
@@ -199,7 +236,7 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
                     <span
                       v-if="page.page === currentPage"
                       class="mt-0.5 block text-[10px] text-primary"
-                      >正在播放</span
+                      >{{ i18n.t('downloadPartPicker.playing') }}</span
                     >
                   </span>
                   <span
@@ -218,8 +255,8 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
             <p>
               {{
                 isSelectedOnly && !targetPages.length
-                  ? '还没有选择分 P'
-                  : '没有匹配的分 P'
+                  ? i18n.t('downloadPartPicker.noPartsSelected')
+                  : i18n.t('downloadPartPicker.noMatchingParts')
               }}
             </p>
             <Button
@@ -228,7 +265,7 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
               size="sm"
               type="button"
               class="mt-2 text-primary"
-              >显示全部分 P</Button
+              >{{ i18n.t('downloadPartPicker.showAllParts') }}</Button
             >
           </div>
         </div>
@@ -256,8 +293,11 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
           <p aria-live="polite">
             {{
               targetPages.length
-                ? `将下载 ${targetPages.length} 个分 P · 总时长 ${formatDuration(totalDuration)}`
-                : '请至少选择一个分 P'
+                ? i18n.t('downloadPartPicker.downloadPartsTotalDuration', [
+                    targetPages.length,
+                    formatDuration(totalDuration),
+                  ])
+                : i18n.t('downloadPartPicker.selectAtLeastOnePart')
             }}
           </p>
           <div
@@ -268,7 +308,12 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
               @click="togglePage(page.page, false)"
               v-for="page in targetPages.slice(0, 6)"
               :key="page.cid"
-              :aria-label="`取消选择 P${page.page} ${page.part}`"
+              :aria-label="
+                i18n.t('downloadPartPicker.deselectPart', [
+                  page.page,
+                  page.part,
+                ])
+              "
               variant="outline"
               size="xs"
               type="button"
@@ -281,7 +326,9 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
             <span
               v-if="targetPages.length > 6"
               class="self-center text-[11px] text-muted-foreground"
-              >另 {{ targetPages.length - 6 }} P</span
+              >{{
+                i18n.t('downloadPartPicker.moreParts', targetPages.length - 6)
+              }}</span
             >
           </div>
         </div>

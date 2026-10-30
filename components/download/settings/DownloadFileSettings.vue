@@ -9,6 +9,7 @@ import {
 } from '~/components/ui/select'
 import { useDownloadFileSettings } from '~/composables/useDownloadFileSettings'
 import { FOLDER_MODE_LABELS } from '~/utils/downloads/labels'
+import { i18n } from '~/utils/i18n'
 
 const {
   isReady,
@@ -33,14 +34,54 @@ const previewFilename = computed(() =>
   preview.value.slice(preview.value.lastIndexOf('/') + 1),
 )
 const VARIABLES = [
-  { value: '{title}', label: '标题' },
-  { value: '{bvid}', label: 'BV 号' },
-  { value: '{page}', label: '页码' },
-  { value: '{part}', label: '分 P 标题' },
-  { value: '{partSuffix}', label: '多 P 后缀' },
-  { value: '{owner}', label: 'UP 主' },
-  { value: '{quality}', label: '画质 / 素材说明' },
-  { value: '{type}', label: '类型' },
+  {
+    value: '{title}',
+    get label() {
+      return i18n.t('downloadFileSettings.title')
+    },
+  },
+  {
+    value: '{bvid}',
+    get label() {
+      return i18n.t('downloadFileSettings.bvId')
+    },
+  },
+  {
+    value: '{page}',
+    get label() {
+      return i18n.t('downloadFileSettings.partNumber')
+    },
+  },
+  {
+    value: '{part}',
+    get label() {
+      return i18n.t('downloadFileSettings.partTitle')
+    },
+  },
+  {
+    value: '{partSuffix}',
+    get label() {
+      return i18n.t('downloadFileSettings.multiPartSuffix')
+    },
+  },
+  {
+    value: '{owner}',
+    get label() {
+      return i18n.t('downloadQueueItem.uploader')
+    },
+  },
+  {
+    value: '{quality}',
+    get label() {
+      return i18n.t('downloadFileSettings.qualityAssetDescription')
+    },
+  },
+  {
+    value: '{type}',
+    get label() {
+      return i18n.t('downloadFileSettings.type')
+    },
+  },
 ] as const
 
 async function insertVariable(token: string) {
@@ -57,7 +98,9 @@ async function insertVariable(token: string) {
     + token
     + filenameTemplate.value.slice(end)
   if (next.length > 160) {
-    insertionError.value = '命名模板最多 160 个字符，请缩短后再插入变量。'
+    insertionError.value = i18n.t(
+      'downloadFileSettings.filenameTemplatesAreLimitedTo160CharactersShorten',
+    )
     return
   }
   insertionError.value = ''
@@ -73,8 +116,10 @@ watch(filenameTemplate, () => {
 
 <template>
   <DownloadSettingsSection
-    title="文件保存"
-    description="设置目录和文件名，方便以后查找。"
+    :title="i18n.t('downloadFileSettings.fileSaving')"
+    :description="
+      i18n.t('downloadFileSettings.setFoldersAndFilenamesToFindYourFiles')
+    "
   >
     <template #icon><FileTextIcon class="size-4.5" /></template>
     <form @submit.prevent="save">
@@ -86,17 +131,19 @@ watch(filenameTemplate, () => {
           <Label
             as="span"
             class="mb-2 block text-xs"
-            >保存目录</Label
+            >{{ i18n.t('downloadFileSettings.saveFolder') }}</Label
           >
           <Select
             v-model="folderMode"
             :disabled="!isReady || isSaving"
           >
             <SelectTrigger
-              aria-label="保存目录"
+              :aria-label="i18n.t('downloadFileSettings.saveFolder')"
               class="w-full"
-              ><SelectValue
-            /></SelectTrigger>
+              ><SelectValue>{{
+                FOLDER_MODE_LABELS[folderMode]
+              }}</SelectValue></SelectTrigger
+            >
             <SelectContent
               ><SelectItem
                 v-for="(label, value) in FOLDER_MODE_LABELS"
@@ -107,7 +154,11 @@ watch(filenameTemplate, () => {
             >
           </Select>
           <p class="mt-1.5 text-xs text-muted-foreground">
-            位于浏览器默认下载目录下的 Bilibili 文件夹。
+            {{
+              i18n.t(
+                'downloadFileSettings.insideTheBilibiliFolderInYourBrowserS',
+              )
+            }}
           </p>
         </div>
         <label
@@ -116,9 +167,10 @@ watch(filenameTemplate, () => {
         >
           <span
             class="mb-2 flex items-center justify-between gap-2 text-xs font-medium"
-            >命名模板<span class="text-[11px] font-normal text-muted-foreground"
-              >无需扩展名</span
-            ></span
+            >{{ i18n.t('downloadFileSettings.filenameTemplate')
+            }}<span class="text-[11px] font-normal text-muted-foreground">{{
+              i18n.t('downloadFileSettings.noExtensionNeeded')
+            }}</span></span
           >
           <Input
             @focus="hasTemplateFocus = true"
@@ -130,14 +182,16 @@ watch(filenameTemplate, () => {
         </label>
         <div>
           <p class="mb-2 text-[11px] text-muted-foreground">
-            点击变量插入到模板
+            {{ i18n.t('downloadFileSettings.clickAVariableToInsertIt') }}
           </p>
           <div class="flex flex-wrap gap-1.5">
             <button
               @click="insertVariable(variable.value)"
               v-for="variable in VARIABLES"
               :key="variable.value"
-              :aria-label="`插入${variable.label}变量`"
+              :aria-label="
+                i18n.t('downloadFileSettings.insertVariable', [variable.label])
+              "
               type="button"
               class="rounded-md border bg-muted/60 px-2 py-1 text-[11px] text-muted-foreground hover:border-primary/50 hover:bg-accent disabled:opacity-50"
             >
@@ -155,11 +209,13 @@ watch(filenameTemplate, () => {
         </div>
         <div
           v-if="preview"
+          :aria-label="i18n.t('downloadFileSettings.filenamePreview')"
           class="rounded-lg border border-dashed bg-muted/70 p-3 text-xs"
-          aria-label="文件名预览"
           aria-live="polite"
         >
-          <p class="mb-2 text-[11px] text-muted-foreground">保存效果预览</p>
+          <p class="mb-2 text-[11px] text-muted-foreground">
+            {{ i18n.t('downloadFileSettings.savePreview') }}
+          </p>
           <p class="flex items-start gap-1.5 text-muted-foreground">
             <FolderIcon
               class="mt-0.5 size-3.5 shrink-0"
@@ -184,7 +240,11 @@ watch(filenameTemplate, () => {
           <Button
             :disabled="!validation.success"
             type="submit"
-            >{{ isSaving ? '正在保存…' : '保存文件设置' }}</Button
+            >{{
+              isSaving
+                ? i18n.t('downloadFileSettings.saving')
+                : i18n.t('downloadFileSettings.saveFileSettings')
+            }}</Button
           >
           <Button
             @click="resetDefaults"
@@ -192,13 +252,17 @@ watch(filenameTemplate, () => {
             size="sm"
             type="button"
             class="text-muted-foreground"
-            >恢复默认模板</Button
+            >{{ i18n.t('downloadFileSettings.restoreDefaultTemplate') }}</Button
           >
         </div>
       </fieldset>
     </form>
     <p class="mt-3 text-[11px] text-muted-foreground leading-5">
-      仅影响新任务；重名文件会自动增加后缀。
+      {{
+        i18n.t(
+          'downloadFileSettings.appliesToNewTasksOnlyDuplicateFilenamesReceive',
+        )
+      }}
     </p>
     <Alert
       v-if="formError || settingsError"

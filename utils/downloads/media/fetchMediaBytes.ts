@@ -1,3 +1,5 @@
+import { i18n } from '~/utils/i18n'
+
 export class MediaNetworkError extends Error {
   override name = 'MediaNetworkError'
 }
@@ -34,7 +36,10 @@ export async function fetchMediaBytes(
     const resetTimeout = () => {
       clearTimeout(timeout)
       timeout = setTimeout(
-        () => controller.abort(new Error('下载连接超时。')),
+        () =>
+          controller.abort(
+            new Error(i18n.t('fetchCachedMedia.downloadConnectionTimedOut')),
+          ),
         30000,
       )
     }
@@ -46,7 +51,11 @@ export async function fetchMediaBytes(
         signal: AbortSignal.any([signal, controller.signal]),
       })
       if (!response.ok || !response.body) {
-        throw new MediaNetworkError(`素材服务器返回 HTTP ${response.status}。`)
+        throw new MediaNetworkError(
+          i18n.t('fetchMediaBytes.theMediaServerReturnedHttp', [
+            response.status,
+          ]),
+        )
       }
       // Fetch decodes compressed bodies; Content-Length describes wire bytes.
       const encoding = response.headers
@@ -59,7 +68,9 @@ export async function fetchMediaBytes(
           : 0
       if (declaredBytes > remainingBytes) {
         throw new RangeError(
-          `素材超过剩余 ${Math.floor(remainingBytes / 1024 / 1024)} MB 的大小限制，已停止下载。`,
+          i18n.t('fetchMediaBytes.theAssetExceedsTheRemainingMbSizeLimit', [
+            Math.floor(remainingBytes / 1024 / 1024),
+          ]),
         )
       }
       const reader = response.body.getReader()
@@ -72,14 +83,20 @@ export async function fetchMediaBytes(
         }
         received += value.byteLength
         if (received > remainingBytes) {
-          throw new RangeError('素材超过剩余大小限制，已停止下载。')
+          throw new RangeError(
+            i18n.t(
+              'fetchCachedMedia.theAssetExceedsTheRemainingSizeLimitDownload',
+            ),
+          )
         }
         chunks.push(value)
         onProgress(received)
         resetTimeout()
       }
       if (!received || (declaredBytes > 0 && received !== declaredBytes)) {
-        throw new MediaNetworkError('素材传输不完整。')
+        throw new MediaNetworkError(
+          i18n.t('fetchMediaBytes.mediaTransferIncomplete'),
+        )
       }
       const bytes = new Uint8Array(received)
       let offset = 0
@@ -99,7 +116,10 @@ export async function fetchMediaBytes(
       controller.abort()
     }
   }
-  throw new MediaNetworkError('所有素材线路均下载失败，请稍后重试。', {
-    cause: lastError,
-  })
+  throw new MediaNetworkError(
+    i18n.t('fetchMediaBytes.allMediaSourcesFailedPleaseTryAgainLater'),
+    {
+      cause: lastError,
+    },
+  )
 }

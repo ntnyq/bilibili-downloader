@@ -10,6 +10,7 @@ import {
 import { useOverlayTarget } from '~/composables/useOverlayTarget'
 import { useQuickDownload } from '~/composables/useQuickDownload'
 import { createDownloadClickHandler } from '~/utils/downloads/launcher'
+import { i18n } from '~/utils/i18n'
 
 const props = defineProps<{
   url: string
@@ -99,7 +100,11 @@ onScopeDispose(clicks.cancel)
               class="size-4"
               aria-hidden="true"
             />
-            {{ isAdding ? '加入中' : '下载' }}
+            {{
+              isAdding
+                ? i18n.t('downloadLauncher.adding')
+                : i18n.t('downloadLauncher.download')
+            }}
           </Button>
         </span>
       </PopoverAnchor>
@@ -110,7 +115,7 @@ onScopeDispose(clicks.cancel)
           :aria-labelledby="undefined"
           :side-offset="10"
           :collision-padding="12"
-          aria-label="B 站下载器"
+          :aria-label="i18n.t('extensionName')"
           align="end"
           side="bottom"
           class="z-50 w-100 max-w-[calc(100vw-24px)] rounded-lg shadow-xl outline-none"
@@ -126,9 +131,9 @@ onScopeDispose(clicks.cancel)
               <PopoverClose as-child>
                 <Button
                   @click="close"
+                  :aria-label="i18n.t('downloadLauncher.closeDownloadPanel')"
                   variant="ghost"
                   size="icon-sm"
-                  aria-label="关闭下载面板"
                 >
                   <XIcon
                     class="size-4"
@@ -150,10 +155,10 @@ onScopeDispose(clicks.cancel)
       <p class="flex-1">{{ downloadError || notice }}</p>
       <Button
         @click="clearFeedback"
+        :aria-label="i18n.t('downloadLauncher.dismissNotification')"
         variant="ghost"
         size="icon-sm"
         class="size-5 shrink-0"
-        aria-label="关闭提示"
       >
         <XIcon
           class="size-3"

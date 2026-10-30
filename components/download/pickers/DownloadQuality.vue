@@ -9,6 +9,7 @@ import {
   SelectValue,
 } from '~/components/ui/select'
 import { QUALITY_LABELS } from '~/utils/downloads/labels'
+import { i18n } from '~/utils/i18n'
 import type { QualityPreference } from '~/types/download'
 
 defineProps<{
@@ -18,10 +19,18 @@ defineProps<{
 const quality = defineModel<QualityPreference>({ required: true })
 const options: QualityPreference[] = ['best', '1080', '720', '480']
 const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
-  best: '优先最佳体验',
-  '1080': '清晰与大小兼顾',
-  '720': '节省存储空间',
-  '480': '更小的文件',
+  get best() {
+    return i18n.t('downloadQuality.bestViewingExperience')
+  },
+  get '1080'() {
+    return i18n.t('downloadQuality.balanceQualityAndSize')
+  },
+  get '720'() {
+    return i18n.t('downloadQuality.saveStorageSpace')
+  },
+  get '480'() {
+    return i18n.t('downloadQuality.smallerFiles')
+  },
 }
 </script>
 
@@ -30,7 +39,7 @@ const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
     v-model="quality"
     v-if="variant === 'cards'"
     :disabled
-    aria-label="画质偏好"
+    :aria-label="i18n.t('batchImportOptions.qualityPreference')"
     class="grid grid-cols-2 gap-2 sm:grid-cols-4"
   >
     <RadioGroupItem
@@ -46,7 +55,7 @@ const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
         aria-hidden="true"
       />
       <span class="block text-sm font-medium">{{
-        value === 'best' ? '最高可用' : `${value}P`
+        value === 'best' ? i18n.t('downloadQuality.bestAvailable') : `${value}P`
       }}</span>
       <span class="mt-1 block text-[11px] text-muted-foreground">{{
         QUALITY_DESCRIPTIONS[value]
@@ -60,15 +69,15 @@ const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
     <Label
       as="span"
       class="shrink-0 text-muted-foreground"
-      >画质偏好</Label
+      >{{ i18n.t('batchImportOptions.qualityPreference') }}</Label
     >
     <Select
       v-model="quality"
       :disabled
       ><SelectTrigger
-        aria-label="画质偏好"
+        :aria-label="i18n.t('batchImportOptions.qualityPreference')"
         class="w-47.5 max-w-full"
-        ><SelectValue /></SelectTrigger
+        ><SelectValue>{{ QUALITY_LABELS[quality] }}</SelectValue></SelectTrigger
       ><SelectContent>
         <SelectItem
           v-for="value in options"

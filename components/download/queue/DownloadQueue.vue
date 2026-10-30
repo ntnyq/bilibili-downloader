@@ -13,6 +13,7 @@ import { useDownloadSettings } from '~/composables/useDownloadSettings'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/labels'
 import { isJobActive } from '~/utils/downloads/queue/jobs'
+import { i18n } from '~/utils/i18n'
 
 const {
   jobs,
@@ -64,9 +65,11 @@ const orderedJobs = computed(() => [
 const query = computed(() => search.value.trim().toLocaleLowerCase())
 const emptyTitle = computed(() => {
   if (query.value) {
-    return '没有匹配的任务'
+    return i18n.t('downloadQueue.noMatchingTasks')
   }
-  return filter.value === 'all' ? '喜欢的视频，慢慢收藏' : '这里还没有任务'
+  return filter.value === 'all'
+    ? i18n.t('downloadQueue.saveTheVideosYouLove')
+    : i18n.t('downloadQueue.noTasksYet')
 })
 const visibleJobs = computed(() =>
   orderedJobs.value
@@ -88,27 +91,27 @@ const visibleJobs = computed(() =>
 const filters = computed(() => [
   {
     id: 'all' as const,
-    label: '全部任务',
+    label: i18n.t('downloadQueue.allTasks'),
     count: jobs.value.length,
   },
   {
     id: 'active' as const,
-    label: '待处理',
+    label: i18n.t('downloadQueue.pending'),
     count: activeJobs.value.length,
   },
   {
     id: 'paused' as const,
-    label: '已暂停',
+    label: i18n.t('downloadQueue.paused'),
     count: pausedJobs.value.length,
   },
   {
     id: 'completed' as const,
-    label: '已完成',
+    label: i18n.t('downloadQueue.completed'),
     count: completedJobs.value.length,
   },
   {
     id: 'failed' as const,
-    label: '失败',
+    label: i18n.t('batchPreview.failed'),
     count: failedJobs.value.length,
   },
 ])
@@ -127,13 +130,13 @@ async function showFile(id?: number) {
 
 <template>
   <section
+    :aria-label="i18n.t('downloadQueue.downloadTasks')"
     class="rounded-xl border bg-background px-4 pb-2 sm:px-5"
-    aria-label="下载任务"
   >
     <Tabs v-model="filter">
       <TabsList
+        :aria-label="i18n.t('downloadQueue.filterDownloadTasks')"
         class="h-auto w-full justify-start gap-4 overflow-x-auto rounded-none border-b bg-transparent p-0"
-        aria-label="筛选下载任务"
       >
         <TabsTrigger
           v-for="item in filters"
@@ -161,9 +164,9 @@ async function showFile(id?: number) {
             />
             <Input
               v-model="search"
+              :aria-label="i18n.t('downloadQueue.searchDownloadTasks')"
+              :placeholder="i18n.t('downloadQueue.searchTitleBvIdOrPart')"
               type="search"
-              aria-label="搜索下载任务"
-              placeholder="搜索标题、BV 号或分 P"
               class="h-auto min-w-0 w-full border-0 bg-transparent p-0 text-[13px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
             />
           </Label>
@@ -179,48 +182,54 @@ async function showFile(id?: number) {
               aria-hidden="true"
               class="size-4 shrink-0"
             />
-            {{ settings.isPaused ? '恢复队列' : '暂停队列' }}
+            {{
+              settings.isPaused
+                ? i18n.t('downloadQueue.resumeQueue')
+                : i18n.t('downloadQueue.pauseQueue')
+            }}
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger as-child
               ><Button
+                :aria-label="i18n.t('downloadQueue.moreQueueActions')"
                 variant="outline"
                 size="icon"
-                aria-label="更多队列操作"
                 ><EllipsisIcon class="size-4" /></Button
             ></DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
               class="w-52"
             >
-              <DropdownMenuLabel
-                >当前筛选 {{ visibleJobs.length }} 条记录</DropdownMenuLabel
-              >
+              <DropdownMenuLabel>{{
+                i18n.t('downloadQueue.filteredRecords', visibleJobs.length)
+              }}</DropdownMenuLabel>
               <DropdownMenuItem
                 @select="downloadHistory(visibleJobs, 'json')"
                 :disabled="isExporting || !visibleJobs.length"
-                >导出 JSON</DropdownMenuItem
+                >{{ i18n.t('downloadLibrary.exportJson') }}</DropdownMenuItem
               >
               <DropdownMenuItem
                 @select="downloadHistory(visibleJobs, 'csv')"
                 :disabled="isExporting || !visibleJobs.length"
-                >导出 CSV</DropdownMenuItem
+                >{{ i18n.t('downloadLibrary.exportCsv') }}</DropdownMenuItem
               >
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 @select="retryFailed"
                 :disabled="!failedJobs.length"
-                >重试全部失败</DropdownMenuItem
+                >{{ i18n.t('downloadQueue.retryAllFailed') }}</DropdownMenuItem
               >
               <DropdownMenuItem
                 @select="cancel()"
                 :disabled="!activeJobs.length"
-                >取消全部</DropdownMenuItem
+                >{{ i18n.t('downloadQueue.cancelAll') }}</DropdownMenuItem
               >
               <DropdownMenuItem
                 @select="clear"
                 :disabled="jobs.length <= activeJobs.length"
-                >清除队列记录</DropdownMenuItem
+                >{{
+                  i18n.t('downloadQueue.clearQueueRecords')
+                }}</DropdownMenuItem
               >
             </DropdownMenuContent>
           </DropdownMenu>
@@ -230,7 +239,9 @@ async function showFile(id?: number) {
           class="mb-4 rounded-[10px] bg-accent px-3.5 py-3 text-[13px] text-primary"
           role="status"
         >
-          队列已暂停：当前任务会继续完成，其余任务等待恢复。请保持下载中心打开。
+          {{
+            i18n.t('downloadQueue.queuePausedTheCurrentTaskWillFinishOthers')
+          }}
         </p>
         <Alert
           v-if="queueError || settingsError || exportError"
@@ -272,8 +283,8 @@ async function showFile(id?: number) {
           <p class="mt-2.25 text-[13px] text-muted-foreground">
             {{
               query
-                ? '试试其他标题、BV 号或分 P。'
-                : '在 B 站视频页点击「下载视频」，任务就会出现在这里。'
+                ? i18n.t('downloadQueue.tryAnotherTitleBvIdOrPart')
+                : i18n.t('downloadQueue.clickDownloadVideoOnABilibiliVideoPage')
             }}
           </p>
           <a
@@ -281,7 +292,7 @@ async function showFile(id?: number) {
             target="_blank"
             rel="noreferrer"
             class="mt-6 bili-primary-button inline-flex"
-            >去 B 站看看</a
+            >{{ i18n.t('downloadQueue.exploreBilibili') }}</a
           >
         </div>
         <p

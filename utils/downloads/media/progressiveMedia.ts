@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import { createFFmpegDiskFile } from './ffmpegDiskFile'
 import type { DiskAccess, FFmpegFileSystem } from './ffmpegDiskFile'
 
@@ -122,7 +123,9 @@ export function runProgressiveFFmpeg(
   }
   if (exitCode !== 0 || !file.getSize()) {
     throw new Error(
-      `旧格式视频封装失败，请检查素材是否完整。${logs.slice(-3).join(' ')}`,
+      i18n.t('progressiveMedia.legacyVideoRemuxingFailedCheckThatTheAssets', [
+        logs.slice(-3).join(' '),
+      ]),
     )
   }
 }
@@ -176,14 +179,18 @@ export async function loadFFmpegCore(
   const module: unknown = await import(/* @vite-ignore */ coreURL)
   const createCore = readProperty(module, 'default')
   if (typeof createCore !== 'function') {
-    throw new TypeError('无法加载浏览器内 FFmpeg。')
+    throw new TypeError(i18n.t('progressiveMedia.cannotLoadBrowserFfmpeg'))
   }
   const core: unknown = await createCore({
     wasmBinary: options.wasmBinary,
     mainScriptUrlOrBlob: `${coreURL}#${btoa(JSON.stringify({ wasmURL: options.wasmURL }))}`,
   })
   if (!isFFmpegCore(core)) {
-    throw new Error('浏览器内 FFmpeg 文件接口不兼容，请更新扩展。')
+    throw new Error(
+      i18n.t(
+        'progressiveMedia.theBrowserFfmpegFileInterfaceIsIncompatibleUpdate',
+      ),
+    )
   }
   return core
 }
@@ -211,11 +218,13 @@ export async function mergeProgressiveMedia(
   onProgress: (bytes: number) => void,
 ) {
   if (!inputs.length) {
-    throw new Error('音视频素材数量无效。')
+    throw new Error(i18n.t('progressiveMedia.invalidNumberOfMediaAssets'))
   }
   if (!isSyncAccessFileHandle(handle)) {
     throw new Error(
-      '当前浏览器不支持磁盘封装所需的同步文件接口，请更新浏览器。',
+      i18n.t(
+        'progressiveMedia.thisBrowserLacksTheSynchronousFileInterfaceNeeded',
+      ),
     )
   }
   const core = await loadFFmpegCore(

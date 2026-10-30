@@ -13,6 +13,7 @@ import {
   QUALITY_LABELS,
   SUBTITLE_LANGUAGE_LABELS,
 } from '~/utils/downloads/labels'
+import { i18n } from '~/utils/i18n'
 import type { DownloadHistoryRecord } from '~/types/downloadHistory'
 
 const props = defineProps<{
@@ -35,7 +36,7 @@ const date = computed(
   () => new Date(props.record.completedAt ?? props.record.createdAt),
 )
 const time = computed(() =>
-  date.value.toLocaleTimeString('zh-CN', {
+  date.value.toLocaleTimeString(i18n.t('localeCode'), {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -73,7 +74,7 @@ const time = computed(() =>
               >{{ DOWNLOAD_KIND_LABELS[record.kind] }}</Badge
             >
             <span class="max-w-40 truncate">{{
-              record.owner || '未知 UP 主'
+              record.owner || i18n.t('downloadLibraryItem.unknownUploader')
             }}</span>
             <span v-if="record.pageCount > 1 && record.kind !== 'cover'"
               >P{{ record.page }}</span
@@ -87,15 +88,19 @@ const time = computed(() =>
             size="xs"
             type="button"
             class="mt-2 text-muted-foreground sm:hidden"
-            >再次下载</Button
+            >{{ i18n.t('downloadLibraryItem.downloadAgain') }}</Button
           >
         </div>
         <div class="flex shrink-0 flex-col items-end gap-2">
           <time
             :datetime="date.toISOString()"
-            :title="`${record.completedAt === undefined ? '创建于' : '完成于'} ${date.toLocaleString()}`"
+            :title="`${record.completedAt === undefined ? i18n.t('downloadLibraryItem.created') : i18n.t('downloadLibraryItem.completed')} ${date.toLocaleString(i18n.t('localeCode'))}`"
             class="text-[11px] text-muted-foreground tabular-nums"
-            >{{ record.completedAt === undefined ? '旧记录' : time }}</time
+            >{{
+              record.completedAt === undefined
+                ? i18n.t('downloadLibraryItem.legacyRecord')
+                : time
+            }}</time
           >
           <Button
             @click="emit('requeue', record.identity)"
@@ -104,27 +109,33 @@ const time = computed(() =>
             size="sm"
             type="button"
             class="hidden text-xs text-muted-foreground sm:inline-flex"
-            >再次下载</Button
+            >{{ i18n.t('downloadLibraryItem.downloadAgain') }}</Button
           >
         </div>
         <DropdownMenu>
           <DropdownMenuTrigger as-child
             ><Button
-              :aria-label="`更多记录操作：${record.title}`"
+              :aria-label="
+                i18n.t('downloadLibraryItem.moreRecordActions', [record.title])
+              "
               variant="ghost"
               size="icon-sm"
               ><EllipsisIcon class="size-4" /></Button
           ></DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem @select="isExpanded = !isExpanded">{{
-              isExpanded ? '收起详情' : '查看详情'
+              isExpanded
+                ? i18n.t('downloadLibraryItem.hideDetails')
+                : i18n.t('downloadLibraryItem.viewDetails')
             }}</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               @select="emit('remove', record.identity)"
               :disabled="isBusy"
               class="text-destructive"
-              >删除记录</DropdownMenuItem
+              >{{
+                i18n.t('downloadLibraryItem.deleteRecord')
+              }}</DropdownMenuItem
             >
           </DropdownMenuContent>
         </DropdownMenu>
@@ -134,7 +145,9 @@ const time = computed(() =>
       >
         <dl class="space-y-2">
           <div>
-            <dt class="text-muted-foreground">视频与分 P</dt>
+            <dt class="text-muted-foreground">
+              {{ i18n.t('downloadLibraryItem.videoAndPart') }}
+            </dt>
             <dd class="wrap-break-word">
               {{ record.bvid
               }}<template v-if="record.kind !== 'cover'">
@@ -143,26 +156,32 @@ const time = computed(() =>
             </dd>
           </div>
           <div v-if="record.filename">
-            <dt class="text-muted-foreground">保存路径</dt>
+            <dt class="text-muted-foreground">
+              {{ i18n.t('downloadLibraryItem.savePath') }}
+            </dt>
             <dd class="break-all">{{ record.filename }}</dd>
           </div>
           <div v-if="record.kind === 'video'">
-            <dt class="text-muted-foreground">原画质偏好</dt>
+            <dt class="text-muted-foreground">
+              {{ i18n.t('downloadLibraryItem.originalQualityPreference') }}
+            </dt>
             <dd>{{ QUALITY_LABELS[record.qualityPreference] }}</dd>
           </div>
           <div v-if="record.kind === 'subtitle'">
-            <dt class="text-muted-foreground">字幕语言</dt>
+            <dt class="text-muted-foreground">
+              {{ i18n.t('batchImportOptions.subtitleLanguage') }}
+            </dt>
             <dd>{{ SUBTITLE_LANGUAGE_LABELS[record.subtitleLanguage] }}</dd>
           </div>
           <div>
             <dt class="text-muted-foreground">
               {{
                 record.completedAt === undefined
-                  ? '创建时间（完成时间未知）'
-                  : '完成时间'
+                  ? i18n.t('downloadLibraryItem.createdTimeCompletionUnknown')
+                  : i18n.t('downloadLibraryItem.completedTime')
               }}
             </dt>
-            <dd>{{ date.toLocaleString() }}</dd>
+            <dd>{{ date.toLocaleString(i18n.t('localeCode')) }}</dd>
           </div>
         </dl>
         <CollapsibleTrigger as-child
@@ -170,7 +189,8 @@ const time = computed(() =>
             variant="ghost"
             size="xs"
             class="mt-3 text-muted-foreground"
-            >收起详情<ChevronDownIcon class="size-3 rotate-180" /></Button
+            >{{ i18n.t('downloadLibraryItem.hideDetails')
+            }}<ChevronDownIcon class="size-3 rotate-180" /></Button
         ></CollapsibleTrigger>
       </CollapsibleContent>
     </Collapsible>

@@ -1,3 +1,4 @@
+import { i18n } from '~/utils/i18n'
 import type { DownloadHistoryRecord } from '~/types/downloadHistory'
 
 interface HistoryGroup {
@@ -50,15 +51,15 @@ export function groupHistoryRecords(
         key,
         label: date
           ? key === todayKey
-            ? '今天'
+            ? i18n.t('groupHistoryRecords.today')
             : key === yesterdayKey
-              ? '昨天'
-              : date.toLocaleDateString('zh-CN', {
+              ? i18n.t('groupHistoryRecords.yesterday')
+              : date.toLocaleDateString(i18n.t('localeCode'), {
                   year: 'numeric',
                   month: 'long',
                   day: 'numeric',
                 })
-          : '旧记录 · 完成时间未知',
+          : i18n.t('groupHistoryRecords.legacyRecordsCompletionTimeUnknown'),
         records: [],
       }
       groups.set(key, group)

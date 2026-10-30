@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { FolderDownIcon, InfoIcon } from '@lucide/vue'
 import { useDownloadQueue } from '~/composables/useDownloadQueue'
+import { i18n } from '~/utils/i18n'
 
 const { openManager, error: queueError } = useDownloadQueue()
 </script>
@@ -13,10 +14,10 @@ const { openManager, error: queueError } = useDownloadQueue()
         <ExtensionLogo class="size-12 sm:size-14" />
         <div class="min-w-0">
           <h1 class="text-2xl font-semibold tracking-tight sm:text-[28px]">
-            开始保存喜欢的内容
+            {{ i18n.t('welcomeGuide.startSavingWhatYouLove') }}
           </h1>
           <p class="mt-2 text-sm text-muted-foreground leading-6">
-            在视频页面，把喜欢的内容保存为 MP4、M4A 或独立素材。
+            {{ i18n.t('welcomeGuide.saveVideosAsMp4M4aOrIndividualAssets') }}
           </p>
         </div>
       </div>
@@ -32,21 +33,18 @@ const { openManager, error: queueError } = useDownloadQueue()
           <InfoIcon
             class="size-4 text-primary"
             aria-hidden="true"
-          />
-          下载前，了解这些
+          />{{ i18n.t('welcomeGuide.beforeYouDownload') }}
         </h2>
         <p>
-          默认选择最高可用画质，也可设置最高 1080P / 720P /
-          480P。偏好自动保存，已入队任务保留原设置。同分辨率和帧率下优先
-          SDR，同画质优先兼容性较好的编码。实际画质显示在任务进度中。
+          {{
+            i18n.t('welcomeGuide.theBestAvailableQualityIsSelectedByDefault')
+          }}
         </p>
         <p class="mt-2.5">
-          DASH、旧格式视频和独立音轨均使用浏览器磁盘封装，按剩余配额动态预留输入与封装输出空间。
-          暂不支持直播、番剧、互动视频或受保护的视频。
+          {{ i18n.t('welcomeGuide.dashLegacyVideoAndSeparateAudioTracksAre') }}
         </p>
         <p class="mt-2.5">
-          文件保存在浏览器下载目录的 Bilibili
-          文件夹。更改保存位置请使用浏览器的下载设置。
+          {{ i18n.t('welcomeGuide.filesAreSavedInTheBilibiliFolderIn') }}
         </p>
       </div>
 
@@ -58,8 +56,8 @@ const { openManager, error: queueError } = useDownloadQueue()
         <FolderDownIcon
           class="size-4 shrink-0"
           aria-hidden="true"
-        />打开下载中心
-      </Button>
+        />{{ i18n.t('welcomeGuide.openDownloadCenter') }}</Button
+      >
       <p
         v-if="queueError"
         class="mt-3 text-destructive"
