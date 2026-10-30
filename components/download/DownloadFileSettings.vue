@@ -76,7 +76,7 @@ watch(filenameTemplate, () => {
     title="文件保存"
     description="设置目录和文件名，方便以后查找。"
   >
-    <template #icon><FileTextIcon class="size-[18px]" /></template>
+    <template #icon><FileTextIcon class="size-4.5" /></template>
     <form @submit.prevent="save">
       <fieldset
         :disabled="!isReady || isSaving"

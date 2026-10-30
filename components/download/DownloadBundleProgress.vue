@@ -28,19 +28,19 @@ const createdAtLabel = computed(() =>
 
 <template>
   <section
-    class="rounded-[10px] bg-muted p-[12px]"
+    class="rounded-[10px] bg-muted p-3"
     aria-label="素材组合下载进度"
   >
-    <div class="flex items-start justify-between gap-[10px] text-[12px]">
+    <div class="flex items-start justify-between gap-2.5 text-[12px]">
       <div class="min-w-0">
         <p class="font-semibold">{{ statusLabels[bundle.status] }}</p>
         <p
           :title="bundle.title"
-          class="mt-[4px] truncate text-muted-foreground"
+          class="mt-1 truncate text-muted-foreground"
         >
           {{ bundle.title }}
         </p>
-        <p class="mt-[3px] text-[11px] text-muted-foreground">
+        <p class="mt-0.75 text-[11px] text-muted-foreground">
           创建于 {{ createdAtLabel }}
         </p>
       </div>
@@ -55,7 +55,7 @@ const createdAtLabel = computed(() =>
       aria-label="素材组合完成进度"
     />
     <p
-      class="mt-[8px] flex flex-wrap gap-x-[12px] gap-y-[4px] text-[11px] text-muted-foreground"
+      class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground"
       role="status"
     >
       <span v-if="bundle.active">未完成 {{ bundle.active }}</span>
@@ -74,7 +74,7 @@ const createdAtLabel = computed(() =>
     </p>
     <Collapsible
       v-if="unfinished.length"
-      class="mt-[8px] text-[11px]"
+      class="mt-2 text-[11px]"
     >
       <CollapsibleTrigger
         class="cursor-pointer text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
@@ -82,13 +82,13 @@ const createdAtLabel = computed(() =>
         查看未完成素材（{{ unfinished.length }}）
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <ul class="mt-[8px] max-h-[180px] overflow-y-auto space-y-[8px]">
+        <ul class="mt-2 max-h-45 overflow-y-auto space-y-2">
           <li
             v-for="job in unfinished"
             :key="job.id"
-            class="border-t border-border pt-[8px]"
+            class="border-t border-border pt-2"
           >
-            <p class="mb-[6px] truncate text-muted-foreground">
+            <p class="mb-1.5 truncate text-muted-foreground">
               {{ DOWNLOAD_KIND_LABELS[job.kind] }}
               <template v-if="job.kind !== 'cover'">
                 · P{{ job.page }}</template

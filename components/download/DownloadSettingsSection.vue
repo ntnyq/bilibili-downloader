@@ -43,12 +43,12 @@ const titleId = useId()
           {{ title }}
         </h2>
       </div>
-      <p class="mt-2 text-xs text-muted-foreground leading-6 sm:ml-[46px]">
+      <p class="mt-2 text-xs text-muted-foreground leading-6 sm:ml-11.5">
         {{ description }}
       </p>
       <p
         v-if="autoSave"
-        class="mt-2 flex items-center gap-1 text-[11px] text-success sm:ml-[46px]"
+        class="mt-2 flex items-center gap-1 text-[11px] text-success sm:ml-11.5"
       >
         <CheckIcon
           class="size-3"

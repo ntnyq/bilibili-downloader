@@ -18,7 +18,7 @@ onMounted(async () => {
 </script>
 
 <template>
-  <main class="bili-font w-[380px] bg-background">
+  <main class="bili-font w-95 bg-background">
     <DownloadPanel
       :url
       class="rounded-none border-0"

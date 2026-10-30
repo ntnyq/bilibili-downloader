@@ -26,12 +26,12 @@ const canRetry = computed(() =>
 
 <template>
   <div class="min-w-0 text-[12px]">
-    <div class="flex items-center justify-between gap-[12px]">
+    <div class="flex items-center justify-between gap-3">
       <span
         :class="
           job.status === 'failed' ? 'text-destructive' : 'text-foreground'
         "
-        class="flex items-center gap-[6px] font-medium"
+        class="flex items-center gap-1.5 font-medium"
       >
         <CircleCheckIcon
           v-if="job.status === 'completed'"
@@ -45,7 +45,7 @@ const canRetry = computed(() =>
           >{{ job.quality }}</span
         >
       </span>
-      <div class="flex shrink-0 items-center gap-[12px]">
+      <div class="flex shrink-0 items-center gap-3">
         <Button
           @click="emit('pause', job.id)"
           v-if="canPauseJob(job)"
@@ -96,7 +96,7 @@ const canRetry = computed(() =>
     />
     <p
       v-if="job.status === 'downloading' || job.status === 'paused'"
-      class="mt-[6px] text-muted-foreground"
+      class="mt-1.5 text-muted-foreground"
     >
       已下载 {{ formatBytes(job.receivedBytes)
       }}<span v-if="job.totalBytes">
@@ -105,7 +105,7 @@ const canRetry = computed(() =>
     </p>
     <p
       v-if="job.status === 'paused'"
-      class="mt-[6px] text-muted-foreground"
+      class="mt-1.5 text-muted-foreground"
     >
       {{
         ['video', 'audio'].includes(job.kind)
@@ -115,7 +115,7 @@ const canRetry = computed(() =>
     </p>
     <Alert
       v-if="job.error && job.status === 'failed'"
-      class="mt-[8px] break-words text-destructive leading-relaxed"
+      class="mt-2 wrap-break-word text-destructive leading-relaxed"
       variant="destructive"
       ><AlertDescription>
         {{ job.error }}

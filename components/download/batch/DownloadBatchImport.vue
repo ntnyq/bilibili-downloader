@@ -72,6 +72,33 @@ const step = computed(() =>
       ? 3
       : 2,
 )
+const sessionStatusLabel = computed(() => {
+  if (!isSessionReady.value) {
+    return sessionError.value ? '上次会话暂不可用。' : '正在载入上次会话…'
+  }
+  if (isSavingSession.value) {
+    return '正在保存草稿和进度…'
+  }
+  return sessionNotice.value || '自动保存最近一次会话；刷新或关闭后可手动继续。'
+})
+const isLoadNextPageDisabled = computed(
+  () =>
+    isLoading.value || isAdding.value || isPreviewStale.value || !canEdit.value,
+)
+const loadNextPageLabel = computed(() => {
+  if (isLoading.value) {
+    return '正在读取…'
+  }
+  return (nextPage.value ?? 1) > 1 ? '读取下一页' : '重新读取'
+})
+const isOptionsDisabled = computed(
+  () =>
+    isAdding.value
+    || !isReady.value
+    || isSaving.value
+    || !canEdit.value
+    || !!optionsSnapshot.value,
+)
 
 async function previewSource() {
   await preview()
@@ -85,42 +112,35 @@ async function previewSource() {
   <section aria-label="批量导入">
     <BatchImportSteps :step />
     <p
-      class="mt-[10px] text-[11px] text-muted-foreground leading-[18px]"
+      class="mt-2.5 text-[11px] text-muted-foreground leading-4.5"
       role="status"
     >
-      {{
-        isSessionReady
-          ? isSavingSession
-            ? '正在保存草稿和进度…'
-            : sessionNotice || '自动保存最近一次会话；刷新或关闭后可手动继续。'
-          : sessionError
-            ? '上次会话暂不可用。'
-            : '正在载入上次会话…'
-      }}
+      {{ sessionStatusLabel }}
     </p>
     <div
       v-if="sessionError"
-      class="mt-[12px] rounded-[8px] bg-accent px-[12px] py-[10px]"
+      class="mt-3 rounded-lg bg-accent px-3 py-2.5"
     >
       <Alert
-        class="text-[12px] text-destructive leading-[20px]"
+        class="text-[12px] text-destructive leading-5"
         variant="destructive"
-        ><AlertDescription>
-          {{ sessionError }}
-        </AlertDescription></Alert
       >
+        <AlertDescription>
+          {{ sessionError }}
+        </AlertDescription>
+      </Alert>
       <Button
         @click="reloadSession"
         :disabled="isAdding || isLoading || isSavingSession"
         variant="ghost"
         size="sm"
         type="button"
-        class="mt-[8px] text-muted-foreground hover:text-primary text-[12px] disabled:opacity-55"
+        class="mt-2 text-muted-foreground hover:text-primary text-[12px] disabled:opacity-55"
       >
         载入已保存的会话
       </Button>
       <template v-if="!isSessionReady">
-        <p class="mt-[8px] text-[11px] text-muted-foreground leading-[18px]">
+        <p class="mt-2 text-[11px] text-muted-foreground leading-4.5">
           如果保存的数据已损坏，可清除批量草稿和预览后重新开始。已加入的下载任务会保留。
         </p>
         <Button
@@ -129,7 +149,7 @@ async function previewSource() {
           variant="ghost"
           size="sm"
           type="button"
-          class="mt-[6px] text-muted-foreground hover:text-primary text-[12px] text-destructive disabled:opacity-55"
+          class="mt-1.5 text-[12px] text-destructive hover:text-primary disabled:opacity-55"
         >
           清除损坏的会话
         </Button>
@@ -147,8 +167,9 @@ async function previewSource() {
           :disabled="isLoading || isAdding"
           variant="ghost"
           size="xs"
-          >返回预览</Button
         >
+          返回预览
+        </Button>
       </div>
       <BatchSourceForm
         @preview="previewSource"
@@ -161,16 +182,17 @@ async function previewSource() {
     </div>
     <Alert
       v-if="importError || settingsError"
-      class="mt-[12px] break-words text-[12px] text-destructive leading-[20px]"
+      class="mt-3 wrap-break-word text-[12px] text-destructive leading-5"
       variant="destructive"
-      ><AlertDescription>
-        {{ importError || settingsError }}
-      </AlertDescription></Alert
     >
+      <AlertDescription>
+        {{ importError || settingsError }}
+      </AlertDescription>
+    </Alert>
     <template v-if="hasPreview">
       <p
         v-if="isPreviewStale"
-        class="mt-[14px] rounded-[8px] bg-accent px-[12px] py-[10px] text-[12px] text-primary leading-[20px]"
+        class="mt-3.5 rounded-lg bg-accent px-3 py-2.5 text-[12px] text-primary leading-5"
         role="status"
       >
         来源或输入已修改，下方仍是上一次预览。请点击「预览列表」更新后再加入队列。
@@ -186,7 +208,7 @@ async function previewSource() {
             />
           </div>
           <div class="min-w-0 flex-1">
-            <h2 class="break-words text-base font-semibold">
+            <h2 class="wrap-break-word text-base font-semibold">
               {{ title || '视频预览' }}
             </h2>
             <Badge
@@ -233,11 +255,11 @@ async function previewSource() {
             {{ inputErrors.length }} 行未能识别，其他有效行仍可导入
           </CollapsibleTrigger>
           <CollapsibleContent>
-            <ul class="mt-[8px] max-h-[160px] overflow-y-auto space-y-[6px]">
+            <ul class="mt-2 max-h-40 overflow-y-auto space-y-1.5">
               <li
                 v-for="item in inputErrors"
                 :key="item.line"
-                class="break-all leading-[19px]"
+                class="break-all leading-4.75"
               >
                 第 {{ item.line }} 行：{{ item.input }} — {{ item.error }}
               </li>
@@ -260,30 +282,24 @@ async function previewSource() {
       </div>
       <p
         v-if="previewNotice"
-        class="mt-[10px] text-[12px] text-muted-foreground leading-[20px]"
+        class="mt-2.5 text-[12px] text-muted-foreground leading-5"
         role="status"
       >
         {{ previewNotice }}
       </p>
       <div
         v-if="nextPage || isLoading"
-        class="mt-[12px] flex flex-wrap items-center gap-[12px]"
+        class="mt-3 flex flex-wrap items-center gap-3"
       >
         <Button
           @click="loadNextPage"
-          :disabled="isLoading || isAdding || isPreviewStale || !canEdit"
+          :disabled="isLoadNextPageDisabled"
           variant="ghost"
           size="sm"
           type="button"
           class="text-muted-foreground hover:text-primary text-[12px] disabled:opacity-55"
         >
-          {{
-            isLoading
-              ? '正在读取…'
-              : (nextPage ?? 1) > 1
-                ? '读取下一页'
-                : '重新读取'
-          }}
+          {{ loadNextPageLabel }}
         </Button>
         <Button
           @click="stopLoading"
@@ -303,13 +319,11 @@ async function previewSource() {
           v-model:subtitle-language="subtitleLanguage"
           v-model:mode="mode"
           v-model:skip-completed="skipCompleted"
-          :disabled="
-            isAdding || !isReady || isSaving || !canEdit || !!optionsSnapshot
-          "
+          :disabled="isOptionsDisabled"
         />
         <p
           v-if="optionsSnapshot"
-          class="mt-[10px] text-[11px] text-muted-foreground leading-[18px]"
+          class="mt-2.5 text-[11px] text-muted-foreground leading-4.5"
         >
           本会话沿用首次加入时的下载选项、文件名模板「{{
             optionsSnapshot.filenameTemplate
@@ -360,7 +374,7 @@ async function previewSource() {
             </Button>
           </div>
         </div>
-        <p class="mt-[9px] text-[11px] text-muted-foreground leading-[18px]">
+        <p class="mt-2.25 text-[11px] text-muted-foreground leading-4.5">
           <InfoIcon
             class="mr-1 inline size-4"
             aria-hidden="true"
@@ -369,14 +383,14 @@ async function previewSource() {
         </p>
         <p
           v-if="settings.isPaused"
-          class="mt-[9px] text-[12px] text-primary"
+          class="mt-2.25 text-[12px] text-primary"
           role="status"
         >
           队列已暂停，新任务将等待恢复。
         </p>
         <p
           v-if="notice"
-          class="mt-[12px] text-[12px] text-primary leading-[20px]"
+          class="mt-3 text-[12px] text-primary leading-5"
           role="status"
         >
           {{ notice }}

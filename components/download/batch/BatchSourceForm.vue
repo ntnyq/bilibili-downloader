@@ -72,7 +72,7 @@ const activeSource = computed(
           >
         </TabsList>
         <TabsContent :value="sourceKind">
-          <Label class="mt-[16px] block text-[12px] font-medium">
+          <Label class="mt-4 block text-[12px] font-medium">
             {{ activeSource?.label }}
             <Textarea
               v-model="input"
@@ -82,7 +82,7 @@ const activeSource = computed(
               rows="4"
               spellcheck="false"
               aria-describedby="batch-source-hint"
-              class="mt-[8px] min-h-[108px] w-full resize-y border border-border rounded-[9px] bg-white px-[12px] py-[10px] text-[13px] font-normal leading-[21px] outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-55"
+              class="mt-2 min-h-27 w-full resize-y border border-border rounded-[9px] bg-white px-3 py-2.5 text-[13px] font-normal leading-5.25 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-55"
               required
             />
             <Input
@@ -93,20 +93,20 @@ const activeSource = computed(
               type="text"
               spellcheck="false"
               aria-describedby="batch-source-hint"
-              class="mt-[8px] w-full border border-border rounded-[9px] bg-white px-[12px] py-[10px] text-[13px] font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-55"
+              class="mt-2 w-full border border-border rounded-[9px] bg-white px-3 py-2.5 text-[13px] font-normal outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:opacity-55"
               required
             />
           </Label>
           <p
             id="batch-source-hint"
-            class="mt-[8px] text-[11px] text-muted-foreground leading-[18px]"
+            class="mt-2 text-[11px] text-muted-foreground leading-4.5"
           >
             {{ activeSource?.hint }}
           </p>
           <Button
             :disabled="disabled || loading || !input.trim()"
             type="submit"
-            class="mt-[14px]"
+            class="mt-3.5"
           >
             <component
               :is="loading ? LoaderCircleIcon : ListVideoIcon"
@@ -125,7 +125,7 @@ const activeSource = computed(
       variant="ghost"
       size="sm"
       type="button"
-      class="mt-[10px] text-muted-foreground hover:text-primary text-[12px]"
+      class="mt-2.5 text-muted-foreground hover:text-primary text-[12px]"
     >
       停止读取
     </Button>

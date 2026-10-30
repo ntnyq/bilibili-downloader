@@ -3,7 +3,7 @@
   "type": "module",
   "version": "0.0.3",
   "private": true,
-  "packageManager": "pnpm@12.15.0",
+  "packageManager": "pnpm@12.16.1",
   "description": "Download Bilibili videos, audio, covers, subtitles and danmaku, with multi-part batch downloads and asset bundles.",
   "keywords": [
     "wxt"
@@ -31,8 +31,8 @@
   },
   "dependencies": {
     "@ffmpeg/core": "^0.12.10",
-    "@lucide/vue": "^1.61.0",
-    "@ntnyq/utils": "^0.23.0",
+    "@lucide/vue": "^1.64.0",
+    "@ntnyq/utils": "^0.24.0",
     "@vueuse/core": "^15.0.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -52,9 +52,9 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
-    "@ntnyq/eslint-config": "^7.0.0-beta.28",
+    "@ntnyq/eslint-config": "^7.0.0-beta.29",
     "@tailwindcss/vite": "^4.3.3",
-    "@types/node": "^26.6.5",
+    "@types/node": "^26.6.6",
     "@vitejs/plugin-vue": "^6.0.10",
     "@wxt-dev/auto-icons": "^1.1.2",
     "@wxt-dev/i18n": "^0.2.8",
@@ -64,12 +64,12 @@
     "husky": "^9.1.7",
     "nano-staged": "^1.0.2",
     "npm-run-all2": "^9.0.4",
-    "oxfmt": "^0.74.0",
+    "oxfmt": "^0.75.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "unplugin-vue-components": "^32.1.0",
-    "vue-tsc": "^3.3.13",
+    "vue-tsc": "^3.3.14",
     "wxt": "^0.21.5"
   },
   "nano-staged": {

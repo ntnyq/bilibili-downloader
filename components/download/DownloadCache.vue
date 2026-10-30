@@ -20,9 +20,7 @@ const {
       ><CardTitle class="text-sm">下载缓存与大型任务</CardTitle></CardHeader
     >
     <CardContent class="px-5">
-      <div
-        class="mt-[16px] flex flex-wrap items-center justify-between gap-[12px]"
-      >
+      <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p class="text-muted-foreground">
           <template v-if="stats">
             媒体缓存 {{ formatBytes(stats.bytes) }} · {{ stats.entries }} 条
@@ -31,7 +29,7 @@ const {
             {{ isRefreshing ? '正在读取下载缓存…' : '下载缓存暂不可用' }}
           </template>
         </p>
-        <div class="flex items-center gap-[16px]">
+        <div class="flex items-center gap-4">
           <Button
             @click="refresh"
             :disabled="isRefreshing || isClearing"
@@ -54,19 +52,19 @@ const {
           </Button>
         </div>
       </div>
-      <p class="mt-[10px] text-[12px] text-muted-foreground leading-[20px]">
+      <p class="mt-2.5 text-[12px] text-muted-foreground leading-5">
         <template v-if="availableBytes !== null">
           浏览器剩余配额约 {{ formatBytes(availableBytes) }}。
         </template>
         任务会按剩余配额为输入、封装输出和安全余量预留空间，最终下载文件还需额外磁盘空间。
       </p>
-      <p class="mt-[10px] text-[12px] text-muted-foreground leading-[20px]">
+      <p class="mt-2.5 text-[12px] text-muted-foreground leading-5">
         失败或刷新页面后，重试会尽量复用缓存并续传；续传需要媒体服务器支持。
         浏览器可能回收缓存。清理会移除续传数据，已保存文件与下载记录不受影响。
       </p>
       <Alert
         v-if="cacheError"
-        class="mt-[10px] text-destructive"
+        class="mt-2.5 text-destructive"
         variant="destructive"
         ><AlertDescription>
           {{ cacheError }}
@@ -74,20 +72,20 @@ const {
       >
       <p
         v-if="notice"
-        class="mt-[10px] text-primary"
+        class="mt-2.5 text-primary"
         role="status"
       >
         {{ notice }}
       </p>
-      <div class="mt-[16px] border-t border-border pt-[14px]">
+      <div class="mt-4 border-t border-border pt-3.5">
         <h2 class="font-medium">可选方案：本地 FFmpeg</h2>
-        <p class="mt-[8px] text-[12px] text-muted-foreground leading-[20px]">
+        <p class="mt-2 text-[12px] text-muted-foreground leading-5">
           DASH、旧格式 FLV / MP4
           和独立音轨均可在浏览器中磁盘封装，按剩余配额动态检查容量。
           如需在浏览器外处理已失败、已取消或已完成的音视频任务，
           点击「导出本地任务」，再使用 Python 3 和 FFmpeg 在电脑上下载、合并。
         </p>
-        <p class="mt-[8px] text-[12px] text-muted-foreground leading-[20px]">
+        <p class="mt-2 text-[12px] text-muted-foreground leading-5">
           从
           <a
             href="https://github.com/ntnyq/bilibili-downloader"
@@ -99,9 +97,9 @@ const {
           task.bili.json 替换为导出的任务文件路径。
         </p>
         <pre
-          class="mt-[10px] whitespace-pre-wrap break-all rounded-[7px] bg-muted p-[10px] text-[11px] leading-[19px]"
+          class="mt-2.5 whitespace-pre-wrap break-all rounded-[7px] bg-muted p-2.5 text-[11px] leading-4.75"
         ><code>python3 scripts/native-downloader.py task.bili.json --output-dir ./downloads</code></pre>
-        <p class="mt-[10px] text-[11px] text-muted-foreground leading-[19px]">
+        <p class="mt-2.5 text-[11px] text-muted-foreground leading-4.75">
           任务文件含临时媒体地址，请勿分享；地址过期后需重新导出。
           本地下载不会修改浏览器队列状态，也不会同步进度。
         </p>

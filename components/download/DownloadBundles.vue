@@ -16,12 +16,12 @@ const { bundles } = useDownloadBundle(jobs)
 <template>
   <section aria-label="素材组合">
     <h2 class="text-[14px] font-semibold">素材组合</h2>
-    <p class="mt-[5px] text-[12px] text-muted-foreground leading-[20px]">
+    <p class="mt-1.25 text-[12px] text-muted-foreground leading-5">
       按视频查看本次组合的整体结果。仅全部素材保存成功时显示完成，失败和取消可单独重试。
     </p>
     <Alert
       v-if="queueError"
-      class="mt-[10px] text-[12px] text-destructive"
+      class="mt-2.5 text-[12px] text-destructive"
       variant="destructive"
       ><AlertDescription>
         {{ queueError }}
@@ -33,7 +33,7 @@ const { bundles } = useDownloadBundle(jobs)
     >
       还没有素材组合。在视频页切换到「素材组合」，选择需要的素材后下载。
     </p>
-    <div class="mt-[12px] space-y-[12px]">
+    <div class="mt-3 space-y-3">
       <DownloadBundleProgress
         @cancel="cancel"
         @retry="retry"

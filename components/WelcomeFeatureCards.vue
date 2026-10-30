@@ -53,7 +53,7 @@ const FEATURES = [
             <component
               :is="feature.icon"
               :stroke-width="1.75"
-              class="size-[22px]"
+              class="size-5.5"
               aria-hidden="true"
             />
           </span>

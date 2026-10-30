@@ -1,10 +1,19 @@
 <script lang="ts" setup>
 import { CheckIcon } from '@lucide/vue'
 
-defineProps<{
+const props = defineProps<{
   step: number
 }>()
 const steps = ['选择来源', '确认视频', '加入队列']
+
+function getStepClasses(index: number) {
+  if (props.step === index + 1) {
+    return 'bg-primary text-primary-foreground'
+  }
+  return props.step > index + 1
+    ? 'bg-success/10 text-success'
+    : 'bg-secondary text-muted-foreground'
+}
 </script>
 
 <template>
@@ -24,13 +33,7 @@ const steps = ['选择来源', '确认视频', '加入队列']
         class="flex shrink-0 items-center gap-2 text-xs"
       >
         <span
-          :class="
-            step === index + 1
-              ? 'bg-primary text-primary-foreground'
-              : step > index + 1
-                ? 'bg-success/10 text-success'
-                : 'bg-secondary text-muted-foreground'
-          "
+          :class="getStepClasses(index)"
           class="flex size-6 shrink-0 items-center justify-center rounded-full font-medium"
         >
           <CheckIcon

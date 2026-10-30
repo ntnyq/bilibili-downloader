@@ -76,7 +76,7 @@ const statusClass = computed(() => {
 <template>
   <li class="flex items-start gap-3.5 py-5">
     <div
-      class="hidden h-[58px] w-[88px] shrink-0 items-center justify-center overflow-hidden rounded-lg bg-accent sm:flex"
+      class="hidden h-14.5 w-22 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-accent sm:flex"
     >
       <img
         v-if="job.cover"
@@ -114,7 +114,7 @@ const statusClass = computed(() => {
         }}</span>
         <span
           v-if="job.pageCount > 1 && job.kind !== 'cover'"
-          class="min-w-0 break-words"
+          class="min-w-0 wrap-break-word"
           >P{{ job.page }} · {{ job.part }}</span
         >
         <span v-else>{{ job.kind === 'cover' ? '视频封面' : '单视频' }}</span>
@@ -194,7 +194,7 @@ const statusClass = computed(() => {
           class="mt-0.5 size-3.5 shrink-0"
           aria-hidden="true"
         />
-        <p class="min-w-0 break-words">{{ job.error }}</p>
+        <p class="min-w-0 wrap-break-word">{{ job.error }}</p>
       </div>
       <div class="mt-3 flex flex-wrap items-center justify-end gap-2">
         <Button

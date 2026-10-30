@@ -82,15 +82,15 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
         class="mt-3 space-y-2.5"
       >
         <fieldset :disabled>
-          <legend class="mb-[8px] text-[12px] text-muted-foreground">
+          <legend class="mb-2 text-[12px] text-muted-foreground">
             选择需要的素材
           </legend>
-          <div class="grid grid-cols-2 gap-[8px]">
+          <div class="grid grid-cols-2 gap-2">
             <Label
               v-for="(label, value) in DOWNLOAD_KIND_LABELS"
               :key="value"
               :title="DOWNLOAD_KIND_HINTS[value]"
-              class="flex items-center gap-[7px] rounded-[7px] bg-muted px-[10px] py-[9px] text-[12px]"
+              class="flex items-center gap-1.75 rounded-[7px] bg-muted px-2.5 py-2.25 text-[12px]"
             >
               <Checkbox
                 @update:model-value="toggleKind(value, $event)"
@@ -103,7 +103,7 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
         </fieldset>
         <div
           v-if="kinds.includes('subtitle')"
-          class="flex items-center justify-between gap-[12px] text-[12px]"
+          class="flex items-center justify-between gap-3 text-[12px]"
         >
           <Label
             as="span"
@@ -115,7 +115,7 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
             :disabled
             ><SelectTrigger
               aria-label="字幕语言"
-              class="w-[190px] max-w-full"
+              class="w-47.5 max-w-full"
               ><SelectValue /></SelectTrigger
             ><SelectContent>
               <SelectItem
@@ -128,13 +128,13 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
             </SelectContent></Select
           >
         </div>
-        <p class="text-[11px] text-muted-foreground leading-[18px]">
+        <p class="text-[11px] text-muted-foreground leading-4.5">
           组合素材统一保存到 {{ folderHint }} 目录，文件命名沿用设置。
           封面每个视频仅一份，其他素材按所选分 P 下载。
         </p>
         <p
           v-if="kinds.includes('subtitle')"
-          class="text-[11px] text-muted-foreground leading-[18px]"
+          class="text-[11px] text-muted-foreground leading-4.5"
         >
           字幕缺失或需要登录时会记录失败，其他素材继续下载。
         </p>

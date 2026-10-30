@@ -21,7 +21,7 @@ const canExport = computed(
 <template>
   <div
     v-if="canExport"
-    class="mt-[10px] text-[12px]"
+    class="mt-2.5 text-[12px]"
   >
     <Button
       @click="downloadNativeTask(job)"
@@ -35,7 +35,7 @@ const canExport = computed(
     </Button>
     <Alert
       v-if="exportError"
-      class="mt-[7px] text-destructive"
+      class="mt-1.75 text-destructive"
       variant="destructive"
       ><AlertDescription>
         {{ exportError }}
@@ -43,7 +43,7 @@ const canExport = computed(
     >
     <p
       v-if="notice"
-      class="mt-[7px] text-primary"
+      class="mt-1.75 text-primary"
       role="status"
     >
       {{ notice }}

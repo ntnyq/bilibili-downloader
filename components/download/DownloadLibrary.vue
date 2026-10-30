@@ -34,6 +34,20 @@ const {
   downloadHistory,
 } = useDownloadHistory()
 const isClearPending = shallowRef(false)
+const emptyTitle = computed(() => {
+  if (!isReady.value) {
+    return isRefreshing.value ? '正在读取下载历史…' : '下载历史暂不可用'
+  }
+  return records.value.length ? '没有匹配的下载记录' : '这里会记住每一份收藏'
+})
+const emptyDescription = computed(() => {
+  if (!isReady.value) {
+    return '请稍后重试。'
+  }
+  return records.value.length
+    ? '试试其他关键词，或查看全部素材。'
+    : '成功下载的素材会自动保存在这里。'
+})
 
 function resetFilters() {
   search.value = ''
@@ -165,24 +179,10 @@ function clearHistory() {
         aria-hidden="true"
       />
       <p class="text-sm font-medium">
-        {{
-          isReady
-            ? records.length
-              ? '没有匹配的下载记录'
-              : '这里会记住每一份收藏'
-            : isRefreshing
-              ? '正在读取下载历史…'
-              : '下载历史暂不可用'
-        }}
+        {{ emptyTitle }}
       </p>
       <p class="mt-2 text-xs text-muted-foreground">
-        {{
-          isReady
-            ? records.length
-              ? '试试其他关键词，或查看全部素材。'
-              : '成功下载的素材会自动保存在这里。'
-            : '请稍后重试。'
-        }}
+        {{ emptyDescription }}
       </p>
       <Button
         @click="resetFilters"
@@ -190,16 +190,18 @@ function clearHistory() {
         variant="outline"
         size="sm"
         class="mt-4"
-        >清除筛选</Button
       >
+        清除筛选
+      </Button>
       <Button
         @click="refresh"
         v-if="!isReady && !isRefreshing"
         variant="outline"
         size="sm"
         class="mt-4"
-        >重新读取</Button
       >
+        重新读取
+      </Button>
     </div>
     <Collapsible
       class="mt-6 rounded-lg bg-secondary px-4 py-3 text-xs text-muted-foreground"
@@ -212,13 +214,14 @@ function clearHistory() {
         <p class="min-w-0 flex-1">
           这里保存下载记录；移除记录不会删除电脑上的文件。
         </p>
-        <CollapsibleTrigger as-child
-          ><Button
+        <CollapsibleTrigger as-child>
+          <Button
             variant="ghost"
             size="xs"
-            >了解更多</Button
-          ></CollapsibleTrigger
-        >
+          >
+            了解更多
+          </Button>
+        </CollapsibleTrigger>
       </div>
       <CollapsibleContent class="mt-3 space-y-2 leading-6">
         <p>

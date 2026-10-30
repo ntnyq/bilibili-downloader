@@ -49,7 +49,7 @@ async function toggleNotifications(enabled: boolean) {
     description="下载完成后及时提醒。"
     auto-save
   >
-    <template #icon><BellIcon class="size-[18px]" /></template>
+    <template #icon><BellIcon class="size-4.5" /></template>
     <div class="flex items-center justify-between gap-4">
       <div>
         <h3 class="text-sm font-medium">系统通知</h3>

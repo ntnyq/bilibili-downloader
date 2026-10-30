@@ -55,7 +55,7 @@ const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
   </RadioGroupRoot>
   <div
     v-else
-    class="mt-[14px] flex items-center justify-between gap-[12px] text-[12px]"
+    class="mt-3.5 flex items-center justify-between gap-3 text-[12px]"
   >
     <Label
       as="span"
@@ -67,7 +67,7 @@ const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
       :disabled
       ><SelectTrigger
         aria-label="画质偏好"
-        class="w-[190px] max-w-full"
+        class="w-47.5 max-w-full"
         ><SelectValue /></SelectTrigger
       ><SelectContent>
         <SelectItem

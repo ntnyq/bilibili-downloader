@@ -135,7 +135,7 @@ const time = computed(() =>
         <dl class="space-y-2">
           <div>
             <dt class="text-muted-foreground">视频与分 P</dt>
-            <dd class="break-words">
+            <dd class="wrap-break-word">
               {{ record.bvid
               }}<template v-if="record.kind !== 'cover'">
                 · P{{ record.page }} {{ record.part }}</template

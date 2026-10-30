@@ -103,7 +103,7 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
       <TabsContent :value="mode">
         <div
           v-if="mode === 'selected'"
-          class="mt-[12px]"
+          class="mt-3"
         >
           <div class="relative mb-2">
             <SearchIcon

@@ -8,7 +8,7 @@ const { openManager, error: queueError } = useDownloadQueue()
 <template>
   <div class="bili-font min-h-screen bg-muted">
     <ExtensionHeader />
-    <main class="mx-auto max-w-[960px] px-4 py-8 sm:px-8 sm:py-12">
+    <main class="mx-auto max-w-240 px-4 py-8 sm:px-8 sm:py-12">
       <div class="mb-8 flex items-start gap-4 sm:mb-10">
         <ExtensionLogo class="size-12 sm:size-14" />
         <div class="min-w-0">
@@ -40,11 +40,11 @@ const { openManager, error: queueError } = useDownloadQueue()
           480P。偏好自动保存，已入队任务保留原设置。同分辨率和帧率下优先
           SDR，同画质优先兼容性较好的编码。实际画质显示在任务进度中。
         </p>
-        <p class="mt-[10px]">
+        <p class="mt-2.5">
           DASH、旧格式视频和独立音轨均使用浏览器磁盘封装，按剩余配额动态预留输入与封装输出空间。
           暂不支持直播、番剧、互动视频或受保护的视频。
         </p>
-        <p class="mt-[10px]">
+        <p class="mt-2.5">
           文件保存在浏览器下载目录的 Bilibili
           文件夹。更改保存位置请使用浏览器的下载设置。
         </p>
@@ -52,7 +52,7 @@ const { openManager, error: queueError } = useDownloadQueue()
 
       <Button
         @click="openManager"
-        class="mt-[28px]"
+        class="mt-7"
         type="button"
       >
         <FolderDownIcon
@@ -62,7 +62,7 @@ const { openManager, error: queueError } = useDownloadQueue()
       </Button>
       <p
         v-if="queueError"
-        class="mt-[12px] text-destructive"
+        class="mt-3 text-destructive"
         role="alert"
       >
         {{ queueError }}

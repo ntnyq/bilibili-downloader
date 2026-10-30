@@ -6,7 +6,7 @@ const isDownloadCenter = window.location.pathname === '/downloads.html'
 
 <template>
   <header
-    class="flex h-[62px] shrink-0 items-center gap-3 border-b bg-background px-4 sm:px-6"
+    class="flex h-15.5 shrink-0 items-center gap-3 border-b bg-background px-4 sm:px-6"
   >
     <a
       @click="isDownloadCenter && $event.preventDefault()"

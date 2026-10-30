@@ -18,7 +18,7 @@ import type {
   SubtitleLanguage,
 } from '~/types/download'
 
-defineProps<{
+const props = defineProps<{
   disabled: boolean
 }>()
 const kind = defineModel<DownloadKind>('kind', { required: true })
@@ -29,6 +29,26 @@ const quality = defineModel<QualityPreference>('quality', { required: true })
 const mode = defineModel<'current' | 'all'>('mode', { required: true })
 const skipCompleted = defineModel<boolean>('skipCompleted', { required: true })
 const isExpanded = shallowRef(false)
+const toggleLabel = computed(() => {
+  if (isExpanded.value) {
+    return '收起选项'
+  }
+  return props.disabled ? '查看选项' : '修改选项'
+})
+const formatLabel = computed(() => {
+  if (kind.value === 'video') {
+    return '画质偏好'
+  }
+  return kind.value === 'subtitle' ? '字幕语言' : '保存格式'
+})
+const formatValue = computed(() => {
+  if (kind.value === 'video') {
+    return QUALITY_LABELS[quality.value]
+  }
+  return kind.value === 'subtitle'
+    ? SUBTITLE_LANGUAGE_LABELS[subtitleLanguage.value]
+    : DOWNLOAD_KIND_LABELS[kind.value]
+})
 const rangeLabel = computed(() =>
   kind.value === 'cover'
     ? '每个视频一张封面'
@@ -54,7 +74,7 @@ const rangeLabel = computed(() =>
         ><Button
           variant="ghost"
           size="xs"
-          >{{ isExpanded ? '收起选项' : disabled ? '查看选项' : '修改选项'
+          >{{ toggleLabel
           }}<ChevronDownIcon
             :class="isExpanded && 'rotate-180'"
             class="size-3"
@@ -68,22 +88,10 @@ const rangeLabel = computed(() =>
       </div>
       <div class="sm:pl-4">
         <dt class="mb-1 text-muted-foreground">
-          {{
-            kind === 'video'
-              ? '画质偏好'
-              : kind === 'subtitle'
-                ? '字幕语言'
-                : '保存格式'
-          }}
+          {{ formatLabel }}
         </dt>
         <dd>
-          {{
-            kind === 'video'
-              ? QUALITY_LABELS[quality]
-              : kind === 'subtitle'
-                ? SUBTITLE_LANGUAGE_LABELS[subtitleLanguage]
-                : DOWNLOAD_KIND_LABELS[kind]
-          }}
+          {{ formatValue }}
         </dd>
       </div>
       <div class="sm:pl-4">
@@ -111,10 +119,10 @@ const rangeLabel = computed(() =>
             :disabled
           />
         </div>
-        <div class="mt-[18px]">
+        <div class="mt-4.5">
           <div
             v-if="kind !== 'cover'"
-            class="flex items-center justify-between gap-[12px] text-[12px]"
+            class="flex items-center justify-between gap-3 text-[12px]"
           >
             <Label
               as="span"
@@ -126,7 +134,7 @@ const rangeLabel = computed(() =>
               :disabled
               ><SelectTrigger
                 aria-label="分 P 范围"
-                class="w-[190px] max-w-full"
+                class="w-47.5 max-w-full"
                 ><SelectValue /></SelectTrigger
               ><SelectContent>
                 <SelectItem value="current">链接指定 P / 首个 P</SelectItem>
@@ -134,14 +142,14 @@ const rangeLabel = computed(() =>
               </SelectContent></Select
             >
           </div>
-          <p class="mt-[10px] text-[11px] text-muted-foreground leading-[18px]">
+          <p class="mt-2.5 text-[11px] text-muted-foreground leading-4.5">
             {{
               kind === 'cover'
                 ? '每个视频保存一张封面。'
                 : '链接中的 p 参数指定分 P；收藏夹、合集和投稿默认取首个 P。选择全部 P 后逐个展开。'
             }}
           </p>
-          <p class="mt-[6px] text-[11px] text-muted-foreground leading-[18px]">
+          <p class="mt-1.5 text-[11px] text-muted-foreground leading-4.5">
             依据本机的已下载记录，同一分 P、同一下载内容只加入一次。最多保留
             5000 条、3
             MiB，超出后移除最早记录；清除记录后无法识别。排队中的相同任务始终跳过。

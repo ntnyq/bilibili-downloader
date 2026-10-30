@@ -113,7 +113,7 @@ onScopeDispose(clicks.cancel)
           aria-label="B 站下载器"
           align="end"
           side="bottom"
-          class="z-50 w-[400px] max-w-[calc(100vw-24px)] rounded-lg shadow-xl outline-none"
+          class="z-50 w-100 max-w-[calc(100vw-24px)] rounded-lg shadow-xl outline-none"
         >
           <DownloadPanel
             :url
@@ -145,7 +145,7 @@ onScopeDispose(clicks.cancel)
       v-if="downloadError || notice"
       :role="downloadError ? 'alert' : 'status'"
       :class="downloadError ? 'text-destructive' : 'text-foreground'"
-      class="fixed right-4 bottom-4 z-50 flex w-[300px] max-w-[calc(100vw-24px)] items-start gap-2 rounded-lg border bg-background p-3 text-xs leading-5 shadow-lg"
+      class="fixed right-4 bottom-4 z-50 flex w-75 max-w-[calc(100vw-24px)] items-start gap-2 rounded-lg border bg-background p-3 text-xs leading-5 shadow-lg"
     >
       <p class="flex-1">{{ downloadError || notice }}</p>
       <Button

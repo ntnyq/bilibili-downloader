@@ -61,7 +61,7 @@ const ASSETS = [
           >
             <component
               :is="asset.icon"
-              class="size-[18px]"
+              class="size-4.5"
               aria-hidden="true"
             />
             {{ asset.label }}
@@ -71,7 +71,7 @@ const ASSETS = [
     </fieldset>
     <div
       v-if="kind === 'subtitle'"
-      class="flex items-center justify-between gap-[12px] text-[12px]"
+      class="flex items-center justify-between gap-3 text-[12px]"
     >
       <Label
         as="span"
@@ -83,7 +83,7 @@ const ASSETS = [
         :disabled
         ><SelectTrigger
           aria-label="字幕语言"
-          class="w-[190px] max-w-full"
+          class="w-47.5 max-w-full"
           ><SelectValue /></SelectTrigger
         ><SelectContent>
           <SelectItem
@@ -96,7 +96,7 @@ const ASSETS = [
         </SelectContent></Select
       >
     </div>
-    <p class="text-[11px] text-muted-foreground leading-[18px]">
+    <p class="text-[11px] text-muted-foreground leading-4.5">
       {{ DOWNLOAD_KIND_HINTS[kind] }}
     </p>
   </div>

@@ -61,6 +61,12 @@ const orderedJobs = computed(() => [
   ...jobs.value.filter(job => !isJobActive(job)).toReversed(),
 ])
 const query = computed(() => search.value.trim().toLocaleLowerCase())
+const emptyTitle = computed(() => {
+  if (query.value) {
+    return '没有匹配的任务'
+  }
+  return filter.value === 'all' ? '喜欢的视频，慢慢收藏' : '这里还没有任务'
+})
 const visibleJobs = computed(() =>
   orderedJobs.value
     .filter(
@@ -144,11 +150,9 @@ async function showFile(id?: number) {
         :value="filter"
         class="mt-0"
       >
-        <div
-          class="my-4 flex flex-wrap items-center justify-between gap-[12px]"
-        >
+        <div class="my-4 flex flex-wrap items-center justify-between gap-3">
           <Label
-            class="min-w-[160px] flex flex-1 basis-full items-center gap-[8px] border border-border rounded-[8px] bg-muted/60 px-[12px] py-[10px] focus-within:border-primary sm:basis-auto"
+            class="min-w-40 flex flex-1 basis-full items-center gap-2 border border-border rounded-lg bg-muted/60 px-3 py-2.5 focus-within:border-primary sm:basis-auto"
           >
             <SearchIcon
               class="size-4 shrink-0 text-muted-foreground"
@@ -222,14 +226,14 @@ async function showFile(id?: number) {
         </div>
         <p
           v-if="settings.isPaused"
-          class="mb-[16px] rounded-[10px] bg-accent px-[14px] py-[12px] text-[13px] text-primary"
+          class="mb-4 rounded-[10px] bg-accent px-3.5 py-3 text-[13px] text-primary"
           role="status"
         >
           队列已暂停：当前任务会继续完成，其余任务等待恢复。请保持下载中心打开。
         </p>
         <Alert
           v-if="queueError || settingsError || exportError"
-          class="mt-[16px] text-[13px] text-destructive"
+          class="mt-4 text-[13px] text-destructive"
           variant="destructive"
           ><AlertDescription>
             {{ queueError || settingsError || exportError }}
@@ -255,22 +259,16 @@ async function showFile(id?: number) {
         </ul>
         <div
           v-else
-          class="py-[70px] text-center"
+          class="py-17.5 text-center"
         >
           <FolderDownIcon
-            class="shrink-0 mx-auto mb-[18px] block size-[40px] text-primary"
+            class="shrink-0 mx-auto mb-4.5 block size-10 text-primary"
             aria-hidden="true"
           />
           <h2 class="text-[18px] font-semibold">
-            {{
-              query
-                ? '没有匹配的任务'
-                : filter === 'all'
-                  ? '喜欢的视频，慢慢收藏'
-                  : '这里还没有任务'
-            }}
+            {{ emptyTitle }}
           </h2>
-          <p class="mt-[9px] text-[13px] text-muted-foreground">
+          <p class="mt-2.25 text-[13px] text-muted-foreground">
             {{
               query
                 ? '试试其他标题、BV 号或分 P。'
@@ -281,7 +279,7 @@ async function showFile(id?: number) {
             href="https://www.bilibili.com"
             target="_blank"
             rel="noreferrer"
-            class="mt-[24px] bili-primary-button inline-flex"
+            class="mt-6 bili-primary-button inline-flex"
             >去 B 站看看</a
           >
         </div>

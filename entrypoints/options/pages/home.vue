@@ -14,7 +14,7 @@ const {
 <template>
   <div class="bili-font min-h-screen bg-muted">
     <ExtensionHeader />
-    <main class="mx-auto max-w-[960px] px-4 py-8 sm:px-6">
+    <main class="mx-auto max-w-240 px-4 py-8 sm:px-6">
       <div class="mb-6 flex items-center justify-between gap-3">
         <div>
           <h1 class="text-2xl font-semibold tracking-tight">设置</h1>
@@ -39,7 +39,7 @@ const {
           description="选择新任务的默认画质。"
           auto-save
         >
-          <template #icon><VideoIcon class="size-[18px]" /></template>
+          <template #icon><VideoIcon class="size-4.5" /></template>
           <DownloadQuality
             @update:model-value="updateSettings({ quality: $event })"
             :model-value="settings.quality"

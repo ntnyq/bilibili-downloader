@@ -19,12 +19,15 @@ const canStart = computed(
       props.job.status,
     ),
 )
+const isVisible = computed(
+  () => canStart.value || isRunning.value || status.value || nativeError.value,
+)
 </script>
 
 <template>
   <div
-    v-if="canStart || isRunning || status || nativeError"
-    class="mt-[10px] text-[12px]"
+    v-if="isVisible"
+    class="mt-2.5 text-[12px]"
   >
     <Button
       @click="start"
@@ -39,30 +42,31 @@ const canStart = computed(
     </Button>
     <p
       v-if="isRunning"
-      class="mt-[7px] text-muted-foreground"
+      class="mt-1.75 text-muted-foreground"
     >
       请保持下载中心页面打开，完成文件会保存到安装时指定的目录。
     </p>
     <p
       v-if="status"
-      class="mt-[7px] text-primary"
+      class="mt-1.75 text-primary"
       role="status"
     >
       {{ status }}
     </p>
     <p
       v-if="outputPath"
-      class="mt-[7px] break-all text-muted-foreground"
+      class="mt-1.75 break-all text-muted-foreground"
     >
       已保存：{{ outputPath }}
     </p>
     <Alert
       v-if="nativeError"
-      class="mt-[7px] text-destructive"
+      class="mt-1.75 text-destructive"
       variant="destructive"
-      ><AlertDescription>
-        {{ nativeError }}
-      </AlertDescription></Alert
     >
+      <AlertDescription>
+        {{ nativeError }}
+      </AlertDescription>
+    </Alert>
   </div>
 </template>

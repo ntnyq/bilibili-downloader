@@ -26,7 +26,7 @@ const {
     description="单击页面上的下载按钮打开面板，双击直接下载。"
     auto-save
   >
-    <template #icon><MousePointerClickIcon class="size-[18px]" /></template>
+    <template #icon><MousePointerClickIcon class="size-4.5" /></template>
     <div class="flex flex-wrap items-center justify-between gap-3">
       <Label for="double-click-kind">双击下载的资源</Label>
       <Select
@@ -38,7 +38,7 @@ const {
       >
         <SelectTrigger
           id="double-click-kind"
-          class="w-[190px]"
+          class="w-47.5"
           ><SelectValue
         /></SelectTrigger>
         <SelectContent>

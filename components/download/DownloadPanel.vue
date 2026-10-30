@@ -54,8 +54,11 @@ const {
   retry,
   openManager,
 } = useDownloadQueue()
+
 const { bundles } = useDownloadBundle(jobs)
+
 const optionsUrl = browser.runtime.getURL('/options.html')
+
 const latestBundle = computed(() =>
   bundles.value.find(bundle => bundle.bvid === video.value?.bvid),
 )
@@ -67,6 +70,9 @@ const {
   updateSettings,
 } = preferences
 const isMultipart = computed(() => (video.value?.pages.length || 0) > 1)
+const isSplitLayout = computed(
+  () => props.embedded && isMultipart.value && hasPageAssets.value,
+)
 const relatedJobs = computed(() =>
   jobs.value.filter(
     job =>
@@ -134,11 +140,20 @@ const downloadLabel = computed(() => {
   }
   return isMultipart.value ? `下载当前 P${currentPage.value?.page}` : '下载视频'
 })
+const isDownloadDisabled = computed(
+  () =>
+    isAdding.value
+    || isAlreadyQueued.value
+    || (isBundleEnabled.value && !bundleKinds.value.length)
+    || !targetPages.value.length
+    || !isReady.value
+    || isSaving.value,
+)
 </script>
 
 <template>
   <section
-    :class="embedded ? '@container' : 'max-h-[600px]'"
+    :class="embedded ? '@container' : 'max-h-150'"
     class="bili-font flex flex-col overflow-hidden rounded-lg border border-border bg-white text-foreground"
     aria-label="B 站下载器"
   >
@@ -157,52 +172,50 @@ const downloadLabel = computed(() => {
           variant="ghost"
           size="icon-sm"
           aria-label="设置与说明"
-          ><Settings2Icon class="size-4"
-        /></Button>
+        >
+          <Settings2Icon class="size-4" />
+        </Button>
         <slot name="header-actions" />
       </div>
     </header>
     <div class="min-h-0 flex-1 overflow-y-auto px-4 py-2.5">
       <div
         v-if="isLoading"
-        class="py-[18px] text-[13px] text-muted-foreground"
+        class="py-4.5 text-[13px] text-muted-foreground"
         role="status"
       >
         正在读取视频信息…
       </div>
       <div
         v-else-if="!location"
-        class="py-[16px] text-center"
+        class="py-4 text-center"
       >
         <TvMinimalIcon
-          class="shrink-0 mx-auto mb-[12px] block size-[32px] text-primary"
+          class="shrink-0 mx-auto mb-3 block size-8 text-primary"
           aria-hidden="true"
         />
         <p class="text-[15px] font-medium">去看看喜欢的视频</p>
-        <p class="mt-[6px] text-[12px] text-muted-foreground">
+        <p class="mt-1.5 text-[12px] text-muted-foreground">
           打开 B 站视频页面，即可下载视频、音频、封面、字幕和弹幕。
         </p>
         <a
-          class="mt-[18px] bili-primary-button inline-flex"
+          class="mt-4.5 bili-primary-button inline-flex"
           href="https://www.bilibili.com"
           target="_blank"
           rel="noreferrer"
-          >打开哔哩哔哩</a
         >
+          打开哔哩哔哩
+        </a>
       </div>
       <div
         v-else-if="video && currentPage"
         :class="
-          embedded
-          && isMultipart
-          && hasPageAssets
+          isSplitLayout
           && '@min-[600px]:grid @min-[600px]:grid-cols-2 @min-[600px]:gap-x-6'
         "
       >
-        <div class="flex items-center gap-[12px]">
-          <div
-            class="h-[60px] w-[96px] shrink-0 overflow-hidden rounded-[8px] bg-accent"
-          >
+        <div class="flex items-center gap-3">
+          <div class="h-15 w-24 shrink-0 overflow-hidden rounded-lg bg-accent">
             <img
               v-if="video.cover"
               :src="video.cover"
@@ -212,18 +225,18 @@ const downloadLabel = computed(() => {
             />
             <FilmIcon
               v-else
-              class="shrink-0 mx-auto mt-[18px] block size-[24px] text-primary"
+              class="shrink-0 mx-auto mt-4.5 block size-6 text-primary"
               aria-hidden="true"
             />
           </div>
           <div class="min-w-0">
             <h2
               :title="video.title"
-              class="line-clamp-2 text-[14px] font-semibold leading-[21px]"
+              class="line-clamp-2 text-[14px] font-semibold leading-5.25"
             >
               {{ video.title }}
             </h2>
-            <p class="mt-[5px] truncate text-[12px] text-muted-foreground">
+            <p class="mt-1.25 truncate text-[12px] text-muted-foreground">
               {{ video.owner }} · {{ video.pages.length }} 个分 P
             </p>
           </div>
@@ -256,9 +269,7 @@ const downloadLabel = computed(() => {
         </div>
         <div
           :class="
-            embedded
-            && isMultipart
-            && hasPageAssets
+            isSplitLayout
             && '@min-[600px]:col-start-2 @min-[600px]:row-start-1 @min-[600px]:row-span-2'
           "
         >
@@ -271,7 +282,7 @@ const downloadLabel = computed(() => {
           />
           <p
             v-if="settings.isPaused"
-            class="mt-[10px] text-[12px] text-primary"
+            class="mt-2.5 text-[12px] text-primary"
             role="status"
           >
             队列已暂停，加入的任务将等待恢复。请前往下载中心恢复队列。
@@ -280,7 +291,7 @@ const downloadLabel = computed(() => {
       </div>
       <div
         v-if="downloadError || queueError || settingsError"
-        class="mt-[12px] rounded-[8px] bg-accent p-[12px] text-[12px] text-destructive leading-[20px]"
+        class="mt-3 rounded-lg bg-accent p-3 text-[12px] text-destructive leading-5"
         role="alert"
       >
         {{ downloadError || queueError || settingsError }}
@@ -290,14 +301,14 @@ const downloadLabel = computed(() => {
           variant="ghost"
           size="sm"
           type="button"
-          class="ml-[8px] text-muted-foreground hover:text-primary underline"
+          class="ml-2 text-muted-foreground hover:text-primary underline"
         >
           重新读取
         </Button>
       </div>
       <p
         v-if="notice"
-        class="mt-[12px] text-[12px] text-primary leading-[20px]"
+        class="mt-3 text-[12px] text-primary leading-5"
         role="status"
       >
         {{ notice }}
@@ -309,15 +320,15 @@ const downloadLabel = computed(() => {
         @resume="resume"
         v-if="isBundleEnabled && latestBundle"
         :bundle="latestBundle"
-        class="mt-[16px]"
+        class="mt-4"
       />
       <div
         v-if="!isBundleEnabled && latestJob"
-        class="mt-[16px] border-t border-border pt-[14px]"
+        class="mt-4 border-t border-border pt-3.5"
       >
         <p
           v-if="mode !== 'current' && latestJob.kind !== 'cover'"
-          class="mb-[10px] truncate text-[12px] text-muted-foreground"
+          class="mb-2.5 truncate text-[12px] text-muted-foreground"
         >
           P{{ latestJob.page }} · {{ latestJob.part }}
         </p>
@@ -354,19 +365,12 @@ const downloadLabel = computed(() => {
         </div>
         <Button
           @click="download"
-          :disabled="
-            isAdding
-            || isAlreadyQueued
-            || (isBundleEnabled && !bundleKinds.length)
-            || !targetPages.length
-            || !isReady
-            || isSaving
-          "
+          :disabled="isDownloadDisabled"
           type="button"
           class="my-2 h-10 w-full"
         >
           <DownloadIcon
-            class="shrink-0 size-[16px]"
+            class="shrink-0 size-4"
             aria-hidden="true"
           />{{ downloadLabel }}
         </Button>
