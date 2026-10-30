@@ -35,7 +35,7 @@ features:
 
 | 任务                         | 文档                                                 |
 | ---------------------------- | ---------------------------------------------------- |
-| 第一次安装插件               | [环境要求、构建与加载](guide/getting-started.md)     |
+| 第一次安装插件               | [环境要求、商店与源码安装](guide/getting-started.md) |
 | 下载一个视频或自选分 P       | [画质选择与任务控制](guide/downloads.md)             |
 | 批量保存收藏夹或 UP 主投稿   | [来源格式、预览与会话恢复](guide/batch-downloads.md) |
 | 调整保存目录或查找旧下载     | [文件名模板与长期记录](guide/files-and-history.md)   |
@@ -44,12 +44,9 @@ features:
 
 ## 安装
 
-从源码构建后，在 Chrome / Edge 中加载 `dist/chrome-mv3/`。完整步骤和 Firefox 说明见[安装与首次下载](guide/getting-started.md)。
+[从 Chrome 应用商店安装](https://chromewebstore.google.com/detail/bilibili-downloader/jinmimeepeceajjjgmgaggabikcabkmf)，然后刷新已打开的 B 站页面。
 
-```sh
-pnpm install
-pnpm build
-```
+源码构建、Firefox 临时安装与分发打包见[安装与首次下载](guide/getting-started.md)。
 
 ## 快速开始
 

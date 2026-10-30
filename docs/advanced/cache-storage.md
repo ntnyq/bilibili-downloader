@@ -1,6 +1,6 @@
 # Cache and large downloads
 
-Browser downloads keep resumable media on disk and reserve space for remuxing. The local helper is optional when browser quota is insufficient.
+Browser downloads keep resumable media on disk and reserve space for remuxing. Large tasks also run directly in the browser without Python or installed FFmpeg, with capacity checked dynamically against available disk quota.
 
 ::: tip Recover before clearing
 Retry the original task first. Clear cache only after pausing the queue and waiting for active downloading or remuxing to stop. Cleanup removes data that could otherwise be reused.
@@ -26,9 +26,9 @@ When a server limits each Range response, downloads continue as long as validate
 
 The budget reserves missing input + approximately 105% of remuxed output + a 64 MiB safety margin. For a fresh task, the indicative input capacity is roughly half the available browser quota; already cached data is not reserved twice. Browser estimates are not actual system free space and may change, so checks repeat during downloading. Insufficient space retains valid input cache for a later retry after freeing space.
 
-## Export to the local helper
+## Advanced: local helper
 
-The local helper is optional. Export a `.bili.json` from a failed, cancelled, or completed video/audio task, then run it with Python 3 and installed FFmpeg:
+Use the optional helper when you need storage outside browser quota or native FFmpeg. Setup and usage are in the collapsed advanced options under **下载缓存** (Download cache). In a failed, cancelled, or completed video/audio task, open **查看详情** (View details) → **高级选项：本地助手** (Advanced: local helper) → **导出本地任务** (Export local task), then run the `.bili.json` with Python 3 and installed FFmpeg:
 
 ```sh
 python3 scripts/native-downloader.py /path/to/task.bili.json --output-dir ./downloads
@@ -36,6 +36,6 @@ python3 scripts/native-downloader.py /path/to/task.bili.json --output-dir ./down
 
 The helper streams to disk, validates resume checkpoints, and remuxes without re-encoding outside browser quota limits. Task files contain temporary CDN URLs: keep them private and re-export after expiration. The standalone helper does not read cookies, run a local network service, or synchronize completion to the browser queue. See the [local helper guide](native-helper.md) for setup, resume, cleanup, and platform limits.
 
-For automatic handoff, register the host using the [native integration guide](native-bridge.md), then hand off a paused or terminal video/audio task. First use requests optional `nativeMessaging` permission. The download center displays native progress and the final path, updating the queue and long-term history on success. Expired URLs are resolved by the browser using the original settings and current account permissions. Keep the download center open for native downloads too; after closure, hand off again to validate and resume local cache. Browser OPFS and native caches are separate and are not transferred between them.
+For automatic handoff, register the host using the [native integration guide](native-bridge.md), then expand the advanced options in a paused or terminal video/audio task's details and choose **交给本地助手** (Hand to local helper). First use requests optional `nativeMessaging` permission. The download center displays native progress and the final path, updating the queue and long-term history on success. Expired URLs are resolved by the browser using the original settings and current account permissions. Keep the download center open for native downloads too; after closure, hand off again to validate and resume local cache. Browser OPFS and native caches are separate and are not transferred between them.
 
 [Having trouble? See troubleshooting](../help/troubleshooting.md).

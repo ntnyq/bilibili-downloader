@@ -66,6 +66,8 @@ pnpm build
 pnpm build:firefox
 ```
 
+TypeScript 测试使用 `node:test`、`node:assert/strict` 和 `tsx`；本地助手测试使用 Python `unittest`。区分固定样本检查、真实下载与 Firefox 运行验证。
+
 加载生成的扩展并检查所有受影响的浏览器上下文。WebExtension API 或清单行为变更还需验证 Firefox。可见界面变更在 PR 中提供截图或录屏，并说明新增权限或配置要求。
 
 ## 文档站点

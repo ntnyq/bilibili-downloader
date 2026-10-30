@@ -1,8 +1,10 @@
 # 本地 FFmpeg 下载助手
 
-日期：2026-10-05。
+更新日期：2026-10-30。
 
-浏览器内的 DASH、progressive FLV / MP4 和 AAC 磁盘封装均按浏览器剩余配额动态检查输入与输出所需空间。超过上限或希望在浏览器外处理时，在下载中心为视频 / 音频任务导出 `.bili.json`，再用本仓库的 Python 助手下载与无损封装。助手直接流式写入磁盘，不把整个视频读入内存。
+普通浏览器下载无需安装 Python 或 FFmpeg。DASH、progressive FLV / MP4 和 AAC 均支持浏览器磁盘封装，按剩余配额动态检查输入与输出空间，已移除旧的 512 MiB / 16 GiB 固定输入上限。
+
+本地助手是高级可选功能，适合需要在浏览器配额之外保存文件、选择其他磁盘缓存目录或使用本机 FFmpeg 的场景。在下载中心音视频任务中打开「查看详情」→「高级选项：本地助手」→「导出本地任务」，再用本仓库的 Python 助手下载与无损封装。助手直接流式写入磁盘，不把整个视频读入内存；安装与使用说明也可在「下载缓存」中的高级选项查看。
 
 本文记录手动命令行流程：导出时重新获取当前账号实际可用的素材链接；独立运行时完成结果不会回写扩展队列。导出任务本身不会把原任务标记为已保存，也无需 `nativeMessaging` 权限。需要一键交接、进度回传和地址刷新时，使用 [原生助手集成](native-bridge.md)。两种方式共用下载内核，均不读取浏览器 Cookie、不提供本地 HTTP 服务。
 
@@ -64,12 +66,12 @@ FFmpeg 禁止网络输入协议，并限制媒体解复用器为 MP4/MOV、FLV �
 python3 -m unittest discover -s tests/native -p '*_test.py'
 ```
 
-本轮在 macOS 运行通过 25 项测试，覆盖非法任务和重定向、条件 Range、忽略 Range 的 `200`、错位或变化的 `206`、`416`、弱 / 缺失 ETag、CDN 切换、完整缓存重验证、缓存损坏、检查点恢复、压缩或过长响应、符号链接拒绝、同名输出保护、中断保存的原子发布和保存后的缓存清理失败。
+初版助手在 macOS 运行通过 25 项测试，覆盖非法任务和重定向、条件 Range、忽略 Range 的 `200`、错位或变化的 `206`、`416`、弱 / 缺失 ETag、CDN 切换、完整缓存重验证、缓存损坏、检查点恢复、压缩或过长响应、符号链接拒绝、同名输出保护、中断保存的原子发布和保存后的缓存清理失败。
 
 两项集成测试使用本地 FFmpeg 生成短 H.264 / AAC 素材，以模拟 HTTPS 响应进入真实助手，再通过真实 FFmpeg 完成 DASH / M4A / 两段 progressive 封装；`ffprobe` 确认输出轨道，并验证缓存清理失败不影响保存结果。没有 FFmpeg 或 ffprobe 时集成测试会明确跳过。测试不访问真实 CDN，不证明账号授权、真实 CDN 续传或超大文件耗时；Windows 命令与路径规则已覆盖设计，尚未在 Windows 主机实测。
 
 ## 浏览器方案与原生集成
 
-本地助手是超过浏览器内存边界的出口。OPFS 和 WORKERFS 可减少浏览器输入缓冲，但 [WORKERFS 仅提供 File / Blob 的只读访问](https://emscripten.org/docs/api_reference/Filesystem-API.html#workerfs)，当前 FFmpeg 封装输出仍需要内存；不能据此宣称已消除 WASM 限制。[ffmpeg.wasm FAQ](https://ffmpegwasm.netlify.app/docs/faq/)也记录了其大文件限制。
+当前浏览器下载的输入和封装输出都保存在磁盘：DASH / AAC 在 Worker 中按需读取并写出，旧格式 progressive 通过 WORKERFS 只读挂载输入、通过同步文件接口将 FFmpeg 输出直接写入 OPFS。无需再为完整输出分配 WASM / JavaScript 内存，大文件不必因为旧的固定大小限制而转交本地助手。磁盘配额、媒体索引和 FFmpeg 工作内存仍有各自边界；详见[缓存与大型下载](cache-storage.md)和[实现说明](../development/implementation.md#mp4-合并与资源释放)。
 
 Native Messaging 集成现已提供，使用可选权限、独立注册脚本、Chrome 扩展 origin 白名单和 Firefox 扩展 ID 白名单；浏览器不会替扩展安装原生宿主。本仓库开发过程不自动注册宿主或修改用户系统注册信息，安装命令和平台边界见 [集成说明](native-bridge.md)。参考 [Chrome Native Messaging](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging)与 [Firefox Native Messaging](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging)。

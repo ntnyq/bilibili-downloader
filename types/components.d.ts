@@ -54,6 +54,7 @@ declare module 'vue' {
     DownloadLibraryList: typeof import('./../components/download/library/DownloadLibraryList.vue')['default']
     DownloadNativeBridge: typeof import('./../components/download/local/DownloadNativeBridge.vue')['default']
     DownloadNativeExport: typeof import('./../components/download/local/DownloadNativeExport.vue')['default']
+    DownloadNativeHelp: typeof import('./../components/download/local/DownloadNativeHelp.vue')['default']
     DownloadNotificationSettings: typeof import('./../components/download/settings/DownloadNotificationSettings.vue')['default']
     DownloadPanel: typeof import('./../components/download/DownloadPanel.vue')['default']
     DownloadPartPicker: typeof import('./../components/download/pickers/DownloadPartPicker.vue')['default']

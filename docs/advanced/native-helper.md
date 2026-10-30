@@ -1,8 +1,10 @@
 # Local FFmpeg download helper
 
-Date: 2026-10-05.
+Updated: 2026-10-30.
 
-Browser remuxing for DASH, progressive FLV / MP4, and AAC checks input and output space against available browser quota. When a task exceeds that capacity or you prefer processing outside the browser, export a `.bili.json` for a video/audio task and use this repository's Python helper to download and remux without re-encoding. It streams directly to disk without holding the entire video in memory.
+Normal browser downloads require no Python or installed FFmpeg. DASH, progressive FLV / MP4, and AAC support disk-backed browser remuxing with dynamic quota checks for input and output space. The former 512 MiB / 16 GiB fixed input caps are removed.
+
+The helper is an advanced optional feature for saving outside browser quota, choosing a cache directory on another disk, or using native FFmpeg. In a video/audio task, open **查看详情** (View details) → **高级选项：本地助手** (Advanced: local helper) → **导出本地任务** (Export local task), then run this repository's Python helper. It streams directly to disk and remuxes without re-encoding or holding the entire video in memory. Setup and usage are also under the advanced options in **下载缓存** (Download cache).
 
 This guide describes the manual CLI flow. Export resolves media currently available to your account; standalone completion does not update the extension queue. Exporting does not mark the original task as saved and needs no `nativeMessaging` permission. For one-click handoff, progress, and URL refresh, use [native integration](native-bridge.md). Both modes share the download engine, read no browser cookies, and run no local HTTP service.
 
@@ -70,6 +72,6 @@ Two integration tests generate short H.264 / AAC media with local FFmpeg, feed s
 
 ## Browser processing and native integration
 
-The helper provides an option outside browser memory limits. OPFS and WORKERFS reduce input buffering; [WORKERFS provides read-only File / Blob access](https://emscripten.org/docs/api_reference/Filesystem-API.html#workerfs). At the original helper milestone, browser FFmpeg output still used memory; the [FFmpeg.wasm FAQ](https://ffmpegwasm.netlify.app/docs/faq/) describes WASM limits. Current browser disk-output behavior is documented in the [architecture](../development/implementation.md#mp4-remuxing-and-resource-cleanup).
+Current browser downloads keep both input and remuxed output on disk: DASH / AAC reads and writes on demand in a Worker, while legacy progressive media uses read-only WORKERFS inputs and synchronous FFmpeg writes directly to OPFS. Complete output no longer needs a WASM / JavaScript allocation, so large files do not require the helper because of the former fixed size caps. Disk quota, media indexes, and FFmpeg working memory remain separate constraints. See [cache and large downloads](cache-storage.md) and the [architecture](../development/implementation.md#mp4-remuxing-and-resource-cleanup).
 
 Native Messaging integration is available with optional permission, a separate registration script, and exact Chrome-origin / Firefox-ID allowlists. Browsers do not install native hosts for extensions. Development does not automatically register a host or change system registration. See [native integration](native-bridge.md) for commands and platform limits, and the [Chrome](https://developer.chrome.com/docs/extensions/develop/concepts/native-messaging) and [Firefox](https://developer.mozilla.org/en-US/docs/Mozilla/Add-ons/WebExtensions/Native_messaging) Native Messaging documentation.

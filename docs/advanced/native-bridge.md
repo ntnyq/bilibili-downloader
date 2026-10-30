@@ -1,6 +1,6 @@
 # Native helper integration
 
-The download center can launch Python / FFmpeg through Native Messaging and display media transfer, remuxing, and saved results. Completed tasks enter download history; files go to the directory chosen during installation. The browser does not need to hold the whole video in WASM memory.
+The download center can launch Python / FFmpeg through Native Messaging and display media transfer, remuxing, and saved results. Completed tasks enter download history; files go to the directory chosen during installation. This is an advanced optional feature; normal downloads and disk-backed remuxing of large files already run directly in the browser.
 
 ## Installation
 
@@ -33,7 +33,7 @@ On macOS / Linux, the manifest goes into the selected browser's per-user directo
 ## Usage and recovery
 
 1. Pause a video/audio task, or choose a failed, cancelled, or completed task.
-2. Hand it to the local helper and grant the optional native communication permission when prompted.
+2. Open **查看详情** (View details) → **高级选项：本地助手** (Advanced: local helper), choose **交给本地助手** (Hand to local helper), and grant the optional native communication permission when prompted. Setup and usage are also under the advanced options in **下载缓存** (Download cache).
 3. Keep the download center open. Filtering does not interrupt the task; closing the page stops it.
 4. Inspect downloaded bytes, remuxing state, and the final path. Completed tasks also appear in history.
 

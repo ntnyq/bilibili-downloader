@@ -44,12 +44,9 @@ features:
 
 ## Install
 
-Build from source, then load `dist/chrome-mv3/` in Chrome / Edge. See [installation and first download](guide/getting-started.md) for full steps and Firefox instructions.
+[Install from the Chrome Web Store](https://chromewebstore.google.com/detail/bilibili-downloader/jinmimeepeceajjjgmgaggabikcabkmf), then refresh any open Bilibili pages.
 
-```sh
-pnpm install
-pnpm build
-```
+For source builds, Firefox temporary installation, and distribution archives, see [installation and first download](guide/getting-started.md).
 
 ## Quick start
 

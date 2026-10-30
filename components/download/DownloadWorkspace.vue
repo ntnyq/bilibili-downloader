@@ -45,8 +45,8 @@ const sections = [
   },
   {
     id: 'local',
-    label: '缓存与本地助手',
-    description: '管理浏览器磁盘缓存，或按需连接本地助手。',
+    label: '下载缓存',
+    description: '查看浏览器磁盘用量，管理可续传的下载缓存。',
     icon: HardDriveIcon,
   },
 ] as const
@@ -155,25 +155,10 @@ const currentSection = computed(
         <section
           v-show="activeSection === 'local'"
           class="space-y-5"
-          aria-label="缓存与本地助手"
+          aria-label="下载缓存"
         >
           <DownloadCache />
-          <Card class="gap-0 rounded-lg p-5 text-sm shadow-none">
-            <h2 class="font-semibold">连接本地助手</h2>
-            <p class="mt-2 text-xs leading-6 text-muted-foreground">
-              安装本地助手后，在下载队列的音视频任务中点击「交给本地助手」。可处理已暂停、失败、取消或完成的任务，下载中心会显示本地处理状态。
-            </p>
-            <Button
-              as="a"
-              href="https://github.com/ntnyq/bilibili-downloader/blob/main/docs/advanced/native-bridge.md"
-              target="_blank"
-              rel="noreferrer"
-              variant="outline"
-              class="mt-4 self-start"
-              size="sm"
-              >查看安装说明</Button
-            >
-          </Card>
+          <DownloadNativeHelp />
         </section>
         <footer
           v-if="activeSection !== 'batch' && activeSection !== 'library'"
@@ -185,7 +170,7 @@ const currentSection = computed(
             variant="ghost"
             size="sm"
             class="text-primary"
-            >缓存与可选本地助手</Button
+            >管理下载缓存</Button
           >
         </footer>
       </div>

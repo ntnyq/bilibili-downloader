@@ -23,7 +23,7 @@ Reopen the download center and retry the original task. Keep the center open, in
 
 ## Disk space or browser quota is insufficient
 
-Pause the queue and wait for active downloading or remuxing to stop before using cache cleanup. Free disk space and retry. Remuxing requires both input and output space, and saving also creates the final download copy. Browser quota estimates differ from system free space. Consider the [local helper](../advanced/native-helper.md) for larger tasks; browser and helper caches are separate.
+Pause the queue and wait for active downloading or remuxing to stop before clearing cache under **下载缓存** (Download cache). Free disk space and retry. Remuxing requires both input and output space, and saving also creates the final download copy. Browser quota estimates differ from system free space. There is no fixed browser input size cap; if you still need storage outside browser quota, the [local helper](../advanced/native-helper.md) is available under advanced options. Browser and helper caches are separate and are not transferred during handoff.
 
 ## A saved file does not play in an older editor
 

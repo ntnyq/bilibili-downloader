@@ -47,7 +47,15 @@ const emit = defineEmits<{
 }>()
 const detailsId = useId()
 const isDetailsOpen = shallowRef(false)
+const isNativeOptionsOpen = shallowRef(false)
 const isActive = computed(() => isJobActive(props.job))
+const canUseNative = computed(
+  () =>
+    (props.job.kind === 'video' || props.job.kind === 'audio')
+    && ['paused', 'failed', 'cancelled', 'completed', 'native'].includes(
+      props.job.status,
+    ),
+)
 const canRetry = computed(() =>
   ['failed', 'cancelled'].includes(props.job.status),
 )
@@ -316,8 +324,39 @@ const statusClass = computed(() => {
             <dd class="break-all">{{ job.filename }}</dd></template
           >
         </dl>
-        <DownloadNativeExport :job />
-        <DownloadNativeBridge :job />
+        <Collapsible
+          v-model:open="isNativeOptionsOpen"
+          v-show="canUseNative"
+          class="mt-3 border-t pt-2"
+        >
+          <CollapsibleTrigger as-child>
+            <Button
+              variant="ghost"
+              size="sm"
+              type="button"
+              class="text-xs text-muted-foreground"
+            >
+              高级选项：本地助手
+              <ChevronDownIcon
+                :class="isNativeOptionsOpen && 'rotate-180'"
+                class="size-3"
+                aria-hidden="true"
+              />
+            </Button>
+          </CollapsibleTrigger>
+          <!-- Collapsing options must not disconnect an active native task. -->
+          <CollapsibleContent
+            v-show="isNativeOptionsOpen"
+            force-mount
+          >
+            <p class="mt-2 leading-5">
+              需要另行安装 Python、FFmpeg
+              和可选的通信宿主。安装与使用说明见「下载缓存」中的高级选项。
+            </p>
+            <DownloadNativeExport :job />
+            <DownloadNativeBridge :job />
+          </CollapsibleContent>
+        </Collapsible>
       </div>
     </div>
   </li>

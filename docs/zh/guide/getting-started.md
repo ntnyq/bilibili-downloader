@@ -1,21 +1,27 @@
 # 快速开始
 
-构建扩展、加载到浏览器，然后下载第一个视频。
+安装扩展，然后下载第一个视频。
 
 ## 环境要求
 
-| 项目     | 支持范围                                               |
-| -------- | ------------------------------------------------------ |
-| 浏览器   | Chrome 120+ 或兼容版本的 Edge；提供 Firefox 142+ 构建  |
-| 构建工具 | Node.js LTS、Git，以及 `package.json` 固定的 pnpm 版本 |
-| 内容     | 当前账号可访问的 B 站普通视频                          |
-| 本地助手 | 可选，需另行安装 Python 3.10+ 和 FFmpeg                |
+| 项目     | 支持范围                                                               |
+| -------- | ---------------------------------------------------------------------- |
+| 浏览器   | Chrome 120+ 或兼容版本的 Edge；提供 Firefox 142+ 构建                  |
+| 构建工具 | 仅源码构建需要：Node.js LTS、Git，以及 `package.json` 固定的 pnpm 版本 |
+| 内容     | 当前账号可访问的 B 站普通视频                                          |
+| 本地助手 | 可选，需另行安装 Python 3.10+ 和 FFmpeg                                |
 
 ::: info 浏览器验证范围
 Chromium 运行检查和 Firefox 构建结果见[验证记录](../development/verification.md)。Firefox 运行验收尚未完成。
 :::
 
 ## 安装
+
+### Chrome 应用商店
+
+[从 Chrome 应用商店安装 B 站下载器](https://chromewebstore.google.com/detail/bilibili-downloader/jinmimeepeceajjjgmgaggabikcabkmf)，适用于 Chrome 120+ 和兼容版本的 Edge 等 Chromium 浏览器。
+
+安装或更新后，刷新已经打开的 B 站页面。通过商店安装无需构建工具；以下步骤适用于源码安装。
 
 ### 从源码构建
 
@@ -26,7 +32,7 @@ pnpm install
 pnpm build
 ```
 
-### Chrome 与 Edge
+### 在 Chrome 与 Edge 中加载源码构建
 
 1. 打开 `chrome://extensions` 或 `edge://extensions`。
 2. 开启**开发者模式**，选择**加载已解压的扩展程序**。
@@ -40,6 +46,10 @@ pnpm build:firefox
 ```
 
 打开 `about:debugging#/runtime/this-firefox`，选择**临时载入附加组件**，加载 `dist/firefox-mv3/manifest.json`。临时安装在 Firefox 重启后失效。
+
+### 分发打包
+
+使用 `pnpm zip` 或 `pnpm zip:firefox` 在 `dist/` 中生成分发压缩包。
 
 ### 更新源码安装的扩展
 

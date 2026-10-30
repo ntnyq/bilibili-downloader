@@ -71,6 +71,8 @@ pnpm build
 pnpm build:firefox
 ```
 
+TypeScript tests use `node:test`, `node:assert/strict`, and `tsx`. Native helper tests use Python `unittest`. Distinguish fixture-based checks from real downloads and Firefox runtime verification.
+
 Load the generated extension and exercise each affected browser context.
 Changes to WebExtension APIs or manifest behavior also need Firefox testing.
 Include screenshots or recordings for visible UI changes and describe any new

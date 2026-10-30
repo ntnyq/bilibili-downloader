@@ -29,7 +29,7 @@ The developer does not sell user data or use it for advertising, profiling, cred
 
 ## Controls and deletion
 
-You can clear tasks/history in the download center and remove cache under the cache and native-helper section. Uninstall the extension to remove all extension settings and local data. Downloaded files, exported records/task JSON and files/cache created by a separately installed native helper must be removed separately. Uninstalling the extension does not delete those ordinary files or uninstall the helper.
+You can clear tasks/history in the download center and remove cache under **下载缓存** (Download cache). Uninstall the extension to remove all extension settings and local data. Downloaded files, exported records/task JSON and files/cache created by a separately installed native helper must be removed separately. Uninstalling the extension does not delete those ordinary files or uninstall the helper.
 
 ## Limited use and changes
 

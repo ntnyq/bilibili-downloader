@@ -1,21 +1,27 @@
 # Getting started
 
-Build the extension, load it in your browser, and save your first video.
+Install the extension and save your first video.
 
 ## Requirements
 
-| Requirement  | Supported configuration                                                |
-| ------------ | ---------------------------------------------------------------------- |
-| Browser      | Chrome 120+ or a compatible Edge version; Firefox 142+ build available |
-| Build tools  | Node.js LTS, Git, and the pnpm version pinned in `package.json`        |
-| Content      | Ordinary Bilibili videos accessible to your current account            |
-| Local helper | Optional; Python 3.10+ and FFmpeg, installed separately                |
+| Requirement  | Supported configuration                                                             |
+| ------------ | ----------------------------------------------------------------------------------- |
+| Browser      | Chrome 120+ or a compatible Edge version; Firefox 142+ build available              |
+| Build tools  | Source builds only: Node.js LTS, Git, and the pnpm version pinned in `package.json` |
+| Content      | Ordinary Bilibili videos accessible to your current account                         |
+| Local helper | Optional; Python 3.10+ and FFmpeg, installed separately                             |
 
 ::: info Browser verification
 Chromium runtime checks and Firefox builds are recorded in [verification](../development/verification.md). Firefox runtime acceptance is still incomplete.
 :::
 
 ## Install
+
+### Chrome Web Store
+
+[Install Bilibili Downloader from the Chrome Web Store](https://chromewebstore.google.com/detail/bilibili-downloader/jinmimeepeceajjjgmgaggabikcabkmf) for Chrome 120+ and compatible Chromium browsers such as Edge.
+
+Refresh any open Bilibili pages after installing or updating. Store installation does not require build tools; the steps below are for source builds.
 
 ### Build from source
 
@@ -26,7 +32,7 @@ pnpm install
 pnpm build
 ```
 
-### Chrome and Edge
+### Load a source build in Chrome or Edge
 
 1. Open `chrome://extensions` or `edge://extensions`.
 2. Enable **Developer mode** and select **Load unpacked**.
@@ -40,6 +46,10 @@ pnpm build:firefox
 ```
 
 Open `about:debugging#/runtime/this-firefox`, select **Load Temporary Add-on**, and choose `dist/firefox-mv3/manifest.json`. Temporary installation is removed when Firefox restarts.
+
+### Distribution archives
+
+Use `pnpm zip` or `pnpm zip:firefox` to create distributable archives in `dist/`.
 
 ### Update a source build
 

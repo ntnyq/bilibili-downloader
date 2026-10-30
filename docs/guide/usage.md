@@ -10,9 +10,9 @@ Choose current, all, or selected parts, set a quality cap, and manage progress i
 
 ## Cache and large downloads
 
-Video and audio use browser-private disk storage. Resume depends on valid cached data and server support; input and output both count toward available quota. The optional Python / FFmpeg helper runs outside browser quota limits.
+Video and audio download and remux in browser-private disk storage, without a fixed input size cap. Capacity follows available quota, including both input and output. Resume depends on valid cached data and server support. Inspect usage and clear cache under **下载缓存** (Download cache) in the download center.
 
-[Cache and large downloads](../advanced/cache-storage.md) · [Local helper](../advanced/native-helper.md) · [Native integration](../advanced/native-bridge.md)
+[Cache and large downloads](../advanced/cache-storage.md)
 
 ## Batch sources
 
@@ -31,6 +31,12 @@ Save MP4 video, M4A audio, original covers, SRT subtitles, or danmaku XML. Asset
 Set filename templates and subdirectories for new tasks. Search and export records, skip past successes, or requeue a previous download with its saved settings.
 
 [Files and download history](files-and-history.md)
+
+## Advanced: local helper
+
+Normal browser downloads require no Python or installed FFmpeg. For storage outside browser quota or native FFmpeg, expand the advanced options in **下载缓存** (Download cache) for setup. In a media task, open **查看详情** (View details) → **高级选项：本地助手** (Advanced: local helper) to export or hand off the task.
+
+[Command-line helper](../advanced/native-helper.md) · [Native integration](../advanced/native-bridge.md)
 
 ## Need help?
 
