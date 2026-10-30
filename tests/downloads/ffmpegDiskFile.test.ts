@@ -3,13 +3,13 @@ import { createHash } from 'node:crypto'
 import { readFile } from 'node:fs/promises'
 import { test } from 'node:test'
 import { BlobSource, EncodedPacketSink, Input, MP4 } from 'mediabunny'
-import { createFFmpegDiskFile } from '../../utils/downloads/ffmpegDiskFile'
+import { createFFmpegDiskFile } from '../../utils/downloads/media/ffmpegDiskFile'
 import {
   loadFFmpegCore,
   runProgressiveFFmpeg,
-} from '../../utils/downloads/progressiveMedia'
+} from '../../utils/downloads/media/progressiveMedia'
 import type { TestContext } from 'node:test'
-import type { DiskAccess } from '../../utils/downloads/ffmpegDiskFile'
+import type { DiskAccess } from '../../utils/downloads/media/ffmpegDiskFile'
 
 class SparseDisk implements DiskAccess {
   size = 0

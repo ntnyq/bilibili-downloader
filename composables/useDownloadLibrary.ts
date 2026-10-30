@@ -4,12 +4,12 @@ import {
   DOWNLOAD_LIBRARY_STORAGE_KEY,
   downloadLibrarySchema,
 } from '~/types/downloadHistory'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import {
-  clearDownloadLibrary,
+  createDownloadLibrary,
   filterLibraryRecords,
-} from '~/utils/downloads/library'
+} from '~/utils/downloads/history/library'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
-import { errorMessage } from '~/utils/downloads/model'
 import type { Browser } from '#imports'
 import type { DownloadKind } from '~/types/download'
 import type { requestSchema } from '~/utils/downloads/messages'
@@ -17,7 +17,7 @@ import type { requestSchema } from '~/utils/downloads/messages'
 const PAGE_SIZE = 20
 
 export function useDownloadLibrary() {
-  const library = shallowRef(clearDownloadLibrary())
+  const library = shallowRef(createDownloadLibrary())
   const error = shallowRef('')
   const notice = shallowRef('')
   const isReady = shallowRef(false)
@@ -80,7 +80,7 @@ export function useDownloadLibrary() {
       }
     } catch (error_) {
       if (!isDisposed && revision === currentRevision) {
-        error.value = errorMessage(error_)
+        error.value = getErrorMessage(error_)
       }
     } finally {
       isRefreshing.value = false
@@ -101,7 +101,7 @@ export function useDownloadLibrary() {
       }
     } catch (error_) {
       if (!isDisposed) {
-        error.value = errorMessage(error_)
+        error.value = getErrorMessage(error_)
       }
     } finally {
       isBusy.value = false

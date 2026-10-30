@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import { errorMessage } from '~/utils/downloads/model'
-import { startDownloadRunner } from '~/utils/downloads/runner'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
+import { startDownloadRunner } from '~/utils/downloads/queue/runner'
 
 const runnerError = shallowRef('')
 
@@ -8,7 +8,7 @@ onMounted(() => {
   startDownloadRunner(message => {
     runnerError.value = message
   }).catch(error => {
-    runnerError.value = errorMessage(error)
+    runnerError.value = getErrorMessage(error)
   })
 })
 </script>

@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { provideOverlayTarget } from '~/composables/useOverlayTarget'
-import { parseVideoLocation } from '~/utils/downloads/model'
+import { parseVideoLocation } from '~/utils/downloads/parseVideoLocation'
 
 const props = defineProps<{
   getUrl: () => string

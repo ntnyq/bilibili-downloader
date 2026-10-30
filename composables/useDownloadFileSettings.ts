@@ -2,7 +2,7 @@ import {
   DEFAULT_FILENAME_TEMPLATE,
   filenameTemplateSchema,
 } from '~/types/download'
-import { createFilename } from '~/utils/downloads/filename'
+import { createDownloadPath } from '~/utils/downloads/files/createDownloadPath'
 import { useDownloadSettings } from './useDownloadSettings'
 
 export function useDownloadFileSettings() {
@@ -12,6 +12,7 @@ export function useDownloadFileSettings() {
   const folderMode = shallowRef(settings.value.folderMode)
   const notice = shallowRef('')
   const error = shallowRef('')
+
   watch(
     [() => settings.value.filenameTemplate, () => settings.value.folderMode],
     ([template, folder]) => {
@@ -26,7 +27,7 @@ export function useDownloadFileSettings() {
     if (!validation.value.success) {
       return ''
     }
-    return createFilename({
+    return createDownloadPath({
       bvid: 'BV1xx411c7mD',
       title: '周末去海边',
       owner: '示例 UP',

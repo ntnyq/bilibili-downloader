@@ -25,7 +25,7 @@ pnpm build
 <details>
 <summary>Firefox 安装与分发打包</summary>
 
-**Firefox 142+**：运行 `pnpm build:firefox`，打开 `about:debugging#/runtime/this-firefox`，将 `dist/firefox-mv3/manifest.json` 加载为临时扩展。临时安装在浏览器重启后失效。Firefox 运行验证尚未完成，详见[验证记录](docs/zh/verification.md)。
+**Firefox 142+**：运行 `pnpm build:firefox`，打开 `about:debugging#/runtime/this-firefox`，将 `dist/firefox-mv3/manifest.json` 加载为临时扩展。临时安装在浏览器重启后失效。Firefox 运行验证尚未完成，详见[验证记录](docs/zh/development/verification.md)。
 
 使用 `pnpm zip` 或 `pnpm zip:firefox` 在 `dist/` 中生成分发压缩包。修改源码后需要重新构建、重新加载扩展，并刷新 B 站页面。
 
@@ -65,20 +65,20 @@ pnpm build
 
 在**批量导入**中预览来源，再将所选条目加入队列。在线来源逐页读取，每份预览最多 500 条，活跃任务上限为 1000 个。最近一次会话在本地保存，重新打开后需要手动继续导入。
 
-大型下载可使用可选的 [Python / FFmpeg 助手](docs/zh/native-helper.md)：导出 `.bili.json` 任务，或配置[原生集成](docs/zh/native-bridge.md)，从扩展交接任务并显示进度。任务文件包含临时媒体地址，请勿分享。
+大型下载可使用可选的 [Python / FFmpeg 助手](docs/zh/advanced/native-helper.md)：导出 `.bili.json` 任务，或配置[原生集成](docs/zh/advanced/native-bridge.md)，从扩展交接任务并显示进度。任务文件包含临时媒体地址，请勿分享。
 
 </details>
 
 ## 📚 文档
 
-| 我想要……                   | 阅读                                       |
-| -------------------------- | ------------------------------------------ |
-| 安装并下载第一个视频       | [快速开始](docs/zh/getting-started.md)     |
-| 选择分 P、画质或控制任务   | [视频与任务](docs/zh/downloads.md)         |
-| 导入收藏夹或 UP 主投稿     | [批量下载](docs/zh/batch-downloads.md)     |
-| 保存音频、封面、字幕和弹幕 | [配套素材](docs/zh/assets.md)              |
-| 配置文件名、查找下载记录   | [文件与记录](docs/zh/files-and-history.md) |
-| 恢复失败的下载             | [故障排查](docs/zh/troubleshooting.md)     |
+| 我想要……                   | 阅读                                             |
+| -------------------------- | ------------------------------------------------ |
+| 安装并下载第一个视频       | [快速开始](docs/zh/guide/getting-started.md)     |
+| 选择分 P、画质或控制任务   | [视频与任务](docs/zh/guide/downloads.md)         |
+| 导入收藏夹或 UP 主投稿     | [批量下载](docs/zh/guide/batch-downloads.md)     |
+| 保存音频、封面、字幕和弹幕 | [配套素材](docs/zh/guide/assets.md)              |
+| 配置文件名、查找下载记录   | [文件与记录](docs/zh/guide/files-and-history.md) |
+| 恢复失败的下载             | [故障排查](docs/zh/help/troubleshooting.md)      |
 
 ## 🔒 隐私与权限
 
@@ -86,7 +86,7 @@ pnpm build
 
 API 请求由浏览器附带已有的 B 站会话，扩展不读取或导出原始 Cookie。通知与本地助手通信仅在启用时申请可选权限。
 
-数据存储、网络请求和删除方式见[权限说明](docs/zh/permissions.md)与[隐私政策](docs/zh/privacy-policy.md)。
+数据存储、网络请求和删除方式见[权限说明](docs/zh/help/permissions.md)与[隐私政策](docs/zh/help/privacy-policy.md)。
 
 ## 💡 故障排查
 
@@ -94,7 +94,7 @@ API 请求由浏览器附带已有的 B 站会话，扩展不读取或导出原�
 
 **下载中断或空间不足？** 保持下载中心打开，重试原任务以校验已有缓存。清理缓存前先暂停队列并等待当前任务停止，或改用本地助手。
 
-**缺少画质或字幕？** 检查当前 B 站会话是否有相应访问权限。恢复步骤和支持范围见[故障排查](docs/zh/troubleshooting.md)。
+**缺少画质或字幕？** 检查当前 B 站会话是否有相应访问权限。恢复步骤和支持范围见[故障排查](docs/zh/help/troubleshooting.md)。
 
 ## 🛠️ 开发
 
@@ -121,7 +121,7 @@ pnpm build:firefox
 
 TypeScript 测试使用 `node:test`、`node:assert/strict` 和 `tsx`，本地助手测试使用 Python `unittest`。手动检查受影响的浏览器上下文，并区分固定样本测试、真实下载和 Firefox 运行验证。
 
-[开发指南](docs/zh/development.md)包含项目结构、文档命令、架构说明和验证记录。
+[开发指南](docs/zh/development/index.md)包含项目结构、文档命令、架构说明和验证记录。
 
 </details>
 

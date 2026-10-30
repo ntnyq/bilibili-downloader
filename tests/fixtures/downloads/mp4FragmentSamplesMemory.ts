@@ -7,7 +7,7 @@ import {
   Output,
   StreamTarget,
 } from 'mediabunny'
-import { createDiskFragmentSamples } from '../../../utils/downloads/fragmentSamples'
+import { createDiskFragmentSamples } from '../../../utils/downloads/media/fragments/fragmentSamples'
 import { temporaryFragmentIndex } from './fragmentIndex'
 import { videoPackets } from './mp4FragmentMedia'
 import { timestamp } from './mp4FragmentSamples'

@@ -1,7 +1,7 @@
 import { mkdtemp, open, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createDiskFragmentSamples } from '../../../utils/downloads/fragmentSamples'
+import { createDiskFragmentSamples } from '../../../utils/downloads/media/fragments/fragmentSamples'
 import type { TestContext } from 'node:test'
 
 /**

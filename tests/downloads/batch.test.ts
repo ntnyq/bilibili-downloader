@@ -4,8 +4,9 @@ import { DEFAULT_FILENAME_TEMPLATE } from '../../types/download'
 import {
   BatchQueueFullError,
   createBatchJobs,
-} from '../../utils/downloads/batch'
-import { createJobs, MAX_PENDING_JOBS } from '../../utils/downloads/model'
+} from '../../utils/downloads/batch/jobs'
+import { MAX_PENDING_JOBS } from '../../utils/downloads/constants'
+import { createDownloadJobs } from '../../utils/downloads/queue/jobs'
 import type { DownloadJob, VideoInfo } from '../../types/download'
 
 const video: VideoInfo = {
@@ -32,7 +33,7 @@ const options = {
 } satisfies Parameters<typeof createBatchJobs>[3]
 
 function createHistory(status: DownloadJob['status']): DownloadJob[] {
-  return createJobs(video, 1, 'all', []).map(job => ({
+  return createDownloadJobs(video, 1, 'all', []).map(job => ({
     ...job,
     status,
   }))
@@ -123,7 +124,7 @@ test('identity distinguishes media and subtitle language but ignores video quali
     }).jobs.length,
     3,
   )
-  const subtitles = createJobs(video, 1, 'all', [], {
+  const subtitles = createDownloadJobs(video, 1, 'all', [], {
     kind: 'subtitle',
     subtitleLanguage: 'zh',
   })

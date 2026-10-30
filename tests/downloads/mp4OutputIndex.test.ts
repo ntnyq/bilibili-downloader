@@ -6,14 +6,14 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import * as mediabunny from 'mediabunny'
-import { remuxMedia } from '../../utils/downloads/remuxMedia'
+import { remuxMedia } from '../../utils/downloads/media/remuxMedia'
 import { testFragmentIndex } from '../fixtures/downloads/fragmentIndex'
 import { testFragmentSamples } from '../fixtures/downloads/fragmentSamples'
 import {
   audioPacket,
   fragmentIndex,
 } from '../fixtures/downloads/mp4OutputIndex'
-import type { FragmentIndexStore } from '../../utils/downloads/fragmentIndex'
+import type { FragmentIndexStore } from '../../utils/downloads/media/fragments/fragmentIndex'
 
 async function generate(
   fragments: number,

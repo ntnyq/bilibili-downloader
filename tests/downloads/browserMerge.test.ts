@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { mergeBrowserMedia } from '../../utils/downloads/browserMerge'
+import { mergeBrowserMedia } from '../../utils/downloads/media/mergeBrowserMedia'
 import type { TestContext } from 'node:test'
 import type {
   RemuxRequest,
   RemuxResponse,
-} from '../../utils/downloads/remux.worker'
+} from '../../utils/downloads/media/remux.worker'
 
 function installBrowser(
   context: TestContext,

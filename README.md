@@ -30,7 +30,7 @@ For **Firefox 142+**, run `pnpm build:firefox`, open
 `about:debugging#/runtime/this-firefox`, and load
 `dist/firefox-mv3/manifest.json` as a temporary add-on. Temporary installation
 is removed when Firefox restarts. Runtime verification is still pending;
-see the [verification records](docs/verification.md).
+see the [verification records](docs/development/verification.md).
 
 Use `pnpm zip` or `pnpm zip:firefox` to create distributable archives in `dist/`.
 After changing the source, rebuild, reload the extension, and refresh Bilibili.
@@ -74,8 +74,8 @@ In **Batch import**, preview a source and queue selected items. Online sources
 load one page at a time, with up to 500 items per preview and 1,000 active tasks.
 The latest session is restored locally; continue importing manually after reopening.
 
-For large downloads, use the optional [Python / FFmpeg helper](docs/native-helper.md).
-Export a `.bili.json` task, or configure [native integration](docs/native-bridge.md)
+For large downloads, use the optional [Python / FFmpeg helper](docs/advanced/native-helper.md).
+Export a `.bili.json` task, or configure [native integration](docs/advanced/native-bridge.md)
 to hand off tasks and display progress in the extension. Task files contain
 temporary media URLs; keep them private.
 
@@ -83,14 +83,14 @@ temporary media URLs; keep them private.
 
 ## 📚 Documentation
 
-| I want to…                                 | Read                                           |
-| ------------------------------------------ | ---------------------------------------------- |
-| Install and save my first video            | [Getting started](docs/getting-started.md)     |
-| Choose parts, quality, or task controls    | [Video and tasks](docs/downloads.md)           |
-| Import favorites or creator uploads        | [Batch downloads](docs/batch-downloads.md)     |
-| Save audio, covers, subtitles, or danmaku  | [Companion assets](docs/assets.md)             |
-| Configure filenames or find past downloads | [Files and history](docs/files-and-history.md) |
-| Recover a failed download                  | [Troubleshooting](docs/troubleshooting.md)     |
+| I want to…                                 | Read                                                 |
+| ------------------------------------------ | ---------------------------------------------------- |
+| Install and save my first video            | [Getting started](docs/guide/getting-started.md)     |
+| Choose parts, quality, or task controls    | [Video and tasks](docs/guide/downloads.md)           |
+| Import favorites or creator uploads        | [Batch downloads](docs/guide/batch-downloads.md)     |
+| Save audio, covers, subtitles, or danmaku  | [Companion assets](docs/guide/assets.md)             |
+| Configure filenames or find past downloads | [Files and history](docs/guide/files-and-history.md) |
+| Recover a failed download                  | [Troubleshooting](docs/help/troubleshooting.md)      |
 
 ## 🔒 Privacy and Permissions
 
@@ -102,7 +102,7 @@ The browser attaches your existing Bilibili session to API requests. The
 extension does not read or export raw cookies. Notifications and native-helper
 communication request optional permissions only when enabled.
 
-Read [permissions](docs/permissions.md) and the [privacy policy](docs/privacy-policy.md)
+Read [permissions](docs/help/permissions.md) and the [privacy policy](docs/help/privacy-policy.md)
 for storage, network, and deletion details.
 
 ## 💡 Troubleshooting
@@ -115,7 +115,7 @@ the original task to validate retained cache. Pause the queue and wait for the
 current task to stop before clearing cache, or use the local helper.
 
 **Quality or subtitles missing?** Check that the content is available in your
-current Bilibili session. See [troubleshooting](docs/troubleshooting.md) for
+current Bilibili session. See [troubleshooting](docs/help/troubleshooting.md) for
 recovery steps and supported-content limits.
 
 ## 🛠️ Development
@@ -145,7 +145,7 @@ TypeScript tests use `node:test`, `node:assert/strict`, and `tsx`. Native helper
 tests use Python `unittest`. Exercise affected browser contexts manually and
 distinguish fixture-based checks from real downloads and Firefox runtime checks.
 
-The [development guide](docs/development.md) covers project structure,
+The [development guide](docs/development/index.md) covers project structure,
 documentation commands, architecture, and verification records.
 
 </details>

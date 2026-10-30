@@ -8,11 +8,14 @@ import {
   filenameTemplateSchema,
 } from '../../types/download'
 import {
-  createFilename,
+  createDownloadPath,
   sanitizeFilename,
-} from '../../utils/downloads/filename'
-import { exportHistory } from '../../utils/downloads/history'
-import { createJobs, retryJobs } from '../../utils/downloads/model'
+} from '../../utils/downloads/files/createDownloadPath'
+import { serializeDownloadHistory } from '../../utils/downloads/history/serializeDownloadHistory'
+import {
+  createDownloadJobs,
+  retryDownloadJobs,
+} from '../../utils/downloads/queue/jobs'
 import type { DownloadKind, VideoInfo } from '../../types/download'
 
 const video: VideoInfo = {
@@ -29,26 +32,31 @@ const video: VideoInfo = {
 }
 
 test('each material gets an independent identity while covers deduplicate across parts', () => {
-  const videoJobs = createJobs(video, 1, 'all', [])
-  const audioJobs = createJobs(video, 1, 'all', videoJobs, { kind: 'audio' })
+  const videoJobs = createDownloadJobs(video, 1, 'all', [])
+  const audioJobs = createDownloadJobs(video, 1, 'all', videoJobs, {
+    kind: 'audio',
+  })
   assert.equal(audioJobs.length, 2)
   assert.equal(
-    createJobs(video, 1, 'all', [...videoJobs, ...audioJobs], { kind: 'audio' })
-      .length,
+    createDownloadJobs(video, 1, 'all', [...videoJobs, ...audioJobs], {
+      kind: 'audio',
+    }).length,
     0,
   )
-  const covers = createJobs(video, 2, 'all', videoJobs, { kind: 'cover' })
+  const covers = createDownloadJobs(video, 2, 'all', videoJobs, {
+    kind: 'cover',
+  })
   assert.equal(covers.length, 1)
   assert.equal(
-    createJobs(video, 2, 'current', covers, { kind: 'cover' }).length,
+    createDownloadJobs(video, 2, 'current', covers, { kind: 'cover' }).length,
     0,
   )
-  const subtitles = createJobs(video, 1, 'all', [], {
+  const subtitles = createDownloadJobs(video, 1, 'all', [], {
     kind: 'subtitle',
     subtitleLanguage: 'zh',
   })
   assert.equal(
-    createJobs(video, 1, 'all', subtitles, {
+    createDownloadJobs(video, 1, 'all', subtitles, {
       kind: 'subtitle',
       subtitleLanguage: 'en',
     }).length,
@@ -63,7 +71,9 @@ test('retry deduplicates by material, language and cover identity and retains su
   })
   const jobs = (
     ['video', 'audio', 'cover', 'subtitle', 'danmaku'] satisfies DownloadKind[]
-  ).flatMap(kind => createJobs(video, 1, 'current', [], { kind, settings }))
+  ).flatMap(kind =>
+    createDownloadJobs(video, 1, 'current', [], { kind, settings }),
+  )
   const cover = jobs.find(job => job.kind === 'cover')
   assert.ok(cover)
   const history = [
@@ -74,7 +84,7 @@ test('retry deduplicates by material, language and cover identity and retains su
     status: 'failed' as const,
     filename: 'old-path',
   }))
-  const retried = retryJobs(history)
+  const retried = retryDownloadJobs(history)
   assert.equal(retried.filter(job => job.status === 'queued').length, 5)
   assert.equal(retried.at(-1)?.status, 'failed')
   assert.ok(
@@ -90,7 +100,9 @@ test('retry deduplicates by material, language and cover identity and retains su
 })
 
 test('legacy persisted jobs acquire material and file defaults without resetting old preferences', () => {
-  const legacy = createJobs(video, 1, 'current', [], { quality: '720' })[0]
+  const legacy = createDownloadJobs(video, 1, 'current', [], {
+    quality: '720',
+  })[0]
   assert.ok(legacy)
   const job = downloadJobSchema.parse({
     ...legacy,
@@ -128,7 +140,7 @@ test('filename templates are validated and substitution cannot inject paths or v
     filenameTemplate: '{title}_{bvid}{partSuffix}_{type}',
     folderMode: 'owner-video',
   })
-  const job = createJobs(
+  const job = createDownloadJobs(
     {
       ...video,
       title: '../{owner}/课程',
@@ -144,7 +156,7 @@ test('filename templates are validated and substitution cannot inject paths or v
     { settings, kind: 'audio' },
   )[0]
   assert.ok(job)
-  const filename = createFilename(job)
+  const filename = createDownloadPath(job)
   assert.equal(filename.split('/').length, 4)
   assert.ok(filename.endsWith('.m4a'))
   assert.ok(filename.includes('{owner}'))
@@ -160,7 +172,7 @@ test('filename templates are validated and substitution cannot inject paths or v
   )
   assert.equal(sanitizeFilename('CON'), '_CON')
   assert.equal(sanitizeFilename('LPT9.txt'), '_LPT9.txt')
-  assert.throws(() => createFilename(job, '../../exe'), /不支持/)
+  assert.throws(() => createDownloadPath(job, '../../exe'), /不支持/)
 })
 
 test('material filenames use their output extension and cover omits the part suffix', () => {
@@ -171,30 +183,33 @@ test('material filenames use their output extension and cover omits the part suf
     ['danmaku', 'xml'],
     ['cover', 'jpg'],
   ] as const) {
-    const job = createJobs(video, 2, 'current', [], { kind })[0]
+    const job = createDownloadJobs(video, 2, 'current', [], { kind })[0]
     assert.ok(job)
-    const filename = createFilename(job)
+    const filename = createDownloadPath(job)
     assert.ok(filename.endsWith(`.${extension}`))
     assert.equal(filename.includes('_P'), kind !== 'cover')
   }
 })
 
 test('history exports only visible metadata and CSV neutralizes formulas, commas and quotes', () => {
-  const jobs = createJobs(
+  const jobs = createDownloadJobs(
     { ...video, title: '=HYPERLINK("evil","x")', owner: ' +cmd' },
     1,
     'current',
     [],
   )
-  const json = JSON.parse(exportHistory(jobs, 'json'))
+  const json = JSON.parse(serializeDownloadHistory(jobs, 'json'))
   assert.equal(json.records.length, 1)
   assert.equal(json.records[0].title, jobs[0]?.title)
   for (const key of ['cover', 'runId', 'downloadId', 'id']) {
     assert.ok(!(key in json.records[0]))
   }
-  const csv = exportHistory(jobs, 'csv')
+  const csv = serializeDownloadHistory(jobs, 'csv')
   assert.ok(csv.startsWith('\u{FEFF}'))
   assert.ok(csv.includes('"\'=HYPERLINK(""evil"",""x"")"'))
   assert.ok(csv.includes('"\' +cmd"'))
-  assert.equal(JSON.parse(exportHistory([], 'json')).records.length, 0)
+  assert.equal(
+    JSON.parse(serializeDownloadHistory([], 'json')).records.length,
+    0,
+  )
 })

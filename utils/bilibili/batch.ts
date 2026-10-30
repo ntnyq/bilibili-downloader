@@ -58,6 +58,16 @@ const uploadsPageSchema = z.object({
   }),
 })
 
+/**
+ * Parses an HTTPS URL restricted to supported Bilibili page hosts.
+ *
+ * @param input - Absolute page URL to validate; credentials and explicit
+ * non-default ports are rejected.
+ * @returns The parsed URL for a supported Bilibili host.
+ * @throws {TypeError} If input cannot be parsed as an absolute URL.
+ * @throws {Error} If the protocol, credentials, port, or hostname is
+ *   unsupported.
+ */
 function parseBilibiliUrl(input: string): URL {
   const url = new URL(input)
   if (
@@ -76,6 +86,16 @@ function parseBilibiliUrl(input: string): URL {
 
 /**
  * Resolves only supported source identifiers; remote URLs are never fetched.
+ *
+ * @param kind - Expected source kind: favorites, uploads, or collection.
+ * @param value - Source URL, or numeric favorites/owner ID; surrounding
+ * whitespace is ignored.
+ * @returns A validated source descriptor containing the IDs and collection
+ * subtype required for pagination.
+ * @throws {Error} If the input is invalid, lacks required IDs, or does not
+ *   match the selected source kind.
+ * @throws {import('zod').ZodError} If a direct numeric ID fails source
+ *   validation.
  */
 export function parseBatchSource(
   kind: BatchSource['kind'],
@@ -144,6 +164,19 @@ export function parseBatchSource(
   throw new Error('链接与所选来源类型不匹配，或缺少有效 ID。')
 }
 
+/**
+ * Parses one BV/av identifier or video URL into a batch candidate.
+ *
+ * @param input - Trimmed video identifier or HTTPS video URL with at most one
+ * p query parameter.
+ * @returns A validated candidate with its identifier, placeholder title, and
+ * part number from 1 to 1000.
+ * @throws {TypeError} If the input is not an identifier and cannot be parsed
+ *   as a URL.
+ * @throws {Error} If the host, path, or part selection is unsupported.
+ * @throws {import('zod').ZodError} If a direct video identifier fails
+ *   candidate validation.
+ */
 function parseBatchLink(input: string): BatchCandidate {
   if (VIDEO_ID_PATTERN.test(input)) {
     return batchCandidateSchema.parse({ videoId: input, title: input, page: 1 })
@@ -174,6 +207,17 @@ function parseBatchLink(input: string): BatchCandidate {
   return parsed.data
 }
 
+/**
+ * Parses a multiline video list, retaining input order and reporting errors
+ * per line.
+ *
+ * @param text - Newline-separated identifiers or URLs; blank lines are
+ * ignored.
+ * @returns Unique video/part candidates, line-numbered validation errors, and
+ * an exact-duplicate count.
+ * @throws {Error} If text exceeds the length limit or nonblank lines exceed
+ *   MAX_BATCH_ITEMS.
+ */
 export function parseBatchLinks(text: string): BatchLinksResult {
   if (text.length > 1024 * 1024) {
     throw new Error('链接列表文本不能超过 1 MB。')
@@ -209,6 +253,15 @@ export function parseBatchLinks(text: string): BatchLinksResult {
   return result
 }
 
+/**
+ * Filters inaccessible and malformed API rows into batch video candidates.
+ *
+ * @param rows - Untrusted rows from a favorites, collection, series, or
+ * uploads response.
+ * @param kind - Source kind used to apply source-specific availability rules.
+ * @returns Ordered validated candidates and the number of unavailable or
+ * unsupported rows.
+ */
 function normalizeSourceRows(rows: unknown[], kind: BatchSource['kind']) {
   const items: BatchCandidate[] = []
   let unavailable = 0
@@ -242,6 +295,21 @@ function normalizeSourceRows(rows: unknown[], kind: BatchSource['kind']) {
   }
 }
 
+/**
+ * Builds a validated batch page and prevents empty continuing pagination.
+ *
+ * @param source - Source descriptor used to normalize row availability.
+ * @param title - Display title of the source.
+ * @param rows - Untrusted rows returned for this page.
+ * @param page - One-based page number just fetched.
+ * @param total - Total entry count reported by the source API.
+ * @param hasMore - Whether the API indicates another page should be fetched.
+ * @returns A normalized page with available candidates, unavailable count, and
+ * an optional next page number.
+ * @throws {Error} If the source claims another page but returns no rows.
+ * @throws {import('zod').ZodError} If the normalized page violates the batch
+ *   page schema.
+ */
 function createBatchPage(
   source: BatchSource,
   title: string,
@@ -261,6 +329,17 @@ function createBatchPage(
   })
 }
 
+/**
+ * Checks that an API page number, when present, matches the requested page.
+ *
+ * Returns no value when the returned number is absent or matches.
+ *
+ * @param actual - Page number returned by the API, or undefined if the
+ * endpoint omits it.
+ * @param requested - One-based page number requested by the caller.
+ * @throws {Error} If the returned page number differs from the requested
+ *   number.
+ */
 function validatePageNumber(actual: number | undefined, requested: number) {
   if (actual !== undefined && actual !== requested) {
     throw new Error('B 站返回的页码不一致，已停止读取；请重新预览。')
@@ -268,8 +347,22 @@ function validatePageNumber(actual: number | undefined, requested: number) {
 }
 
 /**
- * Loads one page with the browser session. Callers pace requests and deduplicate
- * across pages; a risk-control or permission error must stop pagination.
+ * Loads one page with the browser session. Callers pace requests and
+ * deduplicate across pages; a risk-control or permission error must stop
+ * pagination.
+ *
+ * @param source - Validated favorites, collection/series, or owner-uploads
+ * source descriptor.
+ * @param page - One-based source page number, bounded by MAX_BATCH_ITEMS.
+ * @param signal - Optional cancellation signal for API and signing requests.
+ * @returns A promise resolving to one normalized source page and its optional
+ * continuation.
+ * @throws {import('zod').ZodError} If the source, page number, or response
+ *   payload is invalid.
+ * @throws {Error} If pagination repeats a different page or claims
+ *   continuation with no rows.
+ * @throws The signing or API request error; callers must stop pagination for
+ *   permission or risk-control failures.
  */
 export async function getBatchPage(
   source: BatchSource,

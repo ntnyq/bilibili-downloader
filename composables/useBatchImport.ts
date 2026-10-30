@@ -9,9 +9,9 @@ import { parseBatchLinks, parseBatchSource } from '~/utils/bilibili/batch'
 import {
   createBatchSessionData,
   restoreBatchSession,
-} from '~/utils/downloads/batchSession'
+} from '~/utils/downloads/batch/session'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
-import { errorMessage } from '~/utils/downloads/model'
 import { useDownloadSettings } from './useDownloadSettings'
 import type { BatchCandidate } from '~/types/batch'
 import type {
@@ -163,7 +163,7 @@ export function useBatchImport() {
       }
       return !disposed
     } catch (error_) {
-      sessionError.value = errorMessage(error_)
+      sessionError.value = getErrorMessage(error_)
       return false
     } finally {
       isSavingSession.value = false
@@ -201,7 +201,7 @@ export function useBatchImport() {
       seedQuality()
       error.value = ''
     } catch (error_) {
-      sessionError.value = errorMessage(error_)
+      sessionError.value = getErrorMessage(error_)
     }
   }
 
@@ -247,7 +247,7 @@ export function useBatchImport() {
         shouldSeedQuality = true
       }
     } catch (error_) {
-      sessionError.value = errorMessage(error_)
+      sessionError.value = getErrorMessage(error_)
     } finally {
       isSavingSession.value = false
     }
@@ -347,7 +347,7 @@ export function useBatchImport() {
       }
     } catch (error_) {
       if (!disposed) {
-        error.value = errorMessage(error_)
+        error.value = getErrorMessage(error_)
       }
     } finally {
       isPreviewing = false
@@ -417,7 +417,7 @@ export function useBatchImport() {
       await flushSession()
     } catch (error_) {
       if (!disposed && id === requestId) {
-        error.value = errorMessage(error_)
+        error.value = getErrorMessage(error_)
       }
     } finally {
       if (!disposed && id === requestId) {
@@ -536,7 +536,7 @@ export function useBatchImport() {
           if (!disposed) {
             // The commit may already exist. Read its durable receipt before another attempt.
             hasConflict.value = true
-            sessionError.value = `本次响应未确认：${errorMessage(error_)} 请载入已保存的会话后手动继续。`
+            sessionError.value = `本次响应未确认：${getErrorMessage(error_)} 请载入已保存的会话后手动继续。`
           }
           break
         }

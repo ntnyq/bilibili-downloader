@@ -8,8 +8,8 @@ import {
   MediaCacheError,
   parseStrongETag,
   pruneMediaCache,
-} from '../../utils/downloads/mediaCache'
-import type { MediaCacheDirectory } from '../../utils/downloads/mediaCache'
+} from '../../utils/downloads/media/mediaCache'
+import type { MediaCacheDirectory } from '../../utils/downloads/media/mediaCache'
 
 class MemoryDirectory implements MediaCacheDirectory {
   directories = new Map<string, MemoryDirectory>()

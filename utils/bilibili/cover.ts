@@ -1,5 +1,10 @@
 /**
  * Trust image signatures, not URL suffixes or CDN error response headers.
+ *
+ * @param bytes - Downloaded cover bytes whose leading image signature will be
+ * inspected.
+ * @returns The matching jpg, png, webp, or gif extension and MIME type.
+ * @throws {Error} If no supported image signature is present.
  */
 export function detectCoverFormat(bytes: Uint8Array): {
   extension: string

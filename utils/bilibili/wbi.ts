@@ -7,6 +7,18 @@ const MIXIN_KEY_TABLE = [
   20, 34, 44, 52,
 ]
 
+/**
+ * Derives the 32-character WBI mixin key from navigation image filenames.
+ *
+ * @param imageUrl - Navigation image URL containing the first half of the
+ * signing key.
+ * @param subUrl - Navigation sub-image URL containing the second half of the
+ * signing key.
+ * @returns The permuted 32-character mixin key.
+ * @throws {TypeError} If either image URL cannot be parsed.
+ * @throws {Error} If the combined filename stems do not contain exactly 64
+ *   characters.
+ */
 export function createMixinKey(imageUrl: string, subUrl: string): string {
   const key = [imageUrl, subUrl]
     .map(url => new URL(url).pathname.split('/').at(-1)?.split('.')[0] || '')
@@ -19,6 +31,20 @@ export function createMixinKey(imageUrl: string, subUrl: string): string {
     .slice(0, 32)
 }
 
+/**
+ * Builds a sorted, filtered WBI query and appends its timestamp and MD5
+ * signature.
+ *
+ * @param params - Unsigned query fields; the object is not mutated and any wts
+ * field is replaced.
+ * @param key - WBI mixin key used to sign the encoded query.
+ * @param timestamp - Unix time in seconds; defaults to the current time
+ * rounded down.
+ * @returns An encoded query string containing wts and w_rid, without a leading
+ * question mark.
+ * @throws {URIError} If a query name or value contains an unpaired surrogate
+ *   that cannot be URI-encoded.
+ */
 export function signWbi(
   params: Record<string, string | number>,
   key: string,

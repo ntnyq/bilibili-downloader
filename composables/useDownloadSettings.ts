@@ -1,7 +1,8 @@
 import { browser } from '#imports'
 import { downloadSettingsSchema } from '~/types/download'
+import { SETTINGS_STORAGE_KEY } from '~/utils/downloads/constants'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
-import { errorMessage, SETTINGS_STORAGE_KEY } from '~/utils/downloads/model'
 import type { Browser } from '#imports'
 import type { DownloadSettings } from '~/types/download'
 
@@ -39,7 +40,7 @@ export function useDownloadSettings() {
       }
     })
     .catch(error_ => {
-      error.value = errorMessage(error_)
+      error.value = getErrorMessage(error_)
     })
   onScopeDispose(() => {
     disposed = true
@@ -63,7 +64,7 @@ export function useDownloadSettings() {
       }
       return true
     } catch (error_) {
-      error.value = errorMessage(error_)
+      error.value = getErrorMessage(error_)
       return false
     } finally {
       isSaving.value = false

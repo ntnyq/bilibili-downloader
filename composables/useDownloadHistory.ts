@@ -1,6 +1,6 @@
-import { exportHistory } from '~/utils/downloads/history'
-import { errorMessage } from '~/utils/downloads/model'
-import { saveFile } from '~/utils/downloads/saveFile'
+import { saveFile } from '~/utils/downloads/files/saveFile'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
+import { serializeDownloadHistory } from '~/utils/downloads/history/serializeDownloadHistory'
 import type { DownloadJob } from '~/types/download'
 
 export function useDownloadHistory() {
@@ -18,7 +18,7 @@ export function useDownloadHistory() {
     notice.value = ''
     controller = new AbortController()
     try {
-      const blob = new Blob([exportHistory(jobs, format)], {
+      const blob = new Blob([serializeDownloadHistory(jobs, format)], {
         type: format === 'json' ? 'application/json' : 'text/csv;charset=utf-8',
       })
       await saveFile(
@@ -29,7 +29,7 @@ export function useDownloadHistory() {
       )
       notice.value = `已导出 ${jobs.length} 条记录。`
     } catch (error_) {
-      error.value = errorMessage(error_)
+      error.value = getErrorMessage(error_)
     } finally {
       isExporting.value = false
     }

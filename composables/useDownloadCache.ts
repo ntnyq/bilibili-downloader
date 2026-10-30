@@ -1,9 +1,9 @@
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import {
   clearMediaCache,
   getMediaCacheStats,
-} from '~/utils/downloads/mediaCache'
-import { errorMessage } from '~/utils/downloads/model'
-import { getAvailableMediaStorageBytes } from '~/utils/downloads/storageBudget'
+} from '~/utils/downloads/media/mediaCache'
+import { getAvailableMediaStorageBytes } from '~/utils/downloads/media/storageBudget'
 
 export function useDownloadCache() {
   const stats = shallowRef<Awaited<ReturnType<typeof getMediaCacheStats>>>()
@@ -35,7 +35,7 @@ export function useDownloadCache() {
       }
     } catch (error) {
       if (!isDisposed && revision === currentRevision) {
-        refreshError.value = errorMessage(error)
+        refreshError.value = getErrorMessage(error)
       }
     } finally {
       isRefreshing.value = false
@@ -70,7 +70,7 @@ export function useDownloadCache() {
       refreshError.value = ''
       notice.value = '下载缓存已清理，下次重试将重新下载媒体。'
     } catch (error) {
-      actionError.value = errorMessage(error)
+      actionError.value = getErrorMessage(error)
     } finally {
       isClearing.value = false
     }

@@ -4,11 +4,11 @@ import { batchSessionDataSchema } from '../../types/batchSession'
 import {
   commitBatchSessionResult,
   createBatchSessionData,
-  findBatchSessionVideoReceipt,
+  findBatchSessionReceiptRow,
   getBatchSessionRow,
   restoreBatchSession,
   saveBatchSession,
-} from '../../utils/downloads/batchSession'
+} from '../../utils/downloads/batch/session'
 import type { BatchImportRow, BatchSession } from '../../types/batchSession'
 
 function createRow(page = 1, videoId = 'BV1xx411c7mD'): BatchImportRow {
@@ -232,12 +232,12 @@ test('all-parts and covers remember completed source aliases across resumes', ()
       bvid: 'BV1xx411c7mD',
     })
     assert.equal(
-      findBatchSessionVideoReceipt(committed, createRow(2).key)?.key,
+      findBatchSessionReceiptRow(committed, createRow(2).key)?.key,
       createRow().key,
     )
-    assert.equal(findBatchSessionVideoReceipt(committed, 'av123:1'), undefined)
+    assert.equal(findBatchSessionReceiptRow(committed, 'av123:1'), undefined)
     assert.equal(
-      findBatchSessionVideoReceipt(committed, 'av123:1', 'BV1xx411c7mD')?.key,
+      findBatchSessionReceiptRow(committed, 'av123:1', 'BV1xx411c7mD')?.key,
       createRow().key,
     )
   }
@@ -248,7 +248,7 @@ test('all-parts and covers remember completed source aliases across resumes', ()
     shouldStop: false,
   })
   assert.equal(
-    findBatchSessionVideoReceipt(committed, createRow(2).key),
+    findBatchSessionReceiptRow(committed, createRow(2).key),
     undefined,
   )
 })

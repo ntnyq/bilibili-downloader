@@ -1,13 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { downloadJobsSchema } from '../../types/download'
-import {
-  createJobs,
-  isJobActive,
-  nextQueuedJob,
-  retryJobs,
-} from '../../utils/downloads/model'
-import { fetchCachedMedia } from '../../utils/downloads/resumableMedia'
+import { fetchCachedMedia } from '../../utils/downloads/media/fetchCachedMedia'
 import {
   abortChangedJobRun,
   abortStaleJobRun,
@@ -20,12 +14,18 @@ import {
   pauseJob,
   resumeJob,
   shouldClearAbortedJobCache,
-} from '../../utils/downloads/taskControl'
+} from '../../utils/downloads/queue/control'
+import {
+  createDownloadJobs,
+  getNextQueuedJob,
+  isJobActive,
+  retryDownloadJobs,
+} from '../../utils/downloads/queue/jobs'
 import type { DownloadJob, VideoInfo } from '../../types/download'
 import type {
   CachedMediaState,
   MediaCache,
-} from '../../utils/downloads/mediaCache'
+} from '../../utils/downloads/media/mediaCache'
 
 const video: VideoInfo = {
   bvid: 'BV1xx411c7mD',
@@ -40,7 +40,7 @@ const video: VideoInfo = {
 }
 
 function createJob(options: Partial<DownloadJob> = {}): DownloadJob {
-  const [job] = createJobs(video, 1, 'current', [])
+  const [job] = createDownloadJobs(video, 1, 'current', [])
   assert.ok(job)
   return {
     ...job,
@@ -57,7 +57,7 @@ test('pausing a running job retains progress, prevents cleanup and allows the ne
     totalBytes: 400,
   })
   const waiting = createJob({ id: 'waiting', cid: 20 })
-  assert.equal(nextQueuedJob([running, waiting], false), undefined)
+  assert.equal(getNextQueuedJob([running, waiting], false), undefined)
   const paused = downloadJobsSchema.parse(
     pauseJob([running, waiting], running.id),
   )
@@ -66,10 +66,10 @@ test('pausing a running job retains progress, prevents cleanup and allows the ne
   assert.equal(paused[0]?.progress, 31)
   assert.equal(paused[0]?.receivedBytes, 120)
   assert.equal(paused.filter(isJobActive).length, 2)
-  assert.equal(nextQueuedJob(paused, false)?.id, waiting.id)
-  assert.equal(nextQueuedJob(paused, true), undefined)
-  assert.equal(createJobs(video, 1, 'current', paused).length, 0)
-  assert.equal(retryJobs(paused)[0]?.status, 'paused')
+  assert.equal(getNextQueuedJob(paused, false)?.id, waiting.id)
+  assert.equal(getNextQueuedJob(paused, true), undefined)
+  assert.equal(createDownloadJobs(video, 1, 'current', paused).length, 0)
+  assert.equal(retryDownloadJobs(paused)[0]?.status, 'paused')
   assert.equal(running.status, 'downloading')
 })
 
@@ -82,7 +82,7 @@ test('pause and resume invalidate late progress, completion and failure from old
   assert.equal(resumed[0]?.status, 'queued')
   assert.equal(canApplyJobUpdate(resumed[0], undefined), false)
   assert.equal(canApplyJobUpdate(resumed[0], running.runId), false)
-  assert.equal(nextQueuedJob(resumed, false)?.id, running.id)
+  assert.equal(getNextQueuedJob(resumed, false)?.id, running.id)
   const reclaimed = { ...running, runId: 'new-run' }
   assert.equal(canApplyJobUpdate(reclaimed, running.runId), false)
   assert.equal(canApplyJobUpdate(reclaimed, reclaimed.runId), true)
@@ -143,8 +143,8 @@ test('moving waiting jobs changes claim order without moving active or paused jo
     moved.map(job => job.id),
     ['running', 'second', 'paused', 'completed', 'first', 'third'],
   )
-  assert.equal(nextQueuedJob(moved, false), undefined)
-  assert.equal(nextQueuedJob(moved.slice(1), false)?.id, second.id)
+  assert.equal(getNextQueuedJob(moved, false), undefined)
+  assert.equal(getNextQueuedJob(moved.slice(1), false)?.id, second.id)
   assert.deepEqual(moveQueuedJob(moved, second.id, 'down'), jobs)
   assert.deepEqual(moveQueuedJob(jobs, first.id, 'up'), jobs)
   assert.deepEqual(moveQueuedJob(jobs, third.id, 'down'), jobs)
@@ -193,7 +193,7 @@ test('resumed jobs keep their cache identity and pause cannot revive a terminal 
   }
   const native = { ...waiting, status: 'native' as const }
   const next = createJob({ id: 'browser-next', cid: 20 })
-  assert.equal(nextQueuedJob([native, next], false)?.id, next.id)
+  assert.equal(getNextQueuedJob([native, next], false)?.id, next.id)
   assert.equal(isJobActive(native), true)
   assert.throws(() => pauseJob([], waiting.id), /已不存在/)
   assert.throws(() => resumeJob([], waiting.id), /已不存在/)
@@ -281,7 +281,7 @@ test('pausing a transfer aborts its network body and resuming reuses its verifie
   assert.equal(state?.received, 2)
   assert.equal(state?.complete, false)
   queue = resumeJob(queue, running.id)
-  assert.equal(nextQueuedJob(queue, false)?.id, running.id)
+  assert.equal(getNextQueuedJob(queue, false)?.id, running.id)
   const blob = await fetchCachedMedia({
     ...input,
     signal: new AbortController().signal,

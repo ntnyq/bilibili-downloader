@@ -9,9 +9,9 @@ import {
 } from '~/components/ui/select'
 import {
   DOWNLOAD_KIND_LABELS,
+  QUALITY_LABELS,
   SUBTITLE_LANGUAGE_LABELS,
-} from '~/utils/downloads/assets'
-import { QUALITY_LABELS } from '~/utils/downloads/quality'
+} from '~/utils/downloads/labels'
 import type {
   DownloadKind,
   QualityPreference,

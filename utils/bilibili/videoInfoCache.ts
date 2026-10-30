@@ -13,6 +13,13 @@ export const VIDEO_INFO_CACHE_MAX_ENTRIES = 20
 /**
  * Shares UI metadata requests within the background worker's lifetime.
  * Download creation should keep using the uncached API to validate fresh data.
+ *
+ * @param loadVideo - Uncached metadata loader; failed requests are shared
+ * while pending but never retained.
+ * @returns An async lookup that shares in-flight requests and caches
+ * successful metadata for VIDEO_INFO_CACHE_TTL_MS with an LRU entry limit.
+ * @remarks The returned lookup propagates loader errors and starts expiry only
+ *   after a successful load.
  */
 export function createVideoInfoCache(
   loadVideo: (videoId: string) => Promise<VideoInfo>,

@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import * as mediabunny from 'mediabunny'
 import { videoPackets } from './mp4FragmentMedia'
-import type { FragmentSampleStore } from '../../../utils/downloads/fragmentSamples'
-import type { FragmentIndexStore } from '../../../utils/downloads/fragmentIndex'
+import type { FragmentSampleStore } from '../../../utils/downloads/media/fragments/fragmentSamples'
+import type { FragmentIndexStore } from '../../../utils/downloads/media/fragments/fragmentIndex'
 
 export function timestamp(at: number, count: number, base = -0.125) {
   return base + (at === 0 ? 0 : Math.floor((count - at) / 3) / 24)

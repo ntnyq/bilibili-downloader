@@ -165,7 +165,7 @@ const currentSection = computed(
             </p>
             <Button
               as="a"
-              href="https://github.com/ntnyq/bilibili-downloader/blob/main/docs/native-bridge.md"
+              href="https://github.com/ntnyq/bilibili-downloader/blob/main/docs/advanced/native-bridge.md"
               target="_blank"
               rel="noreferrer"
               variant="outline"

@@ -4,8 +4,8 @@ import { nativeEventSchema } from '../../types/nativeBridge'
 import {
   createNativeRequest,
   isSameNativeTask,
-} from '../../utils/downloads/nativeBridge'
-import type { NativeManifest } from '../../utils/downloads/nativeBridge'
+} from '../../utils/downloads/native/bridge'
+import type { NativeManifest } from '../../utils/downloads/native/bridge'
 
 const requestId = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
 const manifest: NativeManifest = {

@@ -1,11 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { downloadJobsSchema, jobUpdateSchema } from '../../types/download'
-import { createJobs } from '../../utils/downloads/model'
 import {
-  applyNativeUpdate,
+  applyNativeJobUpdate,
   startNativeJob,
-} from '../../utils/downloads/nativeQueue'
+} from '../../utils/downloads/native/queue'
+import { createDownloadJobs } from '../../utils/downloads/queue/jobs'
 import type { DownloadJob, VideoInfo } from '../../types/download'
 
 const video: VideoInfo = {
@@ -17,7 +17,7 @@ const video: VideoInfo = {
 }
 
 function createPausedJob(): DownloadJob {
-  const [job] = createJobs(video, 1, 'current', [])
+  const [job] = createDownloadJobs(video, 1, 'current', [])
   assert.ok(job)
   return {
     ...job,
@@ -60,24 +60,33 @@ test('native completion requires a path and cannot overwrite a revoked lease', (
   const source = createPausedJob()
   const job = startNativeJob([source], source.id)
   assert.ok(job.runId)
-  assert.equal(applyNativeUpdate(job, 'stale', { status: 'completed' }), false)
+  assert.equal(
+    applyNativeJobUpdate(job, 'stale', { status: 'completed' }),
+    false,
+  )
   assert.throws(
-    () => applyNativeUpdate(job, job.runId!, { status: 'completed' }),
+    () => applyNativeJobUpdate(job, job.runId!, { status: 'completed' }),
     /保存路径/,
   )
   assert.equal(
-    applyNativeUpdate(job, job.runId, {
+    applyNativeJobUpdate(job, job.runId, {
       status: 'completed',
       filename: '/downloads/Bilibili/test.mp4',
     }),
     true,
   )
   assert.equal(job.progress, 100)
-  assert.equal(applyNativeUpdate(job, job.runId, { status: 'failed' }), false)
+  assert.equal(
+    applyNativeJobUpdate(job, job.runId, { status: 'failed' }),
+    false,
+  )
   assert.equal(job.status, 'completed')
   job.status = 'cancelled'
   assert.equal(
-    applyNativeUpdate(job, job.runId, { status: 'completed', filename: 'x' }),
+    applyNativeJobUpdate(job, job.runId, {
+      status: 'completed',
+      filename: 'x',
+    }),
     false,
   )
 })
@@ -87,7 +96,7 @@ test('structured-clone progress updates preserve required queue fields through c
   const job = startNativeJob([source], source.id)
   assert.ok(job.runId)
   const runId = job.runId
-  applyNativeUpdate(job, runId, { receivedBytes: 4096, quality: 'AAC' })
+  applyNativeJobUpdate(job, runId, { receivedBytes: 4096, quality: 'AAC' })
   // Native merging/saving events carry no byte count; Firefox keeps undefined.
   const update = jobUpdateSchema.parse(
     structuredClone({
@@ -99,16 +108,16 @@ test('structured-clone progress updates preserve required queue fields through c
     }),
   )
   assert.ok(Object.hasOwn(update, 'receivedBytes'))
-  assert.ok(applyNativeUpdate(job, runId, update))
+  assert.ok(applyNativeJobUpdate(job, runId, update))
   assert.equal(job.receivedBytes, 4096)
   assert.equal(job.quality, 'AAC')
   assert.equal(job.totalBytes, 0)
   assert.equal(job.progress, 0)
   assert.ok(downloadJobsSchema.safeParse(structuredClone([job])).success)
-  assert.ok(applyNativeUpdate(job, runId, { receivedBytes: 0 }))
+  assert.ok(applyNativeJobUpdate(job, runId, { receivedBytes: 0 }))
   assert.equal(job.receivedBytes, 0)
   assert.ok(
-    applyNativeUpdate(job, runId, {
+    applyNativeJobUpdate(job, runId, {
       status: 'completed',
       filename: '/downloads/Bilibili/test.mp4',
     }),
@@ -123,7 +132,7 @@ test('invalid native patches leave the original job intact', () => {
   assert.ok(job.runId)
   const previous = structuredClone(job)
   assert.throws(() =>
-    applyNativeUpdate(job, job.runId!, {
+    applyNativeJobUpdate(job, job.runId!, {
       status: 'completed',
       filename: '/downloads/Bilibili/test.mp4',
       receivedBytes: Number.NaN,

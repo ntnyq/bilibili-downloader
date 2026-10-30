@@ -13,7 +13,10 @@ import {
   Input,
   MP4,
 } from 'mediabunny'
-import { createRemuxOutput, remuxMedia } from '../../utils/downloads/remuxMedia'
+import {
+  createRemuxOutput,
+  remuxMedia,
+} from '../../utils/downloads/media/remuxMedia'
 import { testFragmentIndex } from '../fixtures/downloads/fragmentIndex'
 import { testFragmentSamples } from '../fixtures/downloads/fragmentSamples'
 import type { StreamTargetChunk } from 'mediabunny'

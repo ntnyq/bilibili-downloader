@@ -1,8 +1,9 @@
 import { z } from 'zod'
 import { useDownloadSettings } from '~/composables/useDownloadSettings'
-import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/assets'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
+import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/labels'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
-import { errorMessage, parseVideoLocation } from '~/utils/downloads/model'
+import { parseVideoLocation } from '~/utils/downloads/parseVideoLocation'
 import type { MaybeRefOrGetter } from 'vue'
 
 export function useQuickDownload(url: MaybeRefOrGetter<string>) {
@@ -64,7 +65,7 @@ export function useQuickDownload(url: MaybeRefOrGetter<string>) {
       }
     } catch (error_) {
       if (id === revision) {
-        error.value = errorMessage(error_)
+        error.value = getErrorMessage(error_)
       }
     } finally {
       isAdding.value = false

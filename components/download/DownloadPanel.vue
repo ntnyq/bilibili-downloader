@@ -11,9 +11,9 @@ import { browser } from '#imports'
 import { useDownloadBundle } from '~/composables/useDownloadBundle'
 import { useDownloadQueue } from '~/composables/useDownloadQueue'
 import { useVideoDownload } from '~/composables/useVideoDownload'
-import { DOWNLOAD_KIND_LABELS, jobIdentity } from '~/utils/downloads/assets'
-import { isJobActive } from '~/utils/downloads/model'
-import { QUALITY_LABELS } from '~/utils/downloads/quality'
+import { DOWNLOAD_KIND_LABELS, QUALITY_LABELS } from '~/utils/downloads/labels'
+import { getJobIdentity } from '~/utils/downloads/queue/identity'
+import { isJobActive } from '~/utils/downloads/queue/jobs'
 import type { VNode } from 'vue'
 
 const props = defineProps<{
@@ -95,11 +95,11 @@ const isAlreadyQueued = computed(() => {
     if (!info || !pages.length || !bundleKinds.value.length) {
       return false
     }
-    const active = new Set(jobs.value.filter(isJobActive).map(jobIdentity))
+    const active = new Set(jobs.value.filter(isJobActive).map(getJobIdentity))
     return bundleKinds.value.every(asset =>
       (asset === 'cover' ? info.pages.slice(0, 1) : pages).every(page =>
         active.has(
-          jobIdentity({
+          getJobIdentity({
             bvid: info.bvid,
             cid: page.cid,
             kind: asset,

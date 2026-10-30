@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readdir, stat } from 'node:fs/promises'
 import { test } from 'node:test'
-import { createDiskFragmentMedia } from '../../utils/downloads/fragmentMedia'
+import { createDiskFragmentMedia } from '../../utils/downloads/media/fragments/fragmentMedia'
 import { temporaryFragmentIndex } from '../fixtures/downloads/fragmentIndex'
 
 test('reuses truncated media files across fragments and keeps tracks independent', async () => {

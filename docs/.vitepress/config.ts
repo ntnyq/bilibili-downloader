@@ -11,10 +11,10 @@ export default defineConfig({
       lang: 'en',
       themeConfig: {
         nav: [
-          { text: 'Get started', link: '/getting-started' },
-          { text: 'Features', link: '/usage' },
-          { text: 'Development', link: '/development' },
-          { text: 'Help', link: '/troubleshooting' },
+          { text: 'Get started', link: '/guide/getting-started' },
+          { text: 'Features', link: '/guide/usage' },
+          { text: 'Development', link: '/development/' },
+          { text: 'Help', link: '/help/troubleshooting' },
         ],
         sidebar: [
           {
@@ -23,46 +23,55 @@ export default defineConfig({
               { text: 'Introduction', link: '/' },
               {
                 text: 'Installation & first download',
-                link: '/getting-started',
+                link: '/guide/getting-started',
               },
-              { text: 'Feature overview', link: '/usage' },
+              { text: 'Feature overview', link: '/guide/usage' },
             ],
           },
           {
             text: 'Feature guides',
             items: [
-              { text: 'Video, quality & tasks', link: '/downloads' },
-              { text: 'Batch downloads', link: '/batch-downloads' },
-              { text: 'Audio & companion assets', link: '/assets' },
-              { text: 'Files & history', link: '/files-and-history' },
+              { text: 'Video, quality & tasks', link: '/guide/downloads' },
+              { text: 'Batch downloads', link: '/guide/batch-downloads' },
+              { text: 'Audio & companion assets', link: '/guide/assets' },
+              { text: 'Files & history', link: '/guide/files-and-history' },
             ],
           },
           {
             text: 'Advanced',
             collapsed: false,
             items: [
-              { text: 'Cache & large downloads', link: '/cache-storage' },
-              { text: 'Local FFmpeg helper', link: '/native-helper' },
-              { text: 'Native integration', link: '/native-bridge' },
+              {
+                text: 'Cache & large downloads',
+                link: '/advanced/cache-storage',
+              },
+              { text: 'Local FFmpeg helper', link: '/advanced/native-helper' },
+              { text: 'Native integration', link: '/advanced/native-bridge' },
             ],
           },
           {
             text: 'Help & privacy',
             collapsed: false,
             items: [
-              { text: 'Troubleshooting', link: '/troubleshooting' },
-              { text: 'Permissions & data', link: '/permissions' },
-              { text: 'Privacy policy', link: '/privacy-policy' },
+              { text: 'Troubleshooting', link: '/help/troubleshooting' },
+              { text: 'Permissions & data', link: '/help/permissions' },
+              { text: 'Privacy policy', link: '/help/privacy-policy' },
             ],
           },
           {
             text: 'Developer reference',
             collapsed: true,
             items: [
-              { text: 'Development guide', link: '/development' },
-              { text: 'Architecture', link: '/implementation' },
-              { text: 'Implementation milestones', link: '/roadmap' },
-              { text: 'Verification records', link: '/verification' },
+              { text: 'Development guide', link: '/development/' },
+              { text: 'Architecture', link: '/development/implementation' },
+              {
+                text: 'Implementation milestones',
+                link: '/development/roadmap',
+              },
+              {
+                text: 'Verification records',
+                link: '/development/verification',
+              },
             ],
           },
         ],
@@ -97,55 +106,55 @@ export default defineConfig({
       },
       themeConfig: {
         nav: [
-          { text: '快速开始', link: '/zh/getting-started' },
-          { text: '功能指南', link: '/zh/usage' },
-          { text: '开发文档', link: '/zh/development' },
-          { text: '常见问题', link: '/zh/troubleshooting' },
+          { text: '快速开始', link: '/zh/guide/getting-started' },
+          { text: '功能指南', link: '/zh/guide/usage' },
+          { text: '开发文档', link: '/zh/development/' },
+          { text: '常见问题', link: '/zh/help/troubleshooting' },
         ],
         sidebar: [
           {
             text: '开始使用',
             items: [
               { text: '产品介绍', link: '/zh/' },
-              { text: '安装与首次下载', link: '/zh/getting-started' },
-              { text: '功能概览', link: '/zh/usage' },
+              { text: '安装与首次下载', link: '/zh/guide/getting-started' },
+              { text: '功能概览', link: '/zh/guide/usage' },
             ],
           },
           {
             text: '功能指南',
             items: [
-              { text: '视频、画质与任务', link: '/zh/downloads' },
-              { text: '批量下载', link: '/zh/batch-downloads' },
-              { text: '音频与配套素材', link: '/zh/assets' },
-              { text: '文件与下载记录', link: '/zh/files-and-history' },
+              { text: '视频、画质与任务', link: '/zh/guide/downloads' },
+              { text: '批量下载', link: '/zh/guide/batch-downloads' },
+              { text: '音频与配套素材', link: '/zh/guide/assets' },
+              { text: '文件与下载记录', link: '/zh/guide/files-and-history' },
             ],
           },
           {
             text: '进阶配置',
             collapsed: false,
             items: [
-              { text: '缓存与大型下载', link: '/zh/cache-storage' },
-              { text: '本地 FFmpeg 助手', link: '/zh/native-helper' },
-              { text: '原生助手集成', link: '/zh/native-bridge' },
+              { text: '缓存与大型下载', link: '/zh/advanced/cache-storage' },
+              { text: '本地 FFmpeg 助手', link: '/zh/advanced/native-helper' },
+              { text: '原生助手集成', link: '/zh/advanced/native-bridge' },
             ],
           },
           {
             text: '帮助与隐私',
             collapsed: false,
             items: [
-              { text: '故障排查', link: '/zh/troubleshooting' },
-              { text: '权限与本地数据', link: '/zh/permissions' },
-              { text: '隐私政策', link: '/zh/privacy-policy' },
+              { text: '故障排查', link: '/zh/help/troubleshooting' },
+              { text: '权限与本地数据', link: '/zh/help/permissions' },
+              { text: '隐私政策', link: '/zh/help/privacy-policy' },
             ],
           },
           {
             text: '开发参考',
             collapsed: true,
             items: [
-              { text: '开发指南', link: '/zh/development' },
-              { text: '架构说明', link: '/zh/implementation' },
-              { text: '实现里程碑', link: '/zh/roadmap' },
-              { text: '验证记录', link: '/zh/verification' },
+              { text: '开发指南', link: '/zh/development/' },
+              { text: '架构说明', link: '/zh/development/implementation' },
+              { text: '实现里程碑', link: '/zh/development/roadmap' },
+              { text: '验证记录', link: '/zh/development/verification' },
             ],
           },
         ],

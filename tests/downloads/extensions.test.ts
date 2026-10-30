@@ -6,12 +6,12 @@ import {
   downloadSettingsPatchSchema,
   downloadSettingsSchema,
 } from '../../types/download'
+import { MAX_PENDING_JOBS } from '../../utils/downloads/constants'
 import {
-  createJobs,
-  MAX_PENDING_JOBS,
-  nextQueuedJob,
-  retryJobs,
-} from '../../utils/downloads/model'
+  createDownloadJobs,
+  getNextQueuedJob,
+  retryDownloadJobs,
+} from '../../utils/downloads/queue/jobs'
 import type { VideoInfo } from '../../types/download'
 
 const video: VideoInfo = {
@@ -29,24 +29,30 @@ const video: VideoInfo = {
 
 test('custom parts validate all input, retain source order and deduplicate active work', () => {
   const options = { selectedPages: [3, 1, 3], quality: '720' as const }
-  const jobs = createJobs(video, 2, 'selected', [], options)
+  const jobs = createDownloadJobs(video, 2, 'selected', [], options)
   assert.deepEqual(
     jobs.map(job => job.page),
     [1, 3],
   )
   assert.ok(jobs.every(job => job.qualityPreference === '720'))
-  assert.equal(createJobs(video, 2, 'selected', jobs, options).length, 0)
-  assert.throws(() => createJobs(video, 2, 'selected', []), /至少选择/)
+  assert.equal(
+    createDownloadJobs(video, 2, 'selected', jobs, options).length,
+    0,
+  )
+  assert.throws(() => createDownloadJobs(video, 2, 'selected', []), /至少选择/)
   for (const invalid of [[1, 4], [0], [1.5]]) {
     assert.throws(
-      () => createJobs(video, 2, 'selected', [], { selectedPages: invalid }),
+      () =>
+        createDownloadJobs(video, 2, 'selected', [], {
+          selectedPages: invalid,
+        }),
       /失效/,
     )
   }
 })
 
 test('old persisted jobs migrate to best; settings patches never reset unrelated fields', () => {
-  const [job] = createJobs(video, 1, 'current', [])
+  const [job] = createDownloadJobs(video, 1, 'current', [])
   assert.ok(job)
   const legacy = { ...job, qualityPreference: undefined }
   assert.equal(downloadJobSchema.parse(legacy).qualityPreference, 'best')
@@ -73,17 +79,17 @@ test('old persisted jobs migrate to best; settings patches never reset unrelated
 })
 
 test('pause prevents new claims while keeping an active task and queue intact', () => {
-  const jobs = createJobs(video, 1, 'all', [])
-  assert.equal(nextQueuedJob(jobs, true), undefined)
-  assert.equal(nextQueuedJob(jobs, false)?.page, 1)
+  const jobs = createDownloadJobs(video, 1, 'all', [])
+  assert.equal(getNextQueuedJob(jobs, true), undefined)
+  assert.equal(getNextQueuedJob(jobs, false)?.page, 1)
   const running = jobs.map((job, index) =>
     index === 0 ? { ...job, status: 'downloading' as const } : job,
   )
-  assert.equal(nextQueuedJob(running, false), undefined)
-  assert.equal(nextQueuedJob(running, true), undefined)
+  assert.equal(getNextQueuedJob(running, false), undefined)
+  assert.equal(getNextQueuedJob(running, true), undefined)
   assert.equal(running[0]?.status, 'downloading')
   assert.equal(
-    nextQueuedJob(
+    getNextQueuedJob(
       running.map(job =>
         job.page === 1 ? { ...job, status: 'completed' as const } : job,
       ),
@@ -94,7 +100,7 @@ test('pause prevents new claims while keeping an active task and queue intact', 
 })
 
 test('batch retry ignores cancelled and duplicate work, preserves preference and resets execution', () => {
-  const jobs = createJobs(video, 1, 'all', [], { quality: '480' })
+  const jobs = createDownloadJobs(video, 1, 'all', [], { quality: '480' })
   const first = jobs[0]
   assert.ok(first)
   const failed = {
@@ -116,7 +122,7 @@ test('batch retry ignores cancelled and duplicate work, preserves preference and
     active,
     { ...active, id: 'active-duplicate', status: 'failed' as const },
   ]
-  const result = retryJobs(history)
+  const result = retryDownloadJobs(history)
   assert.equal(result.filter(job => job.status === 'queued').length, 2)
   assert.equal(result[1]?.status, 'failed')
   assert.equal(result[2]?.status, 'cancelled')
@@ -127,12 +133,12 @@ test('batch retry ignores cancelled and duplicate work, preserves preference and
   assert.equal(result[0]?.runId, undefined)
   assert.equal(result[0]?.progress, 0)
   assert.equal(history[0]?.status, 'failed')
-  assert.equal(retryJobs(history, cancelled.id)[2]?.status, 'queued')
-  assert.throws(() => retryJobs(result, 'duplicate'), /已在下载队列/)
+  assert.equal(retryDownloadJobs(history, cancelled.id)[2]?.status, 'queued')
+  assert.throws(() => retryDownloadJobs(result, 'duplicate'), /已在下载队列/)
 })
 
 test('retry rejects capacity overflow atomically', () => {
-  const first = createJobs(video, 1, 'current', [])[0]
+  const first = createDownloadJobs(video, 1, 'current', [])[0]
   assert.ok(first)
   const jobs = Array.from({ length: MAX_PENDING_JOBS }, (_, index) => ({
     ...first,
@@ -140,6 +146,6 @@ test('retry rejects capacity overflow atomically', () => {
     cid: index + 100,
   }))
   const failed = { ...first, status: 'failed' as const }
-  assert.throws(() => retryJobs([...jobs, failed]), /队列已满/)
+  assert.throws(() => retryDownloadJobs([...jobs, failed]), /队列已满/)
   assert.equal(failed.status, 'failed')
 })

@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { QUALITY_LABELS, QUALITY_RESOLUTIONS } from '../downloads/quality'
+import { QUALITY_LABELS } from '../downloads/labels'
+import { QUALITY_RESOLUTIONS } from '../downloads/media/quality'
 import type { QualityPreference } from '../../types/download'
 
 export const MEDIA_DOMAINS = [
@@ -10,6 +11,13 @@ export const MEDIA_DOMAINS = [
   'hdslb.com',
 ]
 
+/**
+ * Validates a media CDN URL and upgrades an accepted HTTP URL to HTTPS.
+ *
+ * @param value - Absolute media URL to validate against MEDIA_DOMAINS.
+ * @returns The normalized HTTPS URL, or undefined for malformed URLs,
+ * unsupported hosts/ports, or embedded credentials.
+ */
 export function normalizeMediaUrl(value: string): string | undefined {
   try {
     const url = new URL(value)
@@ -93,6 +101,13 @@ export interface SelectedMedia {
 
 /**
  * Audio exports require a returned AAC stream and never fetch the video track.
+ *
+ * @param data - Validated playback payload containing the returned audio
+ * representations.
+ * @returns An audio selection containing the highest-bandwidth usable AAC
+ * input and its label.
+ * @throws {Error} If playback is preview/DRM-only or no trusted standalone AAC
+ *   stream is available.
  */
 export function selectAudio(
   data: z.infer<typeof playDataSchema>,
@@ -122,6 +137,14 @@ export function selectAudio(
 
 type Stream = z.infer<typeof streamSchema>
 
+/**
+ * Collects trusted primary and backup URLs from either API field naming
+ * convention.
+ *
+ * @param stream - DASH representation with camelCase or snake_case CDN fields.
+ * @returns Normalized HTTPS URLs in primary-then-backup order, with
+ * unsupported URLs removed.
+ */
 function streamUrls(stream: Stream): string[] {
   return [
     stream.baseUrl || stream.base_url || '',
@@ -131,6 +154,16 @@ function streamUrls(stream: Stream): string[] {
     .filter((url): url is string => !!url)
 }
 
+/**
+ * Converts a DASH representation into a stable identity and trusted URL
+ * candidates.
+ *
+ * @param stream - Representation whose codec, dimensions, frame rate, and
+ * first media path define identity.
+ * @returns A media input whose identity excludes CDN hosts and expiring query
+ * parameters.
+ * @throws {Error} If the representation has no supported media URL.
+ */
 function toMediaInput(stream: Stream): MediaInput {
   const urls = streamUrls(stream)
   const firstUrl = urls[0]
@@ -152,6 +185,14 @@ function toMediaInput(stream: Stream): MediaInput {
   }
 }
 
+/**
+ * Reads a numeric or fractional frame rate from a DASH representation.
+ *
+ * @param stream - Representation carrying frameRate or frame_rate, such as 60
+ * or 30000/1001.
+ * @returns The parsed frame rate, zero for a missing value or zero
+ * denominator, or NaN for nonnumeric components.
+ */
 function frameRate(stream: Stream): number {
   const [numerator = 0, denominator = 1] = String(
     stream.frameRate || stream.frame_rate || 0,
@@ -161,6 +202,12 @@ function frameRate(stream: Stream): number {
   return denominator ? numerator / denominator : 0
 }
 
+/**
+ * Ranks equally sized video representations by preferred codec family.
+ *
+ * @param stream - Representation whose codec prefix determines the preference.
+ * @returns 3 for AVC, 2 for HEVC, and 1 for other codecs.
+ */
 function codecRank(stream: Stream): number {
   if (stream.codecs.startsWith('avc')) {
     return 3
@@ -172,8 +219,17 @@ function codecRank(stream: Stream): number {
 }
 
 /**
- * Choose only returned media; advertised VIP formats do not imply access.
- * Rank resolution and frame rate first; prefer SDR and AVC among equal formats.
+ * Choose only returned media; advertised VIP formats do not imply access. Rank
+ * resolution and frame rate first; prefer SDR and AVC among equal formats.
+ *
+ * @param data - Validated playback payload containing returned DASH tracks or
+ * progressive fragments.
+ * @param preference - Maximum eligible resolution, or best to avoid a cap;
+ * defaults to best.
+ * @returns Selected video/audio DASH inputs or all progressive fragments with
+ * a quality label.
+ * @throws {Error} If content is protected/preview-only, no tracks satisfy the
+ *   quality cap, AAC is missing, or any required fragment has no trusted URL.
  */
 export function selectMedia(
   data: z.infer<typeof playDataSchema>,

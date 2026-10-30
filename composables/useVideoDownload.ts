@@ -1,13 +1,11 @@
 import { z } from 'zod'
 import { videoInfoSchema } from '~/types/download'
 import { bundleAddResultSchema } from '~/types/downloadBundle'
-import { getBundleTaskCount } from '~/utils/downloads/bundles'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
-import {
-  errorMessage,
-  parseVideoLocation,
-  selectPages,
-} from '~/utils/downloads/model'
+import { parseVideoLocation } from '~/utils/downloads/parseVideoLocation'
+import { getBundleTaskCount } from '~/utils/downloads/queue/bundles'
+import { selectVideoPages } from '~/utils/downloads/queue/jobs'
 import { useDownloadSettings } from './useDownloadSettings'
 import type { MaybeRefOrGetter } from 'vue'
 import type {
@@ -49,7 +47,7 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
     if (mode.value === 'selected' && !selectedPages.value.length) {
       return []
     }
-    return selectPages(
+    return selectVideoPages(
       video.value.pages,
       currentPage.value.page,
       mode.value,
@@ -88,7 +86,7 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
       selectedPages.value = [target.page]
     } catch (error_) {
       if (requestId === id) {
-        error.value = errorMessage(error_)
+        error.value = getErrorMessage(error_)
       }
     } finally {
       if (requestId === id) {
@@ -156,7 +154,7 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
       }
     } catch (error_) {
       if (requestId === id) {
-        error.value = errorMessage(error_)
+        error.value = getErrorMessage(error_)
       }
     } finally {
       isAdding.value = false

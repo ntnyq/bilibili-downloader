@@ -2,15 +2,15 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
   assertMediaOutputSpace,
-  createMediaStorageBudget,
+  createMediaStorageChecker,
   getAvailableMediaStorageBytes,
-} from '../../utils/downloads/storageBudget'
+} from '../../utils/downloads/media/storageBudget'
 
 const GIB = 1024 ** 3
 const MIB = 1024 ** 2
 
 test('allows inputs larger than 16 GiB when quota can hold input plus output', async () => {
-  const check = createMediaStorageBudget(0, {
+  const check = createMediaStorageChecker(0, {
     async estimate() {
       return {
         quota: 100 * GIB,
@@ -30,13 +30,13 @@ test('does not charge cached input twice and includes completed tracks in the ou
     quota: 100 * GIB,
     usage: 78 * GIB,
   })
-  await createMediaStorageBudget(0, { estimate })({
+  await createMediaStorageChecker(0, { estimate })({
     received: 20 * GIB,
     total: 20 * GIB,
     additionalBytes: 0,
   })
   await assert.rejects(
-    createMediaStorageBudget(0, { estimate })({
+    createMediaStorageChecker(0, { estimate })({
       received: 0,
       total: 20 * GIB,
       additionalBytes: 0,
@@ -44,7 +44,7 @@ test('does not charge cached input twice and includes completed tracks in the ou
     /配额不足/,
   )
   await assert.rejects(
-    createMediaStorageBudget(10 * GIB, { estimate })({
+    createMediaStorageChecker(10 * GIB, { estimate })({
       received: 20 * GIB,
       total: 20 * GIB,
       additionalBytes: 0,
@@ -56,7 +56,7 @@ test('does not charge cached input twice and includes completed tracks in the ou
 test('refreshes quota during a transfer and responds to shrinking or growing capacity', async () => {
   let time = 0
   let quota = 100 * GIB
-  const check = createMediaStorageBudget(0, {
+  const check = createMediaStorageChecker(0, {
     now: () => time,
     async estimate() {
       return {
@@ -78,7 +78,7 @@ test('refreshes quota during a transfer and responds to shrinking or growing cap
 
 test('checks unknown-length downloads before writing and refreshes after bounded growth', async () => {
   let reads = 0
-  const check = createMediaStorageBudget(0, {
+  const check = createMediaStorageChecker(0, {
     now: () => 0,
     async estimate() {
       reads++
@@ -101,7 +101,7 @@ test('checks unknown-length downloads before writing and refreshes after bounded
 
 test('a changed representation releases the old accounting and takes a fresh snapshot', async () => {
   let reads = 0
-  const check = createMediaStorageBudget(0, {
+  const check = createMediaStorageChecker(0, {
     now: () => 0,
     async estimate() {
       reads++
@@ -124,7 +124,7 @@ test('missing estimates do not impose another fixed media cap', async () => {
     },
   ]) {
     assert.equal(await getAvailableMediaStorageBytes(estimate), null)
-    await createMediaStorageBudget(0, { estimate })({
+    await createMediaStorageChecker(0, { estimate })({
       received: 0,
       total: 100 * GIB,
       additionalBytes: 0,

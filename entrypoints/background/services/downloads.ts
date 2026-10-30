@@ -8,49 +8,51 @@ import { BilibiliApiError, getVideoInfo } from '~/utils/bilibili/api'
 import { getBatchPage } from '~/utils/bilibili/batch'
 import { MEDIA_DOMAINS } from '~/utils/bilibili/streams'
 import { createVideoInfoCache } from '~/utils/bilibili/videoInfoCache'
-import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/assets'
-import { createBatchJobs } from '~/utils/downloads/batch'
+import { createBatchJobs } from '~/utils/downloads/batch/jobs'
 import {
   BATCH_SESSION_STORAGE_KEY,
   commitBatchSessionResult,
   createBatchSessionData,
-  findBatchSessionVideoReceipt,
+  findBatchSessionReceiptRow,
   getBatchSessionRow,
   saveBatchSession,
-} from '~/utils/downloads/batchSession'
+} from '~/utils/downloads/batch/session'
 import {
-  assertDownloadQueueCapacity,
-  clearFinishedDownloadJobs,
-  createBundleJobs,
-  pruneDownloadJobs,
-} from '~/utils/downloads/bundles'
+  JOBS_STORAGE_KEY,
+  SETTINGS_STORAGE_KEY,
+} from '~/utils/downloads/constants'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import {
-  clearDownloadLibrary,
-  createLibraryJob,
+  createDownloadLibrary,
+  createJobFromHistory,
   deleteLibraryRecord,
   initializeDownloadLibrary,
   recordLibraryCompletions,
-} from '~/utils/downloads/library'
+} from '~/utils/downloads/history/library'
+import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/labels'
 import { requestSchema } from '~/utils/downloads/messages'
 import {
-  createJobs,
-  errorMessage,
-  isJobActive,
-  JOBS_STORAGE_KEY,
-  nextQueuedJob,
-  retryJobs,
-  SETTINGS_STORAGE_KEY,
-} from '~/utils/downloads/model'
-import {
-  applyNativeUpdate,
+  applyNativeJobUpdate,
   startNativeJob,
-} from '~/utils/downloads/nativeQueue'
+} from '~/utils/downloads/native/queue'
+import { createBundleJobs } from '~/utils/downloads/queue/bundles'
+import {
+  assertDownloadQueueCapacity,
+  clearFinishedDownloadJobs,
+  pruneDownloadJobs,
+} from '~/utils/downloads/queue/capacity'
 import {
   canApplyJobUpdate,
   moveQueuedJob,
   pauseJob,
   resumeJob,
-} from '~/utils/downloads/taskControl'
+} from '~/utils/downloads/queue/control'
+import {
+  createDownloadJobs,
+  getNextQueuedJob,
+  isJobActive,
+  retryDownloadJobs,
+} from '~/utils/downloads/queue/jobs'
 import type { Browser } from '#imports'
 import type { BatchAddResult } from '~/types/batchSession'
 import type { DownloadJob, VideoInfo } from '~/types/download'
@@ -332,7 +334,7 @@ async function handleRequest(
         }
       }
       if (session) {
-        const previous = findBatchSessionVideoReceipt(session, message.rowKey)
+        const previous = findBatchSessionReceiptRow(session, message.rowKey)
         if (previous?.receipt) {
           const result = {
             added: 0,
@@ -369,7 +371,7 @@ async function handleRequest(
       failure = {
         added: 0,
         skipped: 0,
-        error: errorMessage(error),
+        error: getErrorMessage(error),
         shouldStop: shouldStopBatch(error),
       }
     }
@@ -406,7 +408,7 @@ async function handleRequest(
         if (failure) {
           result = failure
         } else if (video) {
-          const previous = findBatchSessionVideoReceipt(
+          const previous = findBatchSessionReceiptRow(
             session,
             message.rowKey,
             video.bvid,
@@ -442,7 +444,7 @@ async function handleRequest(
         result = {
           added: 0,
           skipped: 0,
-          error: errorMessage(error),
+          error: getErrorMessage(error),
           // A storage/capacity failure must not cascade through the import.
           shouldStop: true,
         }
@@ -497,7 +499,7 @@ async function handleRequest(
     if (message.type.startsWith('library.')) {
       if (message.type === 'library.clear') {
         await browser.storage.local.set({
-          [DOWNLOAD_LIBRARY_STORAGE_KEY]: clearDownloadLibrary(),
+          [DOWNLOAD_LIBRARY_STORAGE_KEY]: createDownloadLibrary(),
         })
         return null
       }
@@ -519,7 +521,7 @@ async function handleRequest(
         if (!record) {
           throw new Error('这条成功记录已被移除，请刷新列表。')
         }
-        const job = createLibraryJob(record, jobs)
+        const job = createJobFromHistory(record, jobs)
         await openRunner(false)
         await writeJobs([...jobs, job])
         return null
@@ -534,13 +536,19 @@ async function handleRequest(
     }
     if (message.type === 'queue.add' && video) {
       await ensureHeaders()
-      const added = createJobs(video, message.page, message.mode, jobs, {
-        selectedPages: message.selectedPages,
-        quality: message.quality,
-        kind: message.kind,
-        subtitleLanguage: message.subtitleLanguage,
-        settings: await readSettings(),
-      })
+      const added = createDownloadJobs(
+        video,
+        message.page,
+        message.mode,
+        jobs,
+        {
+          selectedPages: message.selectedPages,
+          quality: message.quality,
+          kind: message.kind,
+          subtitleLanguage: message.subtitleLanguage,
+          settings: await readSettings(),
+        },
+      )
       await openRunner(false)
       await writeJobs([...jobs, ...added])
       return {
@@ -596,7 +604,7 @@ async function handleRequest(
       message.type === 'queue.retry'
       || message.type === 'queue.retryFailed'
     ) {
-      const next = retryJobs(
+      const next = retryDownloadJobs(
         jobs,
         message.type === 'queue.retry' ? message.id : undefined,
       )
@@ -625,7 +633,7 @@ async function handleRequest(
     }
     if (message.type === 'native.update') {
       const job = jobs.find(item => item.id === message.id)
-      if (!job || !applyNativeUpdate(job, message.runId, message.update)) {
+      if (!job || !applyNativeJobUpdate(job, message.runId, message.update)) {
         return false
       }
       await writeJobs(jobs)
@@ -636,7 +644,7 @@ async function handleRequest(
     }
     if (message.type === 'runner.claim') {
       const settings = await readSettings()
-      const job = nextQueuedJob(jobs, settings.isPaused)
+      const job = getNextQueuedJob(jobs, settings.isPaused)
       if (!job) {
         return null
       }
@@ -693,7 +701,9 @@ export function registerDownloads() {
       }
       handleRequest(parsed.data, sender)
         .then(data => sendResponse({ ok: true, data }))
-        .catch(error => sendResponse({ ok: false, error: errorMessage(error) }))
+        .catch(error =>
+          sendResponse({ ok: false, error: getErrorMessage(error) }),
+        )
       return true
     },
   )

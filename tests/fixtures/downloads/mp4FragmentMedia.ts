@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import * as mediabunny from 'mediabunny'
-import type { FragmentMediaStore } from '../../../utils/downloads/fragmentMedia'
+import type { FragmentMediaStore } from '../../../utils/downloads/media/fragments/fragmentMedia'
 
 export async function videoPackets(library = mediabunny) {
   const input = new library.Input({

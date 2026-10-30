@@ -3,17 +3,18 @@ import { browser } from '#imports'
 import { downloadJobSchema, downloadJobsSchema } from '~/types/download'
 import { NATIVE_HOST_NAME, nativeEventSchema } from '~/types/nativeBridge'
 import { getVideoMedia } from '~/utils/bilibili/api'
+import { JOBS_STORAGE_KEY } from '~/utils/downloads/constants'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
-import { errorMessage, JOBS_STORAGE_KEY } from '~/utils/downloads/model'
 import {
   createNativeRequest,
   isSameNativeTask,
-} from '~/utils/downloads/nativeBridge'
-import { createNativeManifest } from '~/utils/downloads/nativeManifest'
+} from '~/utils/downloads/native/bridge'
+import { createNativeManifest } from '~/utils/downloads/native/manifest'
 import type { Browser } from '#imports'
 import type { DownloadJob } from '~/types/download'
 import type { requestSchema } from '~/utils/downloads/messages'
-import type { NativeManifest } from '~/utils/downloads/nativeBridge'
+import type { NativeManifest } from '~/utils/downloads/native/bridge'
 
 type NativeUpdate = Extract<
   z.infer<typeof requestSchema>,
@@ -260,7 +261,7 @@ function createNativeSession(onSettled: () => void) {
               error: '',
             })
           } catch (error_) {
-            error.value = `文件已保存，任务记录更新失败：${errorMessage(error_)}`
+            error.value = `文件已保存，任务记录更新失败：${getErrorMessage(error_)}`
           }
           settle()
           break
@@ -270,7 +271,7 @@ function createNativeSession(onSettled: () => void) {
       }
     } catch (error_) {
       if (currentGeneration === generation) {
-        await finishFailure(errorMessage(error_))
+        await finishFailure(getErrorMessage(error_))
       }
     }
   }
@@ -354,7 +355,7 @@ function createNativeSession(onSettled: () => void) {
       )
     } catch (error_) {
       if (currentGeneration === generation) {
-        await finishFailure(errorMessage(error_))
+        await finishFailure(getErrorMessage(error_))
       }
     }
   }

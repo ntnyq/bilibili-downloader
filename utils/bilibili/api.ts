@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { videoPageSchema } from '../../types/download'
-import { QUALITY_REQUEST_IDS } from '../downloads/quality'
+import { QUALITY_REQUEST_IDS } from '../downloads/media/quality'
 import {
   normalizeMediaUrl,
   playDataSchema,
@@ -51,6 +51,24 @@ export class BilibiliApiError extends Error {
   }
 }
 
+/**
+ * Requests and validates a Bilibili API envelope using the current browser
+ * session.
+ *
+ * @param path - API path and query appended to https://api.bilibili.com.
+ * @param signal - Optional caller cancellation signal; each request also has a
+ * 15-second timeout.
+ * @param allowGuest - Whether to accept the guest code -101; defaults to
+ * false.
+ * @returns A promise resolving to the unvalidated data field, possibly
+ * undefined for an accepted guest response.
+ * @throws {BilibiliApiError} If HTTP status, server rejection, or JSON
+ *   decoding prevents a usable response.
+ * @throws {import('zod').ZodError} If the response envelope does not match the
+ *   API schema.
+ * @throws The fetch error or abort reason if the request fails, times out, or
+ *   is cancelled.
+ */
 export async function requestApi(
   path: string,
   signal?: AbortSignal,
@@ -97,6 +115,18 @@ export async function requestApi(
   return result.data
 }
 
+/**
+ * Loads canonical video metadata and rejects unsupported interactive videos.
+ *
+ * @param videoId - BV identifier or av identifier used to query video
+ * metadata.
+ * @param signal - Optional cancellation signal for the metadata request.
+ * @returns A promise resolving to the canonical BV identifier, title, owner,
+ * safe cover URL, and ordered parts.
+ * @throws {Error} If the video is interactive.
+ * @throws {import('zod').ZodError} If returned metadata is malformed.
+ * @throws The API request error or abort reason if metadata cannot be loaded.
+ */
 export async function getVideoInfo(
   videoId: string,
   signal?: AbortSignal,
@@ -119,6 +149,17 @@ export async function getVideoInfo(
   }
 }
 
+/**
+ * Loads the WBI mixin key, reusing a successful key for 30 seconds.
+ *
+ * @param signal - Optional cancellation signal, used only when a network
+ * request is needed.
+ * @returns A promise resolving to the 32-character WBI signing key.
+ * @throws {import('zod').ZodError} If navigation data lacks the signing image
+ *   URLs.
+ * @throws {Error} If signing URLs or key material are invalid.
+ * @throws The API request error or abort reason if refreshing the key fails.
+ */
 export async function getWbiKey(signal?: AbortSignal): Promise<string> {
   if (cachedKey && cachedKey.expires > Date.now()) {
     return cachedKey.value
@@ -131,6 +172,23 @@ export async function getWbiKey(signal?: AbortSignal): Promise<string> {
   return value
 }
 
+/**
+ * Loads signed playback data and selects downloadable tracks for one video
+ * part.
+ *
+ * @param bvid - Canonical BV identifier of the video.
+ * @param cid - Content identifier of the requested part.
+ * @param signal - Cancellation signal shared by signing and playback requests.
+ * @param preference - Requested quality cap; defaults to best.
+ * @param kind - Video with audio or AAC audio alone; defaults to video.
+ * @returns A promise resolving to selected DASH, progressive, or audio inputs
+ * and their quality label.
+ * @throws {import('zod').ZodError} If playback data is malformed.
+ * @throws {Error} If only preview/DRM content is returned or no supported
+ *   tracks satisfy the selection.
+ * @throws The signing or API request error, including cancellation, if
+ *   playback data cannot be loaded.
+ */
 export async function getVideoMedia(
   bvid: string,
   cid: number,
@@ -156,6 +214,23 @@ export async function getVideoMedia(
   return kind === 'audio' ? selectAudio(data) : selectMedia(data, preference)
 }
 
+/**
+ * Loads signed subtitle metadata and selects a supported subtitle for one
+ * part.
+ *
+ * @param bvid - Canonical BV identifier of the video.
+ * @param cid - Content identifier of the requested part.
+ * @param language - Preferred subtitle language, or auto for Chinese-first
+ * selection.
+ * @param signal - Cancellation signal shared by signing and subtitle requests.
+ * @returns A promise resolving to a trusted subtitle URL and its display
+ * label.
+ * @throws {import('zod').ZodError} If subtitle metadata is malformed.
+ * @throws {Error} If subtitles require login, no matching language exists, or
+ *   the selected URL is unsupported.
+ * @throws The signing or API request error, including cancellation, if
+ *   metadata cannot be loaded.
+ */
 export async function getSubtitle(
   bvid: string,
   cid: number,

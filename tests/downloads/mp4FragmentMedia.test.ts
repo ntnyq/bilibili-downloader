@@ -7,7 +7,7 @@ import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
 import * as mediabunny from 'mediabunny'
-import { remuxMedia } from '../../utils/downloads/remuxMedia'
+import { remuxMedia } from '../../utils/downloads/media/remuxMedia'
 import {
   testFragmentIndex,
   testFragmentMedia,

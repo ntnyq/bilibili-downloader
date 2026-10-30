@@ -1,12 +1,10 @@
 import { z } from 'zod'
 import { browser } from '#imports'
 import { downloadJobsSchema } from '~/types/download'
+import { JOBS_STORAGE_KEY } from '~/utils/downloads/constants'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
-import {
-  errorMessage,
-  isJobActive,
-  JOBS_STORAGE_KEY,
-} from '~/utils/downloads/model'
+import { isJobActive } from '~/utils/downloads/queue/jobs'
 import type { Browser } from '#imports'
 import type { DownloadJob } from '~/types/download'
 import type { requestSchema } from '~/utils/downloads/messages'
@@ -43,7 +41,7 @@ export function useDownloadQueue() {
       }
     })
     .catch(error_ => {
-      error.value = errorMessage(error_)
+      error.value = getErrorMessage(error_)
     })
   onScopeDispose(() => {
     disposed = true
@@ -55,7 +53,7 @@ export function useDownloadQueue() {
     try {
       await sendDownloadMessage(message, z.null())
     } catch (error_) {
-      error.value = errorMessage(error_)
+      error.value = getErrorMessage(error_)
     }
   }
 

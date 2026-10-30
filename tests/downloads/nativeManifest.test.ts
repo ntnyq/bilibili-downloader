@@ -4,7 +4,7 @@ import { downloadJobSchema } from '../../types/download'
 import {
   createNativeManifest,
   nativeManifestSchema,
-} from '../../utils/downloads/nativeManifest'
+} from '../../utils/downloads/native/manifest'
 import type { SelectedMedia } from '../../utils/bilibili/streams'
 
 const job = downloadJobSchema.parse({

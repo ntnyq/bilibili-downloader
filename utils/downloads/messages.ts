@@ -115,6 +115,22 @@ const replySchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(false), error: z.string() }),
 ])
 
+/**
+ * Sends a typed extension request and validates both its reply envelope and
+ * successful payload.
+ *
+ * @template T - Successful response payload inferred from schema.
+ * @param message - Download-channel request matching requestSchema; the
+ * channel is attached automatically.
+ * @param schema - Zod schema used to validate and infer the successful
+ * response payload.
+ * @returns A promise resolving to the schema-validated payload of type T.
+ * @throws {Error} If the background responds with ok=false.
+ * @throws {import('zod').ZodError} If the response envelope or successful
+ *   payload is invalid.
+ * @throws The runtime messaging rejection if the background cannot receive or
+ *   answer the request.
+ */
 export async function sendDownloadMessage<T>(
   message: z.infer<typeof requestSchema>,
   schema: z.ZodType<T>,

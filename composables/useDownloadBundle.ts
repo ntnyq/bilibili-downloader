@@ -1,4 +1,4 @@
-import { summarizeDownloadBundles } from '~/utils/downloads/bundles'
+import { summarizeDownloadBundles } from '~/utils/downloads/queue/bundles'
 import type { MaybeRefOrGetter } from 'vue'
 import type { DownloadJob } from '~/types/download'
 

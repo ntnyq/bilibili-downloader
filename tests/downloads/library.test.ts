@@ -6,19 +6,19 @@ import {
   MAX_LIBRARY_BYTES,
   MAX_LIBRARY_RECORDS,
 } from '../../types/downloadHistory'
-import { jobIdentity } from '../../utils/downloads/assets'
-import { createBatchJobs } from '../../utils/downloads/batch'
-import { exportHistory } from '../../utils/downloads/history'
+import { createBatchJobs } from '../../utils/downloads/batch/jobs'
+import { MAX_PENDING_JOBS } from '../../utils/downloads/constants'
 import {
-  boundDownloadLibrary,
-  clearDownloadLibrary,
-  createLibraryJob,
+  createDownloadLibrary,
+  createJobFromHistory,
   deleteLibraryRecord,
   filterLibraryRecords,
   initializeDownloadLibrary,
+  pruneDownloadLibrary,
   recordLibraryCompletions,
-} from '../../utils/downloads/library'
-import { MAX_PENDING_JOBS } from '../../utils/downloads/model'
+} from '../../utils/downloads/history/library'
+import { serializeDownloadHistory } from '../../utils/downloads/history/serializeDownloadHistory'
+import { getJobIdentity } from '../../utils/downloads/queue/identity'
 import type { DownloadJob, VideoInfo } from '../../types/download'
 
 function createJob(index = 1): DownloadJob {
@@ -62,21 +62,21 @@ test('migration archives completed jobs once without inventing dates or storing 
   assert.equal(library.records.length, 1)
   const record = library.records[0]
   assert.ok(record)
-  assert.equal(record.identity, jobIdentity(jobs[0]!))
+  assert.equal(record.identity, getJobIdentity(jobs[0]!))
   assert.equal(record.completedAt, undefined)
   assert.equal(record.createdAt, 1)
   assert.equal('runId' in record, false)
   assert.equal('downloadId' in record, false)
   assert.equal('error' in record, false)
   assert.deepEqual(jobs, snapshot)
-  const empty = clearDownloadLibrary()
+  const empty = createDownloadLibrary()
   assert.deepEqual(initializeDownloadLibrary(empty, jobs), empty)
 })
 
 test('only new completion transitions archive and deletion never reimports unchanged jobs', () => {
   const completed = createJob()
   const previous = [{ ...completed, status: 'saving' as const }]
-  const empty = clearDownloadLibrary()
+  const empty = createDownloadLibrary()
   const library = recordLibraryCompletions(empty, previous, [completed], 9000)
   assert.equal(library.records[0]?.completedAt, 9000)
   const progress = [{ ...createJob(2), status: 'downloading' as const }]
@@ -85,7 +85,7 @@ test('only new completion transitions archive and deletion never reimports uncha
     recordLibraryCompletions(library, [completed], [completed]),
     library,
   )
-  const deleted = deleteLibraryRecord(library, jobIdentity(completed))
+  const deleted = deleteLibraryRecord(library, getJobIdentity(completed))
   assert.equal(deleted.records.length, 0)
   assert.equal(
     recordLibraryCompletions(deleted, [completed], [completed, ...progress]),
@@ -105,7 +105,7 @@ test('only new completion transitions archive and deletion never reimports uncha
 test('latest completion per material replaces its snapshot, including equal timestamp ties', () => {
   const completed = createJob()
   const first = recordLibraryCompletions(
-    clearDownloadLibrary(),
+    createDownloadLibrary(),
     [],
     [completed],
     500,
@@ -210,7 +210,7 @@ test('metadata is bounded before persisting and oversized standalone records fai
   assert.equal(record.cover, '')
   assert.throws(
     () =>
-      boundDownloadLibrary([
+      pruneDownloadLibrary([
         { ...record, title: 'x'.repeat(MAX_LIBRARY_BYTES) },
       ]),
     /存储上限/,
@@ -246,9 +246,9 @@ test('requeue preserves submitted settings and metadata with fresh identity and 
   const record = initializeDownloadLibrary(undefined, [createJob()]).records[0]
   assert.ok(record)
   const snapshot = structuredClone(record)
-  const job = createLibraryJob(record, [])
+  const job = createJobFromHistory(record, [])
   assert.notEqual(job.id, record.id)
-  assert.notEqual(job.id, createLibraryJob(record, []).id)
+  assert.notEqual(job.id, createJobFromHistory(record, []).id)
   assert.ok(job.createdAt > record.createdAt)
   assert.equal(job.status, 'queued')
   assert.equal(job.progress, 0)
@@ -282,13 +282,13 @@ test('requeue preserves submitted settings and metadata with fresh identity and 
     assert.equal(job[field], record[field])
   }
   assert.deepEqual(record, snapshot)
-  assert.throws(() => createLibraryJob(record, [job]), /已在下载队列/)
-  assert.equal(createLibraryJob(record, [createJob()]).status, 'queued')
+  assert.throws(() => createJobFromHistory(record, [job]), /已在下载队列/)
+  assert.equal(createJobFromHistory(record, [createJob()]).status, 'queued')
   const full = Array.from({ length: MAX_PENDING_JOBS }, (_, index) => ({
     ...createJob(index + 2),
     status: 'queued' as const,
   }))
-  assert.throws(() => createLibraryJob(record, full), /队列已满/)
+  assert.throws(() => createJobFromHistory(record, full), /队列已满/)
 })
 
 test('library identity skips older than 100 records, supports override and forgets deleted entries', () => {
@@ -373,7 +373,7 @@ test('search supports title, owner, BV, part and filename alongside material fil
     filterLibraryRecords(library.records, '第 2 集', 'video').length,
     0,
   )
-  const exported = exportHistory(library.records, 'json')
+  const exported = serializeDownloadHistory(library.records, 'json')
   assert.equal(exported.includes('downloadId'), false)
   assert.equal(exported.includes('runId'), false)
   assert.equal(exported.includes('course-1.mp4'), true)

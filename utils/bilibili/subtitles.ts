@@ -20,6 +20,19 @@ export const subtitleInfoSchema = z.object({
     .nullish(),
 })
 
+/**
+ * Selects a subtitle language, preferring Chinese and human captions within
+ * the candidates.
+ *
+ * @param data - Validated player metadata containing subtitle availability and
+ * login requirements.
+ * @param language - Explicit language prefix, or auto to consider all
+ * available languages.
+ * @returns The selected trusted HTTPS subtitle URL and a label marking
+ * automatic captions.
+ * @throws {Error} If login is required, no candidate matches the language, or
+ *   the chosen URL is unsupported.
+ */
 export function selectSubtitle(
   data: z.infer<typeof subtitleInfoSchema>,
   language: SubtitleLanguage,
@@ -78,13 +91,30 @@ const subtitleBodySchema = z.object({
     .max(100000),
 })
 
+/**
+ * Formats subtitle seconds as an SRT timecode with rounded milliseconds.
+ *
+ * @param seconds - Nonnegative cue time in seconds, validated before
+ * formatting.
+ * @returns An HH:MM:SS,mmm timecode with millisecond carry applied.
+ */
 function timestamp(seconds: number): string {
   const milliseconds = Math.round(seconds * 1000)
   return `${String(Math.floor(milliseconds / 3600000)).padStart(2, '0')}:${String(Math.floor(milliseconds / 60000) % 60).padStart(2, '0')}:${String(Math.floor(milliseconds / 1000) % 60).padStart(2, '0')},${String(milliseconds % 1000).padStart(3, '0')}`
 }
 
 /**
- * Convert validated cues to plain SRT in chronological order, rounding milliseconds.
+ * Convert validated cues to plain SRT in chronological order, rounding
+ * milliseconds.
+ *
+ * @param value - Untrusted Bilibili subtitle JSON containing a body of timed
+ * text cues.
+ * @returns Chronologically ordered, renumbered SRT with normalized text and
+ * escaped markup.
+ * @throws {import('zod').ZodError} If cues have invalid fields, excessive
+ *   counts, or nonincreasing time ranges.
+ * @throws {Error} If no nonempty cue survives text cleanup and millisecond
+ *   rounding.
  */
 export function subtitlesToSrt(value: unknown): string {
   const data = subtitleBodySchema.parse(value)

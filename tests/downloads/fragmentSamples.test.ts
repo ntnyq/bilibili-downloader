@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createDiskFragmentSamples } from '../../utils/downloads/fragmentSamples'
+import { createDiskFragmentSamples } from '../../utils/downloads/media/fragments/fragmentSamples'
 import { temporaryFragmentSamples } from '../fixtures/downloads/fragmentSamples'
-import type { FragmentSample } from '../../utils/downloads/fragmentSamples'
+import type { FragmentSample } from '../../utils/downloads/media/fragments/fragmentSamples'
 
 function sample(
   timestamp: number,

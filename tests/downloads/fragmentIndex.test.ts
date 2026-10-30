@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createDiskFragmentIndex } from '../../utils/downloads/fragmentIndex'
-import type { FragmentIndexFile } from '../../utils/downloads/fragmentIndex'
+import { createDiskFragmentIndex } from '../../utils/downloads/media/fragments/fragmentIndex'
+import type { FragmentIndexFile } from '../../utils/downloads/media/fragments/fragmentIndex'
 
 interface FileRecord {
   bytes: Uint8Array<ArrayBuffer>

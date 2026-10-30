@@ -9,7 +9,7 @@ import {
   Input,
   MP4,
 } from 'mediabunny'
-import { createRemuxOutput } from '../../../utils/downloads/remuxMedia'
+import { createRemuxOutput } from '../../../utils/downloads/media/remuxMedia'
 import { temporaryFragmentSamples } from './fragmentSamples'
 import { temporaryFragmentIndex } from './fragmentIndex'
 import type { StreamTargetChunk } from 'mediabunny'

@@ -5,20 +5,20 @@ import {
   downloadSettingsSchema,
 } from '../../types/download'
 import { bundleKindsSchema } from '../../types/downloadBundle'
+import { MAX_PENDING_JOBS } from '../../utils/downloads/constants'
+import { createDownloadPath } from '../../utils/downloads/files/createDownloadPath'
+import {
+  createBundleJobs,
+  getBundleTaskCount,
+  summarizeDownloadBundles,
+} from '../../utils/downloads/queue/bundles'
 import {
   assertDownloadQueueCapacity,
   clearFinishedDownloadJobs,
-  createBundleJobs,
-  getBundleTaskCount,
   MAX_DOWNLOAD_QUEUE_BYTES,
   pruneDownloadJobs,
-  summarizeDownloadBundles,
-} from '../../utils/downloads/bundles'
-import {
-  createFilename,
-  createJobs,
-  MAX_PENDING_JOBS,
-} from '../../utils/downloads/model'
+} from '../../utils/downloads/queue/capacity'
+import { createDownloadJobs } from '../../utils/downloads/queue/jobs'
 import type { DownloadJob, VideoInfo } from '../../types/download'
 
 const video: VideoInfo = {
@@ -64,7 +64,7 @@ test('expands the selected parts for every asset and creates one cover per video
   )
   assert.deepEqual(downloadJobsSchema.parse(result.jobs), result.jobs)
   const folders = result.jobs.map(job =>
-    createFilename(job).split('/').slice(0, -1).join('/'),
+    createDownloadPath(job).split('/').slice(0, -1).join('/'),
   )
   assert.equal(new Set(folders).size, 1)
 })
@@ -141,14 +141,14 @@ test('archive directories preserve owner grouping and do not change single-asset
     ),
   )
   assert.equal(
-    createJobs(video, 1, 'current', [], { settings })[0]?.folderMode,
+    createDownloadJobs(video, 1, 'current', [], { settings })[0]?.folderMode,
     'owner',
   )
   assert.equal(settings.folderMode, 'owner')
 })
 
 test('capacity failures leave the original queue untouched instead of partially adding a bundle', () => {
-  const [base] = createJobs(video, 1, 'current', [])
+  const [base] = createDownloadJobs(video, 1, 'current', [])
   assert.ok(base)
   const existing = Array.from({ length: MAX_PENDING_JOBS - 1 }, (_, index) => ({
     ...base,
@@ -208,7 +208,7 @@ test('history pruning and clearing preserve every member of a large active bundl
     ...job,
     status: index < 149 ? 'completed' : 'queued',
   }))
-  const [base] = createJobs(video, 1, 'current', [])
+  const [base] = createDownloadJobs(video, 1, 'current', [])
   assert.ok(base)
   const unrelated = Array.from({ length: 200 }, (_, index): DownloadJob => ({
     ...base,
@@ -248,7 +248,9 @@ test('paused bundles reserve all their members so accumulated completed assets c
     ...job,
     status: index < MAX_PENDING_JOBS - 1 ? 'completed' : 'paused',
   }))
-  const [addition] = createJobs(video, 1, 'current', [], { kind: 'cover' })
+  const [addition] = createDownloadJobs(video, 1, 'current', [], {
+    kind: 'cover',
+  })
   assert.ok(addition)
   assert.throws(
     () => createBundleJobs(video, 1, 'current', existing, { kinds: ['cover'] }),
@@ -278,7 +280,7 @@ test('paused bundles reserve all their members so accumulated completed assets c
 })
 
 test('new work reserves storage growth and finished history is evicted as complete groups at the byte bound', () => {
-  const [base] = createJobs(video, 1, 'current', [])
+  const [base] = createDownloadJobs(video, 1, 'current', [])
   assert.ok(base)
   const oversized = { ...base, title: 'x'.repeat(MAX_DOWNLOAD_QUEUE_BYTES) }
   assert.throws(() => assertDownloadQueueCapacity([], [oversized]), /存储上限/)
@@ -302,7 +304,7 @@ test('retrying a finished bundle reserves its whole group again before any membe
     ...job,
     status: 'failed',
   }))
-  const [base] = createJobs(video, 1, 'current', [], { kind: 'audio' })
+  const [base] = createDownloadJobs(video, 1, 'current', [], { kind: 'audio' })
   assert.ok(base)
   const active = Array.from(
     { length: MAX_PENDING_JOBS - 1 },
