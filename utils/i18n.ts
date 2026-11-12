@@ -7,8 +7,11 @@ import { formatI18nMessage } from './formatI18nMessage'
 export type LanguagePreference = 'browser' | 'zh-CN' | 'en'
 
 export const LANGUAGE_STORAGE_KEY = 'languagePreference'
+
 const selectedLanguage = shallowRef<LanguagePreference>('browser')
+
 export const languagePreference = readonly(selectedLanguage)
+
 let initialization: Promise<void> | undefined
 let revision = 0
 

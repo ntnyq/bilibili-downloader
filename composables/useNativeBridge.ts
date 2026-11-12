@@ -196,7 +196,7 @@ function createNativeSession(onSettled: () => void) {
       job.kind === 'audio' ? 'audio' : 'video',
     )
     signal.throwIfAborted()
-    return createNativeManifest(job, media)
+    return createNativeManifest(job, media, manifest?.filename)
   }
 
   async function refreshManifest() {

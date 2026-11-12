@@ -418,6 +418,7 @@ downloadQueue:
   paused: Paused
   pending: Pending
   queuePausedTheCurrentTaskWillFinishOthers: 'Queue paused: the current task will finish; others will wait. Keep the Download Center open.'
+  recoverQueue: Reload queue (back up corrupt data before recovery)
   resumeQueue: Resume queue
   retryAllFailed: Retry all failed
   saveTheVideosYouLove: Save the videos you love
@@ -471,6 +472,7 @@ downloads:
   cannotLoadVideoInformationPleaseTryAgain: Cannot load video information. Please try again.
   downloadTasksCanOnlyRunInTheDownload: Download tasks can only run in the Download Center.
   enableNotificationsInSettingsAndGrantNotificationPermission: Enable notifications in Settings and grant notification permission.
+  fileSavedButHistoryFailed: 'File saved, but download history could not be updated: $1'
   invalidDownloadRequestParameters: Invalid download request parameters.
   saved: $1 saved
   theBatchSessionDoesNotExistPreviewAgain: The batch session does not exist. Preview again.

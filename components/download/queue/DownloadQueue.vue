@@ -27,6 +27,7 @@ const {
   retry,
   retryFailed,
   clear,
+  recover,
 } = useDownloadQueue()
 const {
   settings,
@@ -46,6 +47,7 @@ const filter = shallowRef<'all' | 'active' | 'paused' | 'completed' | 'failed'>(
   'all',
 )
 const search = shallowRef('')
+
 const failedJobs = computed(() =>
   jobs.value.filter(job => job.status === 'failed'),
 )
@@ -143,12 +145,14 @@ async function showFile(id?: number) {
           :key="item.id"
           :value="item.id"
           class="h-12 flex-none rounded-none border-0 border-b-2 border-transparent px-0 text-xs shadow-none data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-primary data-[state=active]:shadow-none"
-          >{{ item.label }}
+        >
+          <span>{{ item.label }}</span>
           <span
             class="ml-1 rounded bg-muted px-1.5 py-0.5 text-[10px] tabular-nums"
-            >{{ item.count }}</span
-          ></TabsTrigger
-        >
+          >
+            {{ item.count }}
+          </span>
+        </TabsTrigger>
       </TabsList>
       <TabsContent
         :value="filter"
@@ -189,48 +193,55 @@ async function showFile(id?: number) {
             }}
           </Button>
           <DropdownMenu>
-            <DropdownMenuTrigger as-child
-              ><Button
+            <DropdownMenuTrigger as-child>
+              <Button
                 :aria-label="i18n.t('downloadQueue.moreQueueActions')"
                 variant="outline"
                 size="icon"
-                ><EllipsisIcon class="size-4" /></Button
-            ></DropdownMenuTrigger>
+              >
+                <EllipsisIcon class="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
             <DropdownMenuContent
               align="end"
               class="w-52"
             >
-              <DropdownMenuLabel>{{
-                i18n.t('downloadQueue.filteredRecords', visibleJobs.length)
-              }}</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                {{
+                  i18n.t('downloadQueue.filteredRecords', visibleJobs.length)
+                }}
+              </DropdownMenuLabel>
               <DropdownMenuItem
                 @select="downloadHistory(visibleJobs, 'json')"
                 :disabled="isExporting || !visibleJobs.length"
-                >{{ i18n.t('downloadLibrary.exportJson') }}</DropdownMenuItem
               >
+                {{ i18n.t('downloadLibrary.exportJson') }}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 @select="downloadHistory(visibleJobs, 'csv')"
                 :disabled="isExporting || !visibleJobs.length"
-                >{{ i18n.t('downloadLibrary.exportCsv') }}</DropdownMenuItem
               >
+                {{ i18n.t('downloadLibrary.exportCsv') }}
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 @select="retryFailed"
                 :disabled="!failedJobs.length"
-                >{{ i18n.t('downloadQueue.retryAllFailed') }}</DropdownMenuItem
               >
+                {{ i18n.t('downloadQueue.retryAllFailed') }}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 @select="cancel()"
                 :disabled="!activeJobs.length"
-                >{{ i18n.t('downloadQueue.cancelAll') }}</DropdownMenuItem
               >
+                {{ i18n.t('downloadQueue.cancelAll') }}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 @select="clear"
                 :disabled="jobs.length <= activeJobs.length"
-                >{{
-                  i18n.t('downloadQueue.clearQueueRecords')
-                }}</DropdownMenuItem
               >
+                {{ i18n.t('downloadQueue.clearQueueRecords') }}
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -247,10 +258,20 @@ async function showFile(id?: number) {
           v-if="queueError || settingsError || exportError"
           class="mt-4 text-[13px] text-destructive"
           variant="destructive"
-          ><AlertDescription>
-            {{ queueError || settingsError || exportError }}
-          </AlertDescription></Alert
         >
+          <AlertDescription>
+            {{ queueError || settingsError || exportError }}
+            <Button
+              @click="recover"
+              v-if="queueError"
+              variant="outline"
+              size="sm"
+              class="mt-2"
+            >
+              {{ i18n.t('downloadQueue.recoverQueue') }}
+            </Button>
+          </AlertDescription>
+        </Alert>
         <ul
           v-if="visibleJobs.length"
           class="divide-y divide-border"

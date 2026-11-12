@@ -84,6 +84,7 @@ export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('queue.retry'), id: z.string() }),
   z.object({ type: z.literal('queue.retryFailed') }),
   z.object({ type: z.literal('queue.clear') }),
+  z.object({ type: z.literal('queue.recover') }),
   z.object({ type: z.literal('library.list') }),
   z.object({
     type: z.literal('library.delete'),
@@ -100,8 +101,8 @@ export const requestSchema = z.discriminatedUnion('type', [
     settings: downloadSettingsPatchSchema,
   }),
   z.object({ type: z.literal('runner.open') }),
-  z.object({ type: z.literal('runner.ready') }),
-  z.object({ type: z.literal('runner.claim') }),
+  z.object({ type: z.literal('runner.ready'), runnerId: z.uuid().optional() }),
+  z.object({ type: z.literal('runner.claim'), runId: z.uuid().optional() }),
   z.object({
     type: z.literal('runner.update'),
     runId: z.string().optional(),

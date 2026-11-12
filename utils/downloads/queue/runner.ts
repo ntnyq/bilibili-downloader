@@ -22,6 +22,56 @@ import {
 } from './control'
 import type { Browser } from '#imports'
 import type { DownloadJob, JobUpdate } from '~/types/download'
+import type { requestSchema } from '../messages'
+
+type RunnerRequest = Extract<
+  z.infer<typeof requestSchema>,
+  {
+    type: 'runner.ready' | 'runner.claim' | 'runner.update' | 'queue.list'
+  }
+>
+
+function waitForRunner(milliseconds: number, signal?: AbortSignal) {
+  signal?.throwIfAborted()
+  return new Promise<void>((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>
+    const abort = () => {
+      clearTimeout(timer)
+      reject(signal?.reason)
+    }
+    timer = setTimeout(() => {
+      signal?.removeEventListener('abort', abort)
+      resolve()
+    }, milliseconds)
+    signal?.addEventListener('abort', abort, { once: true })
+  })
+}
+
+/**
+ * Runner requests are idempotent through instance/run IDs. Keep the lock and
+ * retry with capped backoff, without restarting work or resetting native jobs.
+ */
+async function sendRunnerMessage<Result>(
+  message: RunnerRequest,
+  schema: z.ZodType<Result>,
+  onError: (message: string) => void,
+  signal?: AbortSignal,
+): Promise<Result> {
+  let delay = 1000
+  while (true) {
+    signal?.throwIfAborted()
+    try {
+      const result = await sendDownloadMessage(message, schema)
+      onError('')
+      return result
+    } catch (error) {
+      signal?.throwIfAborted()
+      onError(getErrorMessage(error))
+      await waitForRunner(delay, signal)
+      delay = Math.min(delay * 2, 5000)
+    }
+  }
+}
 
 /**
  * Executes one claimed job through asset/media fetching, file saving, and
@@ -40,16 +90,22 @@ import type { DownloadJob, JobUpdate } from '~/types/download'
  * @remarks The caller must own the media-cache lock. Expired media URLs
  *   refresh once; cancelled work clears cache while paused work retains it.
  */
-async function runDownloadJob(job: DownloadJob, controller: AbortController) {
+async function runDownloadJob(
+  job: DownloadJob,
+  controller: AbortController,
+  onError: (message: string) => void,
+) {
   const { signal } = controller
   let updates = Promise.resolve<unknown>(undefined)
   let lastProgressAt = 0
   const update = (patch: JobUpdate) => {
     const next = updates.then(async () => {
       signal.throwIfAborted()
-      const accepted = await sendDownloadMessage(
+      const accepted = await sendRunnerMessage(
         { type: 'runner.update', id: job.id, runId: job.runId, update: patch },
         z.boolean(),
+        onError,
+        signal,
       )
       // A pause may win the storage write before its change event arrives.
       confirmJobUpdate(accepted, controller)
@@ -213,28 +269,38 @@ async function runDownloadJob(job: DownloadJob, controller: AbortController) {
 /**
  * Elect one runner across tabs; the background serializes queue writes.
  *
- * @param onError - Callback notified when another tab already owns the
- * download-runner lock.
+ * @param onError - Reports a duplicate runner or a retrying connection;
+ * receives an empty string when the connection recovers.
+ * @param signal - Optional owning-page cancellation signal.
  * @returns A promise that resolves when the lock is unavailable, otherwise
  * remains pending while the elected runner claims and executes jobs.
- * @throws The lock or messaging rejection if startup, queue polling, or
- *   reporting a job failure cannot continue.
+ * @throws The abort reason or lock rejection if execution cannot continue.
  * @throws Any exception thrown by onError when a duplicate runner is detected.
  * @remarks Individual job failures are reported to the background queue and
  *   normally do not end the runner loop.
  */
-export async function startDownloadRunner(onError: (message: string) => void) {
+export async function startDownloadRunner(
+  onError: (message: string) => void,
+  signal?: AbortSignal,
+) {
+  const request = <Result>(message: RunnerRequest, schema: z.ZodType<Result>) =>
+    sendRunnerMessage(message, schema, onError, signal)
   await navigator.locks.request(
     'bilibili-download-runner',
     { ifAvailable: true },
     async lock => {
+      signal?.throwIfAborted()
       if (!lock) {
         onError(i18n.t('runner.aDownloadCenterIsAlreadyRunningUseThe'))
         return
       }
-      await sendDownloadMessage({ type: 'runner.ready' }, z.null())
+      await request(
+        { type: 'runner.ready', runnerId: crypto.randomUUID() },
+        z.null(),
+      )
       let lastPruneAt = 0
       while (true) {
+        signal?.throwIfAborted()
         if (Date.now() - lastPruneAt > 10000) {
           lastPruneAt = Date.now()
           await navigator.locks.request(
@@ -244,7 +310,7 @@ export async function startDownloadRunner(onError: (message: string) => void) {
               if (!cacheLock) {
                 return
               }
-              const jobs = await sendDownloadMessage(
+              const jobs = await request(
                 { type: 'queue.list' },
                 downloadJobsSchema,
               )
@@ -259,13 +325,18 @@ export async function startDownloadRunner(onError: (message: string) => void) {
           )
         }
         const controller = new AbortController()
-        const job = await sendDownloadMessage(
-          { type: 'runner.claim' },
+        const job = await request(
+          { type: 'runner.claim', runId: crypto.randomUUID() },
           downloadJobSchema.nullable(),
         )
         if (!job) {
-          await new Promise(resolve => setTimeout(resolve, 1000))
+          await waitForRunner(1000, signal)
           continue
+        }
+        const abort = () => controller.abort(signal?.reason)
+        signal?.addEventListener('abort', abort, { once: true })
+        if (signal?.aborted) {
+          abort()
         }
         const onJobsChanged = (
           changes: Record<string, Browser.storage.StorageChange>,
@@ -293,10 +364,7 @@ export async function startDownloadRunner(onError: (message: string) => void) {
         }
         browser.storage.onChanged.addListener(onJobsChanged)
         try {
-          const jobs = await sendDownloadMessage(
-            { type: 'queue.list' },
-            downloadJobsSchema,
-          )
+          const jobs = await request({ type: 'queue.list' }, downloadJobsSchema)
           abortStaleJobRun(
             job,
             jobs.find(item => item.id === job.id),
@@ -306,12 +374,12 @@ export async function startDownloadRunner(onError: (message: string) => void) {
             'bilibili-media-cache',
             { signal: controller.signal },
             async () => {
-              await runDownloadJob(job, controller)
+              await runDownloadJob(job, controller, onError)
             },
           )
         } catch (error) {
           if (!controller.signal.aborted) {
-            await sendDownloadMessage(
+            await request(
               {
                 type: 'runner.update',
                 runId: job.runId,
@@ -322,6 +390,7 @@ export async function startDownloadRunner(onError: (message: string) => void) {
             )
           }
         } finally {
+          signal?.removeEventListener('abort', abort)
           browser.storage.onChanged.removeListener(onJobsChanged)
         }
       }

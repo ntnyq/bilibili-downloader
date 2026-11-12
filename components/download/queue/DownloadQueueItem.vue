@@ -209,7 +209,7 @@ const statusClass = computed(() => {
         }}
       </p>
       <div
-        v-if="job.error && job.status === 'failed'"
+        v-if="job.error && ['failed', 'completed'].includes(job.status)"
         class="mt-3 flex items-start gap-2 rounded-md bg-destructive/5 px-3 py-2 text-xs text-destructive"
         role="alert"
       >

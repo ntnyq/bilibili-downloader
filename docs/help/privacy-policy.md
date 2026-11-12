@@ -1,6 +1,6 @@
 # Privacy Policy
 
-Effective October 13, 2026. Applies to version 0.0.1.
+Effective October 13, 2026. Applies to version 0.0.4.
 Maintainer: ntnyq. Project: https://github.com/ntnyq/bilibili-downloader
 
 ## Purpose and data handled
@@ -16,6 +16,8 @@ API requests use credentials: include, allowing the browser to attach an existin
 Settings, queues, batch sessions and history are kept in local extension storage. Resume fragments and validation metadata are kept in the browser's private on-device file storage for the extension. Media muxing runs locally using FFmpeg/WASM bundled with the extension. There is no developer-operated data server, analytics SDK, advertising SDK or cross-device synchronization feature.
 
 Settings, queues and sessions remain locally until replaced, cleared or removed on uninstall. History is limited to 5,000 entries and approximately 3 MiB serialized size, with older entries evicted as needed. Cache retention depends on task cleanup, browser quotas and user actions; retention and successful resume are not guaranteed.
+
+Explicit recovery of a damaged queue retains its original snapshots in local extension storage for troubleshooting. Clearing tasks does not remove these recovery backups; uninstalling the extension removes them.
 
 ## Network requests and recipients
 

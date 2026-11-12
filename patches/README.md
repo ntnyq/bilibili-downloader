@@ -2,6 +2,77 @@
 
 ## mediabunny@1.62.1
 
+### Rebuilding maintained artifacts
+
+Treat these four TypeScript files as the maintenance inputs:
+
+- `src/isobmff/isobmff-boxes.ts`
+- `src/isobmff/isobmff-demuxer.ts`
+- `src/isobmff/isobmff-muxer.ts`
+- `src/output-format.ts`
+
+With the repository's locked dependencies already available, run from the
+repository root:
+
+```sh
+pnpm patch:media:build node_modules/mediabunny output/mediabunny-rebuilt
+```
+
+The output's parent directory must exist, and the output directory must be new
+and outside the input package. The script copies the package, rebuilds the four
+ESM modules and their declarations, and bundles the resulting ESM graph into
+both browser and Node CommonJS entrypoints. It refuses other package versions.
+It does not install dependencies, edit the input, update the patch/lockfile or
+run package lifecycle scripts. Discard the output directory after any failure.
+
+The published package omits its root build configuration and shared TypeScript
+sources. The script uses the unchanged published shared declarations and ESM
+files rather than requiring a complete upstream checkout. It checks syntax and
+the four maintained files' types, including inferred types from upstream source;
+it does not typecheck every unchanged upstream implementation against newer
+Node/TypeScript typings. Any additional maintained source must be added to the
+script's input list and regression coverage.
+
+TypeScript comes from the root dependency and esbuild from the existing `tsx`
+dependency; `pnpm-lock.yaml` fixes their versions, which the script also prints.
+The generator targets the POSIX environments used for development and CI.
+Identical inputs and locked tools produce identical maintained artifacts across
+output directories. This does not promise byte-for-byte reproduction of the
+older hand-maintained bundles: compiler formatting, names and comments can
+differ. Preserve the license banner and review generated churn separately from
+the intended source change. Do not replace a working patch just to normalize it.
+
+`tests/downloads/patchBuild.test.ts` runs the generator against isolated copies
+with stale outputs, compares repeated builds, and exercises actual input parsing
+and paged sample/index output through ESM and both CommonJS builds. It also
+checks refusal of unsafe destinations, incorrect versions and invalid source.
+The suite is included in `pnpm test` and CI; run it alone with:
+
+```sh
+pnpm exec tsx --import ./tests/support/i18n.ts --test tests/downloads/patchBuild.test.ts
+```
+
+For a future authorized dependency change, generate and inspect the patch as
+follows. `pnpm patch` prepares an editable package with the existing patch
+applied; edit only the source inputs above before rebuilding:
+
+```sh
+pnpm patch mediabunny@1.62.1 --edit-dir output/mediabunny-edit
+pnpm patch:media:build output/mediabunny-edit output/mediabunny-rebuilt
+cp -R output/mediabunny-rebuilt/dist/. output/mediabunny-edit/dist/
+pnpm patch-commit output/mediabunny-edit
+```
+
+`patch-commit` also runs dependency installation. These commands are a separate
+dependency-maintenance workflow, not part of the build or test command above.
+Review changes to this patch, `pnpm-workspace.yaml` and `pnpm-lock.yaml`, then run
+the full tests, typecheck and Chromium/Firefox builds against the installed
+result. The existing media tests cover the stored-index, input paging, seeking,
+error/cancellation and memory contracts described below; the generator smoke
+test is not a replacement for that acceptance suite.
+
+### Behavior and limits
+
 The browser remuxer writes fragmented MP4/M4A and supplies an internal
 `_fragmentIndexStore` to the pinned muxer patch. Each completed fragment appends
 one packed 28-byte TFRA v1 record per track that has a sync sample. The muxer

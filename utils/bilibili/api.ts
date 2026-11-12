@@ -1,6 +1,6 @@
 import { z } from 'zod'
 import { i18n } from '~/utils/i18n'
-import { videoPageSchema } from '../../types/download'
+import { videoInfoSchema, videoPageSchema } from '../../types/download'
 import { QUALITY_REQUEST_IDS } from '../downloads/media/quality'
 import {
   normalizeMediaUrl,
@@ -154,13 +154,13 @@ export async function getVideoInfo(
       i18n.t('api.interactiveVideosAreNotSupportedChooseARegular'),
     )
   }
-  return {
+  return videoInfoSchema.parse({
     bvid: data.bvid,
     title: data.title,
     cover: normalizeMediaUrl(data.pic) || '',
     owner: data.owner.name,
     pages: data.pages,
-  }
+  })
 }
 
 /**

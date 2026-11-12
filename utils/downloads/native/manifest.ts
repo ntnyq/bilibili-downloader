@@ -86,6 +86,8 @@ export const nativeManifestSchema = z
  * filename/directory settings.
  * @param media - Selected downloadable representation and trusted CDN inputs
  * for the same asset kind.
+ * @param filename - Previously resolved path retained during a URL refresh;
+ * omitted for a new task.
  * @returns A validated version-one manifest containing selected public media
  * URLs, output path, and creation time.
  * @throws {Error} If the job is not media, its audio/video kind disagrees with
@@ -93,7 +95,11 @@ export const nativeManifestSchema = z
  * @throws {import('zod').ZodError} If manifest IDs, paths, URLs, input counts,
  *   or size-limited fields are invalid.
  */
-export function createNativeManifest(job: DownloadJob, media: SelectedMedia) {
+export function createNativeManifest(
+  job: DownloadJob,
+  media: SelectedMedia,
+  filename?: string,
+) {
   if (
     !['video', 'audio'].includes(job.kind)
     || (job.kind === 'audio') !== (media.kind === 'audio')
@@ -106,7 +112,8 @@ export function createNativeManifest(job: DownloadJob, media: SelectedMedia) {
     job: { bvid: job.bvid, cid: job.cid, page: job.page, title: job.title },
     kind: media.kind,
     quality: media.quality,
-    filename: createDownloadPath({ ...job, quality: media.quality }),
+    filename:
+      filename ?? createDownloadPath({ ...job, quality: media.quality }),
     inputs: media.inputs,
   })
 }

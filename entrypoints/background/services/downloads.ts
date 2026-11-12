@@ -2,7 +2,11 @@ import { z } from 'zod'
 import { browser } from '#imports'
 import { BATCH_REQUEST_INTERVAL_MS } from '~/types/batch'
 import { batchSessionSchema } from '~/types/batchSession'
-import { downloadJobsSchema, downloadSettingsSchema } from '~/types/download'
+import {
+  downloadJobSchema,
+  downloadJobsSchema,
+  downloadSettingsSchema,
+} from '~/types/download'
 import { DOWNLOAD_LIBRARY_STORAGE_KEY } from '~/types/downloadHistory'
 import { BilibiliApiError, getVideoInfo } from '~/utils/bilibili/api'
 import { getBatchPage } from '~/utils/bilibili/batch'
@@ -43,6 +47,7 @@ import {
 } from '~/utils/downloads/queue/capacity'
 import {
   canApplyJobUpdate,
+  isJobRunning,
   moveQueuedJob,
   pauseJob,
   resumeJob,
@@ -59,6 +64,7 @@ import type { BatchAddResult } from '~/types/batchSession'
 import type { DownloadJob, VideoInfo } from '~/types/download'
 
 const RUNNER_STORAGE_KEY = 'downloadRunnerTabId'
+const RUNNER_INSTANCE_STORAGE_KEY = 'downloadRunnerInstanceId'
 const getCachedVideoInfo = createVideoInfoCache(getVideoInfo)
 let queueLock = Promise.resolve<unknown>(undefined)
 let headerRules: Promise<void> | undefined
@@ -137,6 +143,7 @@ async function writeJobs(
   jobs: DownloadJob[],
   extra: Record<string, unknown> = {},
 ) {
+  jobs = downloadJobsSchema.parse(jobs)
   const stored = await browser.storage.local.get([
     JOBS_STORAGE_KEY,
     DOWNLOAD_LIBRARY_STORAGE_KEY,
@@ -146,27 +153,55 @@ async function writeJobs(
   const completed = new Set(
     previous.filter(job => job.status === 'completed').map(job => job.id),
   )
+  const warnHistoryFailure = (error: unknown) => {
+    for (const job of jobs) {
+      if (job.status === 'completed' && !completed.has(job.id)) {
+        job.error = i18n.t('downloads.fileSavedButHistoryFailed', [
+          getErrorMessage(error),
+        ])
+      }
+    }
+  }
   const libraryPatch: Record<string, unknown> = {}
   // Progress updates should not parse and re-encode thousands of history records.
   if (
     stored[DOWNLOAD_LIBRARY_STORAGE_KEY] === undefined
     || jobs.some(job => job.status === 'completed' && !completed.has(job.id))
   ) {
-    const library = initializeDownloadLibrary(
-      stored[DOWNLOAD_LIBRARY_STORAGE_KEY],
-      previous,
-    )
-    libraryPatch[DOWNLOAD_LIBRARY_STORAGE_KEY] = recordLibraryCompletions(
-      library,
-      previous,
-      jobs,
-    )
+    try {
+      const library = initializeDownloadLibrary(
+        stored[DOWNLOAD_LIBRARY_STORAGE_KEY],
+        previous,
+      )
+      libraryPatch[DOWNLOAD_LIBRARY_STORAGE_KEY] = recordLibraryCompletions(
+        library,
+        previous,
+        jobs,
+      )
+    } catch (error) {
+      // Archiving cannot undo a successful save. Preserve unreadable history
+      // until the user clears it, and keep the warning with the saved task.
+      warnHistoryFailure(error)
+    }
   }
-  await browser.storage.local.set({
-    ...extra,
-    ...libraryPatch,
-    [JOBS_STORAGE_KEY]: pruneDownloadJobs(jobs),
-  })
+  try {
+    await browser.storage.local.set({
+      ...extra,
+      ...libraryPatch,
+      [JOBS_STORAGE_KEY]: pruneDownloadJobs(jobs),
+    })
+  } catch (error) {
+    if (!(DOWNLOAD_LIBRARY_STORAGE_KEY in libraryPatch)) {
+      throw error
+    }
+    // A history quota/write failure must not keep a saved file in progress.
+    // Queue-only failures still propagate, so callers never receive a false ACK.
+    warnHistoryFailure(error)
+    await browser.storage.local.set({
+      ...extra,
+      [JOBS_STORAGE_KEY]: pruneDownloadJobs(jobs),
+    })
+  }
 }
 
 function ensureHeaders() {
@@ -506,14 +541,51 @@ async function handleRequest(
       }
       return settings
     }
-    const jobs = await readJobs()
-    if (message.type.startsWith('library.')) {
-      if (message.type === 'library.clear') {
-        await browser.storage.local.set({
-          [DOWNLOAD_LIBRARY_STORAGE_KEY]: createDownloadLibrary(),
-        })
+    if (message.type === 'library.clear') {
+      await browser.storage.local.set({
+        [DOWNLOAD_LIBRARY_STORAGE_KEY]: createDownloadLibrary(),
+      })
+      return null
+    }
+    if (message.type === 'runner.open') {
+      await openRunner(true)
+      return null
+    }
+    if (message.type === 'queue.recover') {
+      const backupKey = 'downloadJobsRecoveryBackup'
+      const stored = await browser.storage.local.get([
+        JOBS_STORAGE_KEY,
+        backupKey,
+      ])
+      const raw = stored[JOBS_STORAGE_KEY]
+      if (raw === undefined || downloadJobsSchema.safeParse(raw).success) {
         return null
       }
+      const recovered = (Array.isArray(raw) ? raw : []).flatMap(value => {
+        const result = downloadJobSchema.safeParse(value)
+        return result.success ? [result.data] : []
+      })
+      const snapshot = JSON.stringify(raw)
+      const hash = await crypto.subtle.digest(
+        'SHA-256',
+        new TextEncoder().encode(snapshot),
+      )
+      const suffix = Array.from(new Uint8Array(hash), value =>
+        value.toString(16).padStart(2, '0'),
+      ).join('')
+      const key =
+        stored[backupKey] === undefined
+        || JSON.stringify(stored[backupKey]) === snapshot
+          ? backupKey
+          : `${backupKey}:${suffix}`
+      // Persist the snapshot before changing the queue. Distinct corrupt
+      // snapshots survive later recoveries; retries reuse the same backup key.
+      await browser.storage.local.set({ [key]: raw })
+      await browser.storage.local.set({ [JOBS_STORAGE_KEY]: recovered })
+      return null
+    }
+    const jobs = await readJobs()
+    if (message.type.startsWith('library.')) {
       const library = await readLibrary(jobs)
       if (message.type === 'library.list') {
         return library
@@ -544,10 +616,6 @@ async function handleRequest(
     }
     if (message.type === 'queue.list') {
       return jobs
-    }
-    if (message.type === 'runner.open') {
-      await openRunner(true)
-      return null
     }
     if (message.type === 'queue.add' && video) {
       await ensureHeaders()
@@ -631,10 +699,23 @@ async function handleRequest(
       throw new Error(i18n.t('downloads.downloadTasksCanOnlyRunInTheDownload'))
     }
     if (message.type === 'runner.ready') {
+      const owner = await browser.storage.local.get([
+        RUNNER_STORAGE_KEY,
+        RUNNER_INSTANCE_STORAGE_KEY,
+      ])
+      if (
+        message.runnerId
+        && owner[RUNNER_STORAGE_KEY] === sender.tab?.id
+        && owner[RUNNER_INSTANCE_STORAGE_KEY] === message.runnerId
+      ) {
+        return null
+      }
       await ensureHeaders()
       await recoverInterruptedJobs(jobs)
-      await browser.storage.local.set({ [RUNNER_STORAGE_KEY]: sender.tab?.id })
-      await writeJobs(jobs)
+      await writeJobs(jobs, {
+        [RUNNER_STORAGE_KEY]: sender.tab?.id,
+        [RUNNER_INSTANCE_STORAGE_KEY]: message.runnerId ?? null,
+      })
       return null
     }
     const stored = await browser.storage.local.get(RUNNER_STORAGE_KEY)
@@ -660,18 +741,32 @@ async function handleRequest(
       return true
     }
     if (message.type === 'runner.claim') {
+      if (message.runId) {
+        const claimed = jobs.find(job => job.runId === message.runId)
+        if (claimed) {
+          return isJobRunning(claimed) ? claimed : null
+        }
+      }
       const settings = await readSettings()
       const job = getNextQueuedJob(jobs, settings.isPaused)
       if (!job) {
         return null
       }
       job.status = 'resolving'
-      job.runId = crypto.randomUUID()
+      job.runId = message.runId ?? crypto.randomUUID()
       await writeJobs(jobs)
       return job
     }
     if (message.type === 'runner.update') {
       const job = jobs.find(item => item.id === message.id)
+      if (
+        message.runId
+        && job?.runId === message.runId
+        && ['completed', 'failed'].includes(job.status)
+        && job.status === message.update.status
+      ) {
+        return true
+      }
       if (!job || !canApplyJobUpdate(job, message.runId)) {
         return false
       }
@@ -739,7 +834,10 @@ export function registerDownloads(ready: Promise<void> = Promise.resolve()) {
       const jobs = await readJobs()
       await recoverInterruptedJobs(jobs, true)
       await writeJobs(jobs)
-      await browser.storage.local.remove(RUNNER_STORAGE_KEY)
+      await browser.storage.local.remove([
+        RUNNER_STORAGE_KEY,
+        RUNNER_INSTANCE_STORAGE_KEY,
+      ])
     }).catch(console.error)
   }
   browser.tabs.onRemoved.addListener(handleRunnerClosed)

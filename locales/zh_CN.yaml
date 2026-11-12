@@ -393,6 +393,7 @@ downloadQueue:
   paused: 已暂停
   pending: 待处理
   queuePausedTheCurrentTaskWillFinishOthers: 队列已暂停：当前任务会继续完成，其余任务等待恢复。请保持下载中心打开。
+  recoverQueue: 重新读取队列（损坏时备份原数据并恢复）
   resumeQueue: 恢复队列
   retryAllFailed: 重试全部失败
   saveTheVideosYouLove: 喜欢的视频，慢慢收藏
@@ -446,6 +447,7 @@ downloads:
   cannotLoadVideoInformationPleaseTryAgain: 无法读取视频信息，请重试。
   downloadTasksCanOnlyRunInTheDownload: 下载任务只能由下载中心执行。
   enableNotificationsInSettingsAndGrantNotificationPermission: 请在设置页开启通知并授予通知权限。
+  fileSavedButHistoryFailed: 文件已保存，但无法更新下载历史：$1
   invalidDownloadRequestParameters: 下载请求参数无效。
   saved: $1已保存
   theBatchSessionDoesNotExistPreviewAgain: 批量会话不存在，请重新预览。

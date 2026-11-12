@@ -71,6 +71,23 @@ export function useDownloadQueue() {
     retry: (id: string) => act({ type: 'queue.retry', id }),
     retryFailed: () => act({ type: 'queue.retryFailed' }),
     clear: () => act({ type: 'queue.clear' }),
+    async recover() {
+      await act({ type: 'queue.recover' })
+      if (!error.value) {
+        const beforeRead = revision
+        try {
+          const value = await sendDownloadMessage(
+            { type: 'queue.list' },
+            downloadJobsSchema,
+          )
+          if (!disposed && revision === beforeRead) {
+            jobs.value = value
+          }
+        } catch (error_) {
+          error.value = getErrorMessage(error_)
+        }
+      }
+    },
     openManager: () => act({ type: 'runner.open' }),
   }
 }
