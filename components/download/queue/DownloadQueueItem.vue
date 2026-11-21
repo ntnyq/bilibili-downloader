@@ -19,7 +19,7 @@ import {
   STATUS_LABELS,
   SUBTITLE_LANGUAGE_LABELS,
 } from '~/utils/downloads/labels'
-import { canPauseJob } from '~/utils/downloads/queue/control'
+import { canCancelJob, canPauseJob } from '~/utils/downloads/queue/control'
 import { isJobActive } from '~/utils/downloads/queue/jobs'
 import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
@@ -366,7 +366,7 @@ const detailsId = useId()
                 {{ i18n.t('downloadQueueItem.moveLater') }}
               </DropdownMenuItem>
             </template>
-            <template v-if="isActive">
+            <template v-if="canCancelJob(job)">
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 @select="emit('cancel', job.id)"

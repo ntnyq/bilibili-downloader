@@ -44,7 +44,7 @@ Firefox 开发使用 `pnpm dev:firefox`。安装依赖时会运行 `wxt prepare`
 ## 项目结构
 
 - `entrypoints/`：background、content、popup、options 和 welcome 等浏览器上下文。
-- `components/`、`composables/`、`stores/`、`utils/`：共享界面、状态与逻辑。
+- `components/`、`composables/`、`utils/`：共享界面、状态与逻辑。
 - `assets/`、`locales/`、`types/`：样式、图标、翻译与类型声明。
 - `scripts/`：项目工具与本地下载助手。
 - `tests/bilibili/`、`tests/downloads/`：对应工具模块的 TypeScript 测试。

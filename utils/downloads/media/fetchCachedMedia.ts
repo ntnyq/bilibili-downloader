@@ -295,6 +295,7 @@ export async function fetchCachedMedia({
         resetTimeout()
         const response = await fetcher(url, {
           credentials: 'omit',
+          redirect: 'error',
           cache: 'no-store',
           headers,
           signal: AbortSignal.any([signal, controller.signal]),

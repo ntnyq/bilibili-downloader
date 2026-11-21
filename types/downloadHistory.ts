@@ -6,7 +6,12 @@ export const MAX_LIBRARY_RECORDS = 5000
 export const MAX_LIBRARY_BYTES = 3 * 1024 * 1024
 
 export const downloadHistoryRecordSchema = downloadJobSchema
-  .omit({ runId: true, error: true, downloadId: true })
+  .omit({
+    runId: true,
+    nativeCancelRequested: true,
+    error: true,
+    downloadId: true,
+  })
   .extend({
     identity: z.string().max(128),
     id: z.string().max(128),

@@ -2,7 +2,7 @@
 import { CircleCheckIcon } from '@lucide/vue'
 import { formatBytes } from '~/utils/downloads/format'
 import { getJobStatusLabel, STATUS_LABELS } from '~/utils/downloads/labels'
-import { canPauseJob } from '~/utils/downloads/queue/control'
+import { canCancelJob, canPauseJob } from '~/utils/downloads/queue/control'
 import { isJobActive } from '~/utils/downloads/queue/jobs'
 import { i18n } from '~/utils/i18n'
 import type { DownloadJob } from '~/types/download'
@@ -69,7 +69,7 @@ const canRetry = computed(() =>
         </Button>
         <Button
           @click="emit('cancel', job.id)"
-          v-if="isActive"
+          v-if="canCancelJob(job)"
           variant="ghost"
           size="sm"
           class="text-muted-foreground hover:text-primary"

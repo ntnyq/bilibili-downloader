@@ -26,7 +26,7 @@ Open a season at `https://www.bilibili.com/bangumi/play/ss…` and open the down
 
 The list checks availability for your current Bilibili session as you browse. Tick the available episodes, choose a quality cap, and add them to the queue. Your selection carries across list pages. The queue follows the season's episode order and skips episodes that already have an active task.
 
-Bangumi downloads use the browser queue and save MP4 files. Previews, trailers, region-restricted playback, and DRM-protected streams cannot be queued.
+Episodes whose availability check times out stay selected so you can retry them. Bangumi downloads use the browser queue and save MP4 files. Previews, trailers, region-restricted playback, and DRM-protected streams cannot be queued.
 
 ## Choose quality
 
@@ -38,7 +38,7 @@ Search the download center by title, BV ID, or part, filter failures, and retry 
 
 ## Pause, resume, and reorder
 
-**Pause** beside a task stops its resolution, transfer, or remuxing and keeps committed media cache. Tasks already saving cannot be paused. **Resume** resolves fresh streams and validates cached data before continuing. A paused task does not block other queued tasks and remains paused after refresh; cancellation clears its browser cache. Move waiting tasks up or down to change their execution order.
+**Pause** beside a task stops its resolution, transfer, or remuxing and keeps committed media cache. Tasks already saving cannot be paused. **Resume** resolves fresh streams and validates cached data before continuing. A paused task does not block other queued tasks and remains paused after refresh; cancellation clears its browser cache. If a browser save finishes as you cancel it, the file and its completion record are kept. Move waiting tasks up or down to change their execution order.
 
 ## Keep the download center open
 

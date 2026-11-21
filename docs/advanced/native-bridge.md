@@ -39,7 +39,7 @@ On macOS / Linux, the manifest goes into the selected browser's per-user directo
 
 If signed links return 401 / 403 / 410 and alternate URLs also fail, the helper asks the browser to resolve the original task again, at most twice. Browser and helper both require unchanged video, part, quality, media identity, and output name. Resume requires valid hashes, strong ETags, resource identity, and Range responses. Quality/identity changes or repeated expiration stop the task while preserving cache. After a temporary outage, hand off the same task again; when the server cannot prove resource continuity, that resource restarts.
 
-Explicit cancellation requests a checkpoint, stops FFmpeg, and releases the lock. Network reads may take about 30 seconds to respond. Browser crashes or forced termination can leave locks; confirm the helper and FFmpeg have exited before deleting `.lock` under the task cache directory identified in the error, then retry.
+Explicit cancellation requests a checkpoint, stops FFmpeg, and releases the lock. The download center waits for the helper's reply and records a completion if the file was already saved. Network reads may take about 30 seconds to respond. Browser crashes or forced termination can leave locks; confirm the helper and FFmpeg have exited before deleting `.lock` under the task cache directory identified in the error, then retry.
 
 ## Communication and permissions
 

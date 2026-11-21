@@ -30,6 +30,7 @@ export const seasonInfoSchema = z.object({
 const episodeAvailabilitySchema = z.object({
   epId: episodeIdSchema,
   unavailableReason: z.string().optional(),
+  retryReason: z.string().optional(),
 })
 
 export const episodeAvailabilityListSchema = z.array(episodeAvailabilitySchema)
@@ -37,6 +38,9 @@ export const seasonAddResultSchema = z.object({
   added: z.number().int().nonnegative(),
   skipped: z.number().int().nonnegative(),
   unavailable: episodeAvailabilityListSchema,
+  unverified: z.array(
+    episodeAvailabilitySchema.extend({ retryReason: z.string() }),
+  ),
 })
 
 export type SeasonTarget = z.infer<typeof seasonTargetSchema>

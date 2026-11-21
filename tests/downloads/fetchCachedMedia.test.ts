@@ -138,6 +138,7 @@ test('persists an interrupted prefix and resumes with Range/If-Range after a sig
     async (_url, init) => {
       const headers = new Headers(init?.headers)
 
+      assert.equal(init?.redirect, 'error')
       assert.equal(headers.get('range'), 'bytes=2-')
       assert.equal(headers.get('if-range'), '"v1"')
 

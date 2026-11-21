@@ -12,13 +12,27 @@ import type { DownloadJob, JobUpdate } from '~/types/download'
  * identities/capacity.
  * @param id - ID of a paused or terminal video/audio job to lease to the
  * native helper.
- * @returns A copied native-status job with a fresh runId and reset progress,
- * without mutating the queue.
+ * @param runId - Stable lease requested by the caller across retries.
+ * @returns The existing lease on replay, or a copied job with reset progress.
  * @throws {Error} If the job is missing/ineligible, another active job has its
  *   asset identity, or capacity is full.
  */
-export function startNativeJob(jobs: DownloadJob[], id: string): DownloadJob {
+export function startNativeJob(
+  jobs: DownloadJob[],
+  id: string,
+  runId: string = crypto.randomUUID(),
+): DownloadJob {
   const job = jobs.find(item => item.id === id)
+
+  if (job?.runId === runId) {
+    if (job.status === 'native') {
+      return job
+    }
+
+    throw new Error(
+      i18n.t('useNativeBridge.theLocalTaskWasCancelledOrItsExecution'),
+    )
+  }
 
   if (job?.epId !== undefined) {
     throw new Error(i18n.t('episode.browserQueueOnly'))
@@ -45,7 +59,8 @@ export function startNativeJob(jobs: DownloadJob[], id: string): DownloadJob {
   return {
     ...job,
     status: 'native',
-    runId: crypto.randomUUID(),
+    runId,
+    nativeCancelRequested: undefined,
     progress: 0,
     receivedBytes: 0,
     totalBytes: 0,
@@ -90,10 +105,14 @@ export function applyNativeJobUpdate(
     throw new Error(i18n.t('queue.theLocalHelperReturnedNoSavePathCompletion'))
   }
 
+  const cancelled = job.nativeCancelRequested && patch.status === 'failed'
   const next = downloadJobSchema.parse({
     ...job,
     ...patch,
-    ...(patch.status === 'completed' ? { progress: 100 } : {}),
+    ...(patch.status === 'completed'
+      ? { progress: 100, nativeCancelRequested: undefined }
+      : {}),
+    ...(cancelled ? { status: 'cancelled', error: undefined } : {}),
   })
 
   Object.assign(job, next)

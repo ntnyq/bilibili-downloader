@@ -50,10 +50,15 @@ export async function fetchMediaBytes(
       resetTimeout()
       const response = await fetch(url, {
         credentials: 'omit',
+        redirect: 'error',
         signal: AbortSignal.any([signal, controller.signal]),
       })
 
-      if (!response.ok || !response.body) {
+      if (
+        response.status !== 200
+        || response.headers.has('content-range')
+        || !response.body
+      ) {
         throw new MediaNetworkError(
           i18n.t('fetchMediaBytes.theMediaServerReturnedHttp', [
             response.status,

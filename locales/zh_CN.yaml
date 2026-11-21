@@ -454,9 +454,11 @@ downloadWorkspace:
   viewAssetsAndBundleResultsByVideo: 按视频查看素材归档和组合下载结果。
 downloads:
   anotherDownloadCenterIsProcessingTheQueue: 另一个下载中心正在处理队列。
+  browserCouldNotCancelSaving: 浏览器无法取消保存。请在浏览器的下载列表中重试。
   cannotLoadVideoInformationPleaseTryAgain: 无法读取视频信息，请重试。
   downloadTasksCanOnlyRunInTheDownload: 下载任务只能由下载中心执行。
   enableNotificationsInSettingsAndGrantNotificationPermission: 请在设置页开启通知并授予通知权限。
+  fileSaveIsStartingTryCancellingAgain: 文件即将开始保存，请稍后再试取消。
   fileSavedButHistoryFailed: 文件已保存，但无法更新下载历史：$1
   invalidDownloadRequestParameters: 下载请求参数无效。
   saved: $1已保存
@@ -708,6 +710,17 @@ queue:
   pauseTheVideoOrAudioTaskBeforeSending: 请先暂停音视频任务，再交给本地助手。
   theDownloadQueueIsFullWaitForSome: 下载队列已满，请等待部分任务完成。
   theLocalHelperReturnedNoSavePathCompletion: 本地助手未返回保存路径，无法确认完成。
+queueRecovery:
+  backupCouldNotBeSaved: 无法备份队列，请选择「导出并恢复」。浏览器错误：$1
+  backupLimitReached: 恢复备份已达到 2 MiB 上限。请导出并恢复当前队列，或删除已存储的备份。
+  backupsCleared: 恢复备份已删除。
+  backupsExported: 恢复备份已导出。
+  clearBackups: 删除恢复备份
+  clearBackupsDescription: 要删除此扩展存储的队列恢复备份吗？可先导出备份。
+  exportAndRecover: 导出并恢复
+  exportBackups: 导出恢复备份
+  noBackups: 暂无已存储的恢复备份。
+  snapshotChanged: 队列在导出后发生了变化。请重新导出当前快照再恢复。
 remuxMedia:
   cannotReadTheAacTrackInTheMp4: 无法读取 MP4 中的 AAC 音轨。
   cannotReadTheMp4VideoTrack: 无法读取 MP4 视频轨道。
@@ -742,6 +755,9 @@ season:
     n: 已跳过队列中已有的 $1 集。
   unavailableCount:
     n: 有 $1 集未能入队，原因见剧集列表。
+  unverifiedCount:
+    n: 有 $1 集未能完成检查，已保留勾选，可再次尝试。
+  unverifiedEpisode: 暂未确认可下载状态。$1
 serializeDownloadHistory:
   createdTimeUtc: 创建时间（UTC）
   part: 分 P
@@ -826,6 +842,7 @@ useNativeBridge:
   mediaUrlsExpiredFetchingStreamsAgainAndValidating: 素材链接已过期，正在重新取流并校验缓存…
   remuxingLosslesslyWithLocalFfmpeg: 正在使用本地 FFmpeg 无损封装…
   savingLocalFile: 正在保存本地文件…
+  stoppingLocalTask: 正在等待本地助手停止…
   taskStoppedVerifiedLocalCacheWillBeReused: 任务已停止，已验证的本地缓存会在下次交接时复用。
   theDownloadPageClosedAndTheLocalTask: 下载页面已关闭，本地任务停止；再次交接可重用已验证的缓存。
   theDownloadPageClosedTheLocalTaskDid: 下载页面已关闭，本地任务未开始。

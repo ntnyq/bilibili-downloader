@@ -6,7 +6,10 @@ import { NATIVE_HOST_NAME, nativeEventSchema } from '~/types/nativeBridge'
 import { getVideoMedia } from '~/utils/bilibili/api'
 import { JOBS_STORAGE_KEY } from '~/utils/downloads/constants'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
-import { sendDownloadMessage } from '~/utils/downloads/messages'
+import {
+  DownloadRequestError,
+  sendDownloadMessage,
+} from '~/utils/downloads/messages'
 import {
   createNativeRequest,
   isSameNativeTask,
@@ -25,6 +28,7 @@ type NativeUpdate = Extract<
 >['update']
 
 const sessions = new Map<string, ReturnType<typeof createNativeSession>>()
+const NATIVE_CANCEL_GRACE_MS = 35000
 
 /**
  * Keep only running sessions shared across row mounts. Idle rows hold their
@@ -69,9 +73,10 @@ function createNativeSession(onSettled: () => void) {
   let refreshCount = 0
   let isRefreshing = false
   let isFinishing = false
+  let isCancelling = false
   let isPageHidden = false
   let writes = Promise.resolve()
-  let startupTimer: ReturnType<typeof setTimeout> | undefined
+  let responseTimer: ReturnType<typeof setTimeout> | undefined
   let generation = 0
 
   function settle() {
@@ -105,7 +110,7 @@ function createNativeSession(onSettled: () => void) {
   }
 
   function releasePort(shouldCancel = false) {
-    clearTimeout(startupTimer)
+    clearTimeout(responseTimer)
     controller?.abort()
     browser.storage.onChanged.removeListener(handleQueueChange)
     const current = port
@@ -127,7 +132,7 @@ function createNativeSession(onSettled: () => void) {
 
     // Let the host flush its checkpoint and release its lock before disconnecting.
     const stoppedRequestId = requestId
-    const timer = setTimeout(() => current.disconnect(), 35000)
+    const timer = setTimeout(() => current.disconnect(), NATIVE_CANCEL_GRACE_MS)
 
     current.onMessage.addListener(value => {
       const event = nativeEventSchema.safeParse(value)
@@ -159,6 +164,39 @@ function createNativeSession(onSettled: () => void) {
     }
   }
 
+  function requestCancellation() {
+    if (isCancelling) {
+      return
+    }
+
+    isCancelling = true
+    controller?.abort()
+    clearTimeout(responseTimer)
+    status.value = i18n.t('useNativeBridge.stoppingLocalTask')
+    const stopped = i18n.t(
+      'useNativeBridge.taskStoppedVerifiedLocalCacheWillBeReused',
+    )
+
+    if (!port) {
+      finishFailure(stopped)
+
+      return
+    }
+
+    // Keep the terminal listener attached while the helper stops. It may have
+    // published the output before the cancellation reached it.
+    responseTimer = setTimeout(
+      () => finishFailure(stopped),
+      NATIVE_CANCEL_GRACE_MS,
+    )
+
+    try {
+      port.postMessage({ version: 1, type: 'cancel', requestId })
+    } catch (error_) {
+      finishFailure(getErrorMessage(error_))
+    }
+  }
+
   function persist(update: NativeUpdate) {
     const job = claimedJob
     const runId = job?.runId
@@ -170,7 +208,7 @@ function createNativeSession(onSettled: () => void) {
     const next = writes.then(async () => {
       const isProgress = update.status === 'native'
 
-      if (isProgress && isFinishing) {
+      if (isProgress && (isFinishing || isCancelling)) {
         return
       }
 
@@ -239,7 +277,7 @@ function createNativeSession(onSettled: () => void) {
 
     isFinishing = true
     error.value = reason
-    releasePort(true)
+    releasePort(!isCancelling)
 
     try {
       await persist({ status: 'failed', error: reason })
@@ -291,7 +329,7 @@ function createNativeSession(onSettled: () => void) {
     try {
       const next = await resolveManifest()
 
-      if (isFinishing || currentGeneration !== generation) {
+      if (isFinishing || isCancelling || currentGeneration !== generation) {
         return
       }
 
@@ -328,7 +366,15 @@ function createNativeSession(onSettled: () => void) {
         )
       }
 
-      clearTimeout(startupTimer)
+      if (
+        isCancelling
+        && event.type !== 'completed'
+        && event.type !== 'failed'
+      ) {
+        return
+      }
+
+      clearTimeout(responseTimer)
 
       switch (event.type) {
         case 'started':
@@ -384,8 +430,34 @@ function createNativeSession(onSettled: () => void) {
           break
       }
     } catch (error_) {
-      if (currentGeneration === generation) {
+      if (!isCancelling && currentGeneration === generation) {
         await finishFailure(getErrorMessage(error_))
+      }
+    }
+  }
+
+  async function claimJob(id: string, currentGeneration: number) {
+    const runId = crypto.randomUUID()
+    let delay = 1000
+
+    while (true) {
+      if (isFinishing || currentGeneration !== generation) {
+        return
+      }
+
+      try {
+        return await sendDownloadMessage(
+          { type: 'native.start', id, runId },
+          downloadJobSchema,
+        )
+      } catch (error_) {
+        if (error_ instanceof DownloadRequestError) {
+          throw error_
+        }
+
+        error.value = getErrorMessage(error_)
+        await waitFor(delay)
+        delay = Math.min(delay * 2, 5000)
       }
     }
   }
@@ -400,6 +472,7 @@ function createNativeSession(onSettled: () => void) {
     const currentGeneration = ++generation
 
     isFinishing = false
+    isCancelling = false
     isPageHidden = false
     claimedJob = undefined
     error.value = ''
@@ -427,10 +500,11 @@ function createNativeSession(onSettled: () => void) {
         return
       }
 
-      const claimed = await sendDownloadMessage(
-        { type: 'native.start', id: job.id },
-        downloadJobSchema,
-      )
+      const claimed = await claimJob(job.id, currentGeneration)
+
+      if (!claimed) {
+        return
+      }
 
       if (isFinishing || currentGeneration !== generation) {
         if (claimed.runId) {
@@ -453,9 +527,17 @@ function createNativeSession(onSettled: () => void) {
         return
       }
 
+      error.value = ''
       claimedJob = claimed
       browser.storage.onChanged.addListener(handleQueueChange)
       controller = new AbortController()
+
+      if (claimed.nativeCancelRequested) {
+        requestCancellation()
+
+        return
+      }
+
       const selected = await resolveManifest()
 
       if (isFinishing || currentGeneration !== generation) {
@@ -479,13 +561,19 @@ function createNativeSession(onSettled: () => void) {
         )
       }
 
+      if (current.nativeCancelRequested) {
+        requestCancellation()
+
+        return
+      }
+
       controller.signal.throwIfAborted()
       requestId = crypto.randomUUID()
       port = browser.runtime.connectNative(NATIVE_HOST_NAME)
       port.onMessage.addListener(handleMessage)
       port.onDisconnect.addListener(handleDisconnect)
       port.postMessage(createNativeRequest('start', requestId, manifest))
-      startupTimer = setTimeout(
+      responseTimer = setTimeout(
         () =>
           finishFailure(
             i18n.t('useNativeBridge.theLocalHelperDidNotRespondCheckIts'),
@@ -532,6 +620,8 @@ function createNativeSession(onSettled: () => void) {
       finishFailure(
         i18n.t('useNativeBridge.taskStoppedVerifiedLocalCacheWillBeReused'),
       )
+    } else if (current.nativeCancelRequested) {
+      requestCancellation()
     }
   }
 

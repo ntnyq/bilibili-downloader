@@ -193,6 +193,7 @@ export function retryDownloadJobs(
       ...job,
       status: 'queued' as const,
       runId: undefined,
+      nativeCancelRequested: undefined,
       progress: 0,
       receivedBytes: 0,
       totalBytes: 0,

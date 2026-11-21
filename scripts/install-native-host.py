@@ -9,6 +9,7 @@ import re
 import shlex
 import shutil
 import sys
+import tempfile
 
 
 HOST_NAME = 'com.ntnyq.bilibili_downloader'
@@ -59,11 +60,17 @@ def host_manifest(browser, extension_id, launcher):
 def write_file(path, content, mode=0o600):
     if path.is_symlink() or (path.exists() and (not path.is_file() or path.stat().st_nlink != 1)):
         raise ValueError(f'不能替换符号链接或特殊文件：{path}')
-    flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_NOFOLLOW', 0)
-    descriptor = os.open(path, flags, mode)
-    with os.fdopen(descriptor, 'wb') as output:
-        output.write(content)
-    path.chmod(mode)
+    descriptor, temporary_name = tempfile.mkstemp(prefix='.native-install-', dir=path.parent)
+    temporary = Path(temporary_name)
+    try:
+        with os.fdopen(descriptor, 'wb') as output:
+            output.write(content)
+            output.flush()
+            os.fsync(output.fileno())
+        temporary.chmod(mode)
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def install(args, register=True):

@@ -27,6 +27,8 @@ File settings are snapshotted when queuing; changes affect new tasks. Completion
 
 Queue JSON / CSV exports include only the current search and filter results: title, BV, part, type, state, and saved path, without cookies, temporary CDN URLs, or media bytes. Browser tasks show the requested path; use **Open folder** to inspect the actual file. Native tasks show the actual saved path. Ordinary terminal history retains roughly 100 records. Active bundles retain all members; terminal bundles are evicted as complete groups, with the newest group allowed up to 1,000 members. Record-file import is unsupported.
 
+If the queue is corrupt, **Reload queue** backs up the original data before recovering readable tasks. Browser storage reserves up to 2 MiB for recovery backups. If the backup cannot fit or be saved, use **Export and recover** to save the current snapshot as JSON first. The queue menu can also export or delete stored recovery backups.
+
 ## Long-term history
 
 Long-term history independently records successful downloads with search, asset filters, pagination, exports, and requeue. The latest success replaces matching content; limits are 5,000 records and 3 MiB, evicting the oldest when exceeded. It stores neither media nor temporary CDN URLs. Upgrades migrate only successful queue records still retained at that moment. Clearing the queue keeps long-term history; deleting history stops its duplicate checks without deleting downloaded files. Requeue preserves quality and file settings but creates a fresh task and resolves current streams, subject to account permissions and active-task deduplication.

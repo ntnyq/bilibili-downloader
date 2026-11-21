@@ -261,6 +261,16 @@ class InstallerTests(unittest.TestCase):
                 installer.windows_launcher([path])
         self.assertIn('AppData', str(installer.manifest_directory('chrome', 'win32', Path('/home'))))
 
+    def test_interrupted_install_write_preserves_existing_file(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            path = Path(temporary) / 'launcher'
+            path.write_bytes(b'original')
+            with patch.object(installer.os, 'fsync', side_effect=OSError('disk write failed')):
+                with self.assertRaises(OSError):
+                    installer.write_file(path, b'replacement', 0o700)
+            self.assertEqual(path.read_bytes(), b'original')
+            self.assertEqual(list(path.parent.iterdir()), [path])
+
 
 if __name__ == '__main__':
     unittest.main()

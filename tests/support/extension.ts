@@ -71,7 +71,11 @@ export function installExtension(context: TestContext) {
     { id: 1, windowId: 1, url: 'chrome-extension://test/downloads.html' },
   ]
   const local = {
-    async get(keys: string | string[]) {
+    async get(keys: string | string[] | null) {
+      if (keys === null) {
+        return structuredClone(stored)
+      }
+
       return Object.fromEntries(
         (Array.isArray(keys) ? keys : [keys]).map(key => [
           key,

@@ -266,6 +266,17 @@ class DownloadTests(unittest.TestCase):
         self.assertEqual(second.name, 'sample (1).mp4')
         self.assertEqual(second.read_bytes(), b'result')
 
+    def test_concurrent_creation_of_output_directory_is_allowed(self):
+        original_mkdir = Path.mkdir
+
+        def competing_mkdir(path, *args, **kwargs):
+            original_mkdir(path)
+            original_mkdir(path, *args, **kwargs)
+
+        with patch.object(Path, 'mkdir', autospec=True, side_effect=competing_mkdir):
+            directory = helper.ensure_directory(self.folder, ('Bilibili',))
+        self.assertTrue(directory.is_dir())
+
     def test_interrupted_save_never_publishes_a_partial_final_file(self):
         source = self.folder / 'source'
         source.write_bytes(b'result')

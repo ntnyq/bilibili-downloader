@@ -77,8 +77,8 @@ export function useDownloadQueue() {
     retry: (id: string) => act({ type: 'queue.retry', id }),
     retryFailed: () => act({ type: 'queue.retryFailed' }),
     clear: () => act({ type: 'queue.clear' }),
-    async recover() {
-      await act({ type: 'queue.recover' })
+    async recover(exportedDigest?: string) {
+      await act({ type: 'queue.recover', exportedDigest })
 
       if (!error.value) {
         const beforeRead = revision

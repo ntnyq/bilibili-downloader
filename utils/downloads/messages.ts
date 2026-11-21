@@ -113,7 +113,11 @@ export const requestSchema = z.discriminatedUnion('type', [
     kinds: bundleKindsSchema,
     subtitleLanguage: subtitleLanguageSchema.default('auto'),
   }),
-  z.object({ type: z.literal('native.start'), id: z.string() }),
+  z.object({
+    type: z.literal('native.start'),
+    id: z.string(),
+    runId: z.uuid(),
+  }),
   z.object({
     type: z.literal('native.update'),
     id: z.string(),
@@ -127,7 +131,16 @@ export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('queue.retry'), id: z.string() }),
   z.object({ type: z.literal('queue.retryFailed') }),
   z.object({ type: z.literal('queue.clear') }),
-  z.object({ type: z.literal('queue.recover') }),
+  z.object({
+    type: z.literal('queue.recover'),
+    exportedDigest: z
+      .string()
+      .regex(/^[a-f0-9]{64}$/)
+      .optional(),
+  }),
+  z.object({ type: z.literal('queue.recovery.snapshot') }),
+  z.object({ type: z.literal('queue.recovery.backups') }),
+  z.object({ type: z.literal('queue.recovery.clear') }),
   z.object({ type: z.literal('library.list') }),
   z.object({
     type: z.literal('library.delete'),
@@ -159,6 +172,10 @@ const replySchema = z.discriminatedUnion('ok', [
   z.object({ ok: z.literal(false), error: z.string() }),
 ])
 
+export class DownloadRequestError extends Error {
+  override name = 'DownloadRequestError'
+}
+
 /**
  * Sends a typed extension request and validates both its reply envelope and
  * successful payload.
@@ -187,7 +204,7 @@ export async function sendDownloadMessage<T>(
   )
 
   if (!reply.ok) {
-    throw new Error(reply.error)
+    throw new DownloadRequestError(reply.error)
   }
 
   return schema.parse(reply.data)

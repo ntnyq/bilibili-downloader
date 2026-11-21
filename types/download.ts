@@ -130,6 +130,7 @@ export const downloadJobSchema = videoPageSchema.extend({
   pageCount: z.number().int().positive(),
   createdAt: z.number(),
   runId: z.string().optional(),
+  nativeCancelRequested: z.literal(true).optional(),
   bundleId: z.uuid().optional(),
   bundleSize: z.number().int().positive().max(1000).optional(),
   status: jobStatusSchema,

@@ -2,11 +2,7 @@ import { z } from 'zod'
 import { browser } from '#imports'
 import { BATCH_REQUEST_INTERVAL_MS } from '~/types/batch'
 import { batchSessionSchema } from '~/types/batchSession'
-import {
-  downloadJobSchema,
-  downloadJobsSchema,
-  downloadSettingsSchema,
-} from '~/types/download'
+import { downloadJobsSchema, downloadSettingsSchema } from '~/types/download'
 import { DOWNLOAD_LIBRARY_STORAGE_KEY } from '~/types/downloadHistory'
 import { seasonInfoSchema } from '~/types/season'
 import { BilibiliApiError, getVideoInfo } from '~/utils/bilibili/api'
@@ -57,6 +53,7 @@ import {
 } from '~/utils/downloads/queue/capacity'
 import {
   canApplyJobUpdate,
+  canCancelJob,
   hasAppliedTerminalUpdate,
   isJobRunning,
   moveQueuedJob,
@@ -70,6 +67,12 @@ import {
   retryDownloadJobs,
 } from '~/utils/downloads/queue/jobs'
 import { i18n } from '~/utils/i18n'
+import {
+  clearQueueBackups,
+  exportCorruptQueue,
+  exportQueueBackups,
+  recoverQueue,
+} from './queueRecovery'
 import type { Browser } from '#imports'
 import type { BatchAddResult } from '~/types/batchSession'
 import type {
@@ -79,6 +82,7 @@ import type {
   VideoInfo,
 } from '~/types/download'
 
+const LIBRARY_INITIALIZED_STORAGE_KEY = 'downloadLibraryInitialized'
 const RUNNER_STORAGE_KEY = 'downloadRunnerTabId'
 const RUNNER_INSTANCE_STORAGE_KEY = 'downloadRunnerInstanceId'
 const getCachedVideoInfo = createVideoInfoCache(getVideoInfo)
@@ -132,7 +136,9 @@ function serialize<T>(operation: () => Promise<T>): Promise<T> {
 async function readJobs(): Promise<DownloadJob[]> {
   const stored = await browser.storage.local.get(JOBS_STORAGE_KEY)
 
-  return downloadJobsSchema.parse(stored[JOBS_STORAGE_KEY] || [])
+  return downloadJobsSchema.parse(
+    stored[JOBS_STORAGE_KEY] === undefined ? [] : stored[JOBS_STORAGE_KEY],
+  )
 }
 
 async function readSettings() {
@@ -157,16 +163,23 @@ async function readBatchSession() {
   return result.data
 }
 
-async function readLibrary(jobs: DownloadJob[]) {
+async function readLibrary(jobs?: DownloadJob[]) {
   const stored = await browser.storage.local.get(DOWNLOAD_LIBRARY_STORAGE_KEY)
+  const history = stored[DOWNLOAD_LIBRARY_STORAGE_KEY]
+
+  if (history !== undefined) {
+    return initializeDownloadLibrary(history, [])
+  }
+
   const library = initializeDownloadLibrary(
-    stored[DOWNLOAD_LIBRARY_STORAGE_KEY],
-    jobs,
+    undefined,
+    jobs ?? (await readJobs()),
   )
 
-  if (stored[DOWNLOAD_LIBRARY_STORAGE_KEY] === undefined) {
-    await browser.storage.local.set({ [DOWNLOAD_LIBRARY_STORAGE_KEY]: library })
-  }
+  await browser.storage.local.set({
+    [DOWNLOAD_LIBRARY_STORAGE_KEY]: library,
+    [LIBRARY_INITIALIZED_STORAGE_KEY]: true,
+  })
 
   return library
 }
@@ -178,13 +191,18 @@ async function writeJobs(
   jobs = downloadJobsSchema.parse(jobs)
   const stored = await browser.storage.local.get([
     JOBS_STORAGE_KEY,
-    DOWNLOAD_LIBRARY_STORAGE_KEY,
+    LIBRARY_INITIALIZED_STORAGE_KEY,
   ])
-  const previous = downloadJobsSchema.parse(stored[JOBS_STORAGE_KEY] || [])
+  const previous = downloadJobsSchema.parse(
+    stored[JOBS_STORAGE_KEY] === undefined ? [] : stored[JOBS_STORAGE_KEY],
+  )
 
   assertDownloadQueueCapacity(previous, jobs)
   const completed = new Set(
     previous.filter(job => job.status === 'completed').map(job => job.id),
+  )
+  const hasNewCompletion = jobs.some(
+    job => job.status === 'completed' && !completed.has(job.id),
   )
   const warnHistoryFailure = (error: unknown) => {
     for (const job of jobs) {
@@ -198,21 +216,24 @@ async function writeJobs(
   const libraryPatch: Record<string, unknown> = {}
 
   // Progress updates should not parse and re-encode thousands of history records.
-  if (
-    stored[DOWNLOAD_LIBRARY_STORAGE_KEY] === undefined
-    || jobs.some(job => job.status === 'completed' && !completed.has(job.id))
-  ) {
+  if (stored[LIBRARY_INITIALIZED_STORAGE_KEY] !== true || hasNewCompletion) {
     try {
-      const library = initializeDownloadLibrary(
-        stored[DOWNLOAD_LIBRARY_STORAGE_KEY],
-        previous,
+      const storedLibrary = await browser.storage.local.get(
+        DOWNLOAD_LIBRARY_STORAGE_KEY,
       )
+      const history = storedLibrary[DOWNLOAD_LIBRARY_STORAGE_KEY]
 
-      libraryPatch[DOWNLOAD_LIBRARY_STORAGE_KEY] = recordLibraryCompletions(
-        library,
-        previous,
-        jobs,
-      )
+      if (history === undefined || hasNewCompletion) {
+        const library = initializeDownloadLibrary(history, previous)
+
+        libraryPatch[DOWNLOAD_LIBRARY_STORAGE_KEY] = recordLibraryCompletions(
+          library,
+          previous,
+          jobs,
+        )
+      }
+
+      libraryPatch[LIBRARY_INITIALIZED_STORAGE_KEY] = true
     } catch (error) {
       // Archiving cannot undo a successful save. Preserve unreadable history
       // until the user clears it, and keep the warning with the saved task.
@@ -299,6 +320,21 @@ async function openRunner(active: boolean) {
   await browser.tabs.create({ url, active })
 }
 
+async function cancelBrowserSave(downloadId: number) {
+  const cancellationError = await browser.downloads
+    .cancel(downloadId)
+    .catch((error: unknown) => error)
+  const [download] = await browser.downloads.search({ id: downloadId })
+
+  if (download?.state === 'in_progress') {
+    throw new Error(i18n.t('downloads.browserCouldNotCancelSaving'), {
+      cause: cancellationError,
+    })
+  }
+
+  return download?.state
+}
+
 async function recoverInterruptedJobs(jobs: DownloadJob[]) {
   for (const job of jobs) {
     if (!isJobRunning(job) && job.status !== 'native') {
@@ -306,17 +342,18 @@ async function recoverInterruptedJobs(jobs: DownloadJob[]) {
     }
 
     if (job.downloadId !== undefined) {
-      const [download] = await browser.downloads.search({ id: job.downloadId })
+      const state = await cancelBrowserSave(job.downloadId)
 
-      if (download?.state === 'complete') {
+      if (state === 'complete') {
         job.status = 'completed'
         job.progress = 100
         continue
       }
+    }
 
-      if (download?.state === 'in_progress') {
-        await browser.downloads.cancel(job.downloadId).catch(() => undefined)
-      }
+    if (job.status === 'native' && job.nativeCancelRequested) {
+      job.status = 'cancelled'
+      continue
     }
 
     job.status = 'failed'
@@ -365,16 +402,13 @@ async function checkSelectedSeasonEpisodes(
     ),
     quality,
   )
-  const reasons = new Map(
-    availability.map(({ epId, unavailableReason }) => [
-      epId,
-      unavailableReason,
-    ]),
-  )
+  const checks = new Map(availability.map(result => [result.epId, result]))
 
   return selected.map(episode => ({
     ...episode,
-    unavailableReason: episode.unavailableReason ?? reasons.get(episode.epId),
+    unavailableReason:
+      episode.unavailableReason ?? checks.get(episode.epId)?.unavailableReason,
+    retryReason: checks.get(episode.epId)?.retryReason,
   }))
 }
 
@@ -569,13 +603,17 @@ async function handleRequest(
               bvid: video.bvid,
             }
           } else {
-            const library = await readLibrary(existing)
+            const completedIdentities = message.skipCompleted
+              ? (await readLibrary(existing)).records.map(
+                  record => record.identity,
+                )
+              : undefined
             const created = createBatchJobs(
               video,
               message.item,
               existing,
               message,
-              library.records.map(record => record.identity),
+              completedIdentities,
             )
 
             added = created.jobs
@@ -640,7 +678,8 @@ async function handleRequest(
 
     return {
       ...episode,
-      unavailableReason: availability?.unavailableReason,
+      unavailableReason:
+        availability?.unavailableReason ?? availability?.retryReason,
     }
   }
 
@@ -745,6 +784,7 @@ async function handleRequest(
     if (message.type === 'library.clear') {
       await browser.storage.local.set({
         [DOWNLOAD_LIBRARY_STORAGE_KEY]: createDownloadLibrary(),
+        [LIBRARY_INITIALIZED_STORAGE_KEY]: true,
       })
 
       return null
@@ -756,84 +796,68 @@ async function handleRequest(
       return null
     }
 
-    if (message.type === 'queue.recover') {
-      const backupKey = 'downloadJobsRecoveryBackup'
-      const stored = await browser.storage.local.get([
-        JOBS_STORAGE_KEY,
-        backupKey,
-      ])
-      const raw = stored[JOBS_STORAGE_KEY]
-
-      if (raw === undefined || downloadJobsSchema.safeParse(raw).success) {
-        return null
+    if (
+      message.type === 'queue.recover'
+      || message.type.startsWith('queue.recovery.')
+    ) {
+      if (!isRunner(sender)) {
+        throw new Error(
+          i18n.t('downloads.downloadTasksCanOnlyRunInTheDownload'),
+        )
       }
 
-      const recovered = (Array.isArray(raw) ? raw : []).flatMap(value => {
-        const result = downloadJobSchema.safeParse(value)
+      if (message.type === 'queue.recovery.snapshot') {
+        return exportCorruptQueue()
+      }
 
-        return result.success ? [result.data] : []
+      if (message.type === 'queue.recovery.backups') {
+        return exportQueueBackups()
+      }
+
+      if (message.type === 'queue.recovery.clear') {
+        await clearQueueBackups()
+      } else if (message.type === 'queue.recover') {
+        await recoverQueue(message.exportedDigest)
+      }
+
+      return null
+    }
+
+    if (message.type === 'library.list') {
+      return readLibrary()
+    }
+
+    if (message.type === 'library.delete') {
+      const library = await readLibrary()
+      const next = deleteLibraryRecord(library, message.identity)
+
+      await browser.storage.local.set({
+        [DOWNLOAD_LIBRARY_STORAGE_KEY]: next,
       })
-      const snapshot = JSON.stringify(raw)
-      const hash = await crypto.subtle.digest(
-        'SHA-256',
-        new TextEncoder().encode(snapshot),
-      )
-      const suffix = Array.from(new Uint8Array(hash), value =>
-        value.toString(16).padStart(2, '0'),
-      ).join('')
-      const key =
-        stored[backupKey] === undefined
-        || JSON.stringify(stored[backupKey]) === snapshot
-          ? backupKey
-          : `${backupKey}:${suffix}`
-
-      // Persist the snapshot before changing the queue. Distinct corrupt
-      // snapshots survive later recoveries; retries reuse the same backup key.
-      await browser.storage.local.set({ [key]: raw })
-      await browser.storage.local.set({ [JOBS_STORAGE_KEY]: recovered })
 
       return null
     }
 
     const jobs = await readJobs()
 
-    if (message.type.startsWith('library.')) {
+    if (message.type === 'library.requeue') {
       const library = await readLibrary(jobs)
+      const record = library.records.find(
+        item => item.identity === message.identity,
+      )
 
-      if (message.type === 'library.list') {
-        return library
-      }
-
-      if (message.type === 'library.delete') {
-        const next = deleteLibraryRecord(library, message.identity)
-
-        await browser.storage.local.set({
-          [DOWNLOAD_LIBRARY_STORAGE_KEY]: next,
-        })
-
-        return null
-      }
-
-      if (message.type === 'library.requeue') {
-        const record = library.records.find(
-          item => item.identity === message.identity,
+      if (!record) {
+        throw new Error(
+          i18n.t('downloads.thisSuccessfulDownloadRecordWasRemovedRefreshThe'),
         )
-
-        if (!record) {
-          throw new Error(
-            i18n.t(
-              'downloads.thisSuccessfulDownloadRecordWasRemovedRefreshThe',
-            ),
-          )
-        }
-
-        const job = createJobFromHistory(record, jobs)
-
-        await openRunner(false)
-        await writeJobs([...jobs, job])
-
-        return null
       }
+
+      const job = createJobFromHistory(record, jobs)
+
+      await openRunner(false)
+      await writeJobs([...jobs, job])
+
+      return null
     }
 
     if (message.type === 'queue.list') {
@@ -845,7 +869,14 @@ async function handleRequest(
       || message.type === 'queue.season.add'
     ) {
       const selected = episode
-        ? [{ epId: episode.epId, info: episode, unavailableReason: undefined }]
+        ? [
+            {
+              epId: episode.epId,
+              info: episode,
+              unavailableReason: undefined,
+              retryReason: undefined,
+            },
+          ]
         : seasonEpisodes
       const activeEpisodeIds = new Set(
         jobs
@@ -855,11 +886,14 @@ async function handleRequest(
       const settings = await readSettings()
       const added: DownloadJob[] = []
       const unavailable: { epId: number; unavailableReason: string }[] = []
+      const unverified: { epId: number; retryReason: string }[] = []
       let skipped = 0
 
-      for (const { epId, info, unavailableReason } of selected) {
+      for (const { epId, info, unavailableReason, retryReason } of selected) {
         if (activeEpisodeIds.has(epId)) {
           skipped++
+        } else if (retryReason !== undefined) {
+          unverified.push({ epId, retryReason })
         } else if (unavailableReason || !info) {
           unavailable.push({
             epId,
@@ -885,7 +919,7 @@ async function handleRequest(
       }
 
       return message.type === 'queue.season.add'
-        ? { added: added.length, skipped, unavailable }
+        ? { added: added.length, skipped, unavailable, unverified }
         : { added: added.length }
     }
 
@@ -955,13 +989,56 @@ async function handleRequest(
     }
 
     if (message.type === 'queue.cancel') {
+      const completed: DownloadJob[] = []
+      const errors: unknown[] = []
+
       for (const job of jobs) {
-        if (isJobActive(job) && (!message.id || job.id === message.id)) {
-          job.status = 'cancelled'
+        if (message.id && message.id !== job.id) {
+          continue
         }
+
+        if (!canCancelJob(job)) {
+          if (message.id && job.status === 'saving') {
+            throw new Error(
+              i18n.t('downloads.fileSaveIsStartingTryCancellingAgain'),
+            )
+          }
+
+          continue
+        }
+
+        if (job.status === 'native') {
+          job.nativeCancelRequested = true
+          continue
+        }
+
+        if (job.status === 'saving' && job.downloadId !== undefined) {
+          // The file may already be saved while the runner's update is in flight.
+          try {
+            if ((await cancelBrowserSave(job.downloadId)) === 'complete') {
+              job.status = 'completed'
+              job.progress = 100
+              completed.push(job)
+              continue
+            }
+          } catch (error) {
+            errors.push(error)
+            continue
+          }
+        }
+
+        job.status = 'cancelled'
       }
 
       await writeJobs(jobs)
+
+      for (const job of completed) {
+        notifyCompleted(job).catch(console.warn)
+      }
+
+      if (errors.length) {
+        throw errors[0]
+      }
 
       return null
     }
@@ -1028,9 +1105,11 @@ async function handleRequest(
     }
 
     if (message.type === 'native.start') {
-      const job = startNativeJob(jobs, message.id)
+      const job = startNativeJob(jobs, message.id, message.runId)
 
-      await writeJobs(jobs.map(item => (item.id === job.id ? job : item)))
+      if (jobs.find(item => item.id === job.id) !== job) {
+        await writeJobs(jobs.map(item => (item.id === job.id ? job : item)))
+      }
 
       return job
     }

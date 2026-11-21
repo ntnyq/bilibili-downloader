@@ -10,8 +10,10 @@ import { browser } from '#imports'
 import { useDownloadHistory } from '~/composables/useDownloadHistory'
 import { useDownloadQueue } from '~/composables/useDownloadQueue'
 import { useDownloadSettings } from '~/composables/useDownloadSettings'
+import { useQueueRecovery } from '~/composables/useQueueRecovery'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/labels'
+import { canCancelJob } from '~/utils/downloads/queue/control'
 import { isJobActive } from '~/utils/downloads/queue/jobs'
 import { i18n } from '~/utils/i18n'
 
@@ -30,6 +32,15 @@ const {
   recover,
 } = useDownloadQueue()
 const {
+  recover: reloadQueue,
+  exportAndRecover,
+  exportBackups,
+  clearBackups,
+  isBusy: isRecovering,
+  error: recoveryError,
+  notice: recoveryNotice,
+} = useQueueRecovery(recover)
+const {
   settings,
   isReady,
   isSaving,
@@ -43,10 +54,20 @@ const {
   downloadHistory,
 } = useDownloadHistory()
 
+const isClearBackupsPending = shallowRef(false)
+
 const filter = shallowRef<'all' | 'active' | 'paused' | 'completed' | 'failed'>(
   'all',
 )
 const search = shallowRef('')
+
+const alertMessage = computed(
+  () =>
+    recoveryError.value
+    || queueError.value
+    || settingsError.value
+    || exportError.value,
+)
 
 const failedJobs = computed(() =>
   jobs.value.filter(job => job.status === 'failed'),
@@ -234,7 +255,7 @@ async function showFile(id?: number) {
               </DropdownMenuItem>
               <DropdownMenuItem
                 @select="cancel()"
-                :disabled="!activeJobs.length"
+                :disabled="!jobs.some(canCancelJob)"
               >
                 {{ i18n.t('downloadQueue.cancelAll') }}
               </DropdownMenuItem>
@@ -243,6 +264,19 @@ async function showFile(id?: number) {
                 :disabled="jobs.length <= activeJobs.length"
               >
                 {{ i18n.t('downloadQueue.clearQueueRecords') }}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                @select="exportBackups"
+                :disabled="isRecovering"
+              >
+                {{ i18n.t('queueRecovery.exportBackups') }}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                @select="isClearBackupsPending = true"
+                :disabled="isRecovering"
+              >
+                {{ i18n.t('queueRecovery.clearBackups') }}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -257,21 +291,33 @@ async function showFile(id?: number) {
           }}
         </p>
         <Alert
-          v-if="queueError || settingsError || exportError"
+          v-if="alertMessage"
           class="mt-4 text-[13px] text-destructive"
           variant="destructive"
         >
           <AlertDescription>
-            {{ queueError || settingsError || exportError }}
-            <Button
-              @click="recover"
+            {{ alertMessage }}
+            <div
               v-if="queueError"
-              variant="outline"
-              size="sm"
-              class="mt-2"
+              class="mt-2 flex flex-wrap gap-2"
             >
-              {{ i18n.t('downloadQueue.recoverQueue') }}
-            </Button>
+              <Button
+                @click="reloadQueue"
+                :disabled="isRecovering"
+                variant="outline"
+                size="sm"
+              >
+                {{ i18n.t('downloadQueue.recoverQueue') }}
+              </Button>
+              <Button
+                @click="exportAndRecover"
+                :disabled="isRecovering"
+                variant="outline"
+                size="sm"
+              >
+                {{ i18n.t('queueRecovery.exportAndRecover') }}
+              </Button>
+            </div>
           </AlertDescription>
         </Alert>
         <ul
@@ -320,13 +366,33 @@ async function showFile(id?: number) {
           </a>
         </div>
         <p
-          v-if="exportNotice"
+          v-if="recoveryNotice || exportNotice"
           role="status"
           class="mt-3 text-xs text-primary"
         >
-          {{ exportNotice }}
+          {{ recoveryNotice || exportNotice }}
         </p>
       </TabsContent>
     </Tabs>
+    <AlertDialog v-model:open="isClearBackupsPending">
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {{ i18n.t('queueRecovery.clearBackups') }}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {{ i18n.t('queueRecovery.clearBackupsDescription') }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>
+            {{ i18n.t('downloadProgress.cancel') }}
+          </AlertDialogCancel>
+          <AlertDialogAction @click="clearBackups">
+            {{ i18n.t('queueRecovery.clearBackups') }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   </section>
 </template>

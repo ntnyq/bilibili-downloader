@@ -49,7 +49,7 @@ Generated files in `dist/` should not be edited directly.
 ## Project structure
 
 - `entrypoints/`: browser contexts, including background, content, popup, options, and welcome pages.
-- `components/`, `composables/`, `stores/`, `utils/`: shared UI, state, and logic.
+- `components/`, `composables/`, `utils/`: shared UI, state, and logic.
 - `assets/`, `locales/`, `types/`: styles, icons, translations, and declarations.
 - `scripts/`: tooling and native download helpers.
 - `tests/bilibili/`, `tests/downloads/`: TypeScript tests for the corresponding utility modules.

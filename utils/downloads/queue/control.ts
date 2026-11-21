@@ -24,6 +24,18 @@ export function canPauseJob(job: DownloadJob): boolean {
 }
 
 /**
+ * Wait for the browser download ID before cancelling a save in progress.
+ */
+export function canCancelJob(job: DownloadJob): boolean {
+  return (
+    canPauseJob(job)
+    || job.status === 'paused'
+    || (job.status === 'native' && !job.nativeCancelRequested)
+    || (job.status === 'saving' && job.downloadId !== undefined)
+  )
+}
+
+/**
  * Only a claimed run may report progress, including after a quick
  * pause/resume.
  *
@@ -51,7 +63,10 @@ export function hasAppliedTerminalUpdate(
     !!runId
     && job?.runId === runId
     && (status === 'completed' || status === 'failed')
-    && job.status === status
+    && (job.status === status
+      || (status === 'failed'
+        && job.status === 'cancelled'
+        && job.nativeCancelRequested === true))
   )
 }
 

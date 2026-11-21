@@ -11,10 +11,16 @@ import {
 test('tries a backup CDN after HTTP failure and reports complete bytes', async context => {
   let attempts = 0
 
-  context.mock.method(globalThis, 'fetch', async () =>
-    ++attempts === 1
-      ? new Response('', { status: 403 })
-      : new Response(new Uint8Array([1, 2, 3])),
+  context.mock.method(
+    globalThis,
+    'fetch',
+    async (_url: RequestInfo | URL, init?: RequestInit) => {
+      assert.equal(init?.redirect, 'error')
+
+      return ++attempts === 1
+        ? new Response('', { status: 403 })
+        : new Response(new Uint8Array([1, 2, 3]))
+    },
   )
   const progress: number[] = []
   const bytes = await fetchMediaBytes(
@@ -47,6 +53,27 @@ test('enforces byte budget without Content-Length and does not retry oversized f
     RangeError,
   )
   assert.equal(attempts, 1)
+})
+
+test('rejects unsolicited byte ranges and tries a complete backup response', async context => {
+  const responses = [
+    new Response('ab', { status: 206 }),
+    new Response('ab', { headers: { 'content-range': 'bytes 0-1/3' } }),
+    new Response('abc'),
+  ]
+  const fetchMock = context.mock.method(globalThis, 'fetch', async () =>
+    responses.shift(),
+  )
+
+  const bytes = await fetchMediaBytes(
+    ['https://one.test', 'https://two.test', 'https://three.test'],
+    new AbortController().signal,
+    10,
+    () => {},
+  )
+
+  assert.equal(new TextDecoder().decode(bytes), 'abc')
+  assert.equal(fetchMock.mock.callCount(), 3)
 })
 
 test('cancellation stops before network access and truncated responses fail', async context => {

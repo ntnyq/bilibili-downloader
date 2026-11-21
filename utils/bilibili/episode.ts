@@ -4,7 +4,7 @@ import { seasonIdSchema } from '~/types/season'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { QUALITY_REQUEST_IDS } from '~/utils/downloads/media/quality'
 import { i18n } from '~/utils/i18n'
-import { getVideoMedia, requestApiResult } from './api'
+import { BilibiliApiError, getVideoMedia, requestApiResult } from './api'
 import { normalizeMediaUrl, playDataSchema, selectMedia } from './streams'
 import type {
   DownloadJob,
@@ -214,6 +214,26 @@ export async function checkEpisodeAvailability(
               epId,
             }
           } catch (error) {
+            const detail =
+              error instanceof BilibiliApiError && error.cause
+                ? error.cause
+                : error
+
+            if (
+              signal.aborted
+              || detail instanceof TypeError
+              || (detail instanceof DOMException
+                && detail.name === 'TimeoutError')
+              || (error instanceof BilibiliApiError
+                && ([-352, -412, -401, 429].includes(error.code)
+                  || (error.code >= 500 && error.code < 600)))
+            ) {
+              return {
+                epId,
+                retryReason: getErrorMessage(error),
+              }
+            }
+
             return {
               epId,
               unavailableReason: getErrorMessage(error),

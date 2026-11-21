@@ -479,9 +479,11 @@ downloadWorkspace:
   viewAssetsAndBundleResultsByVideo: View assets and bundle results by video.
 downloads:
   anotherDownloadCenterIsProcessingTheQueue: Another Download Center is processing the queue.
+  browserCouldNotCancelSaving: The browser could not cancel the file save. Try again from the browser’s downloads list.
   cannotLoadVideoInformationPleaseTryAgain: Cannot load video information. Please try again.
   downloadTasksCanOnlyRunInTheDownload: Download tasks can only run in the Download Center.
   enableNotificationsInSettingsAndGrantNotificationPermission: Enable notifications in Settings and grant notification permission.
+  fileSaveIsStartingTryCancellingAgain: The file save is starting. Try cancelling again in a moment.
   fileSavedButHistoryFailed: 'File saved, but download history could not be updated: $1'
   invalidDownloadRequestParameters: Invalid download request parameters.
   saved: $1 saved
@@ -734,6 +736,17 @@ queue:
   pauseTheVideoOrAudioTaskBeforeSending: Pause the video or audio task before sending it to the local helper.
   theDownloadQueueIsFullWaitForSome: The download queue is full. Wait for some tasks to finish.
   theLocalHelperReturnedNoSavePathCompletion: The local helper returned no save path. Completion cannot be confirmed.
+queueRecovery:
+  backupCouldNotBeSaved: 'Could not back up the queue. Choose Export and recover. Browser error: $1'
+  backupLimitReached: The recovery backups reached their 2 MiB limit. Export and recover the current queue, or delete stored backups.
+  backupsCleared: Recovery backups deleted.
+  backupsExported: Recovery backups exported.
+  clearBackups: Delete recovery backups
+  clearBackupsDescription: Delete the recovery backups stored by this extension? You can export them first.
+  exportAndRecover: Export and recover
+  exportBackups: Export recovery backups
+  noBackups: There are no stored recovery backups.
+  snapshotChanged: The queue changed after export. Export the current snapshot again before recovering.
 remuxMedia:
   cannotReadTheAacTrackInTheMp4: Cannot read the AAC track in the MP4.
   cannotReadTheMp4VideoTrack: Cannot read the MP4 video track.
@@ -771,6 +784,10 @@ season:
   unavailableCount:
     1: $1 episode could not be queued. See its status in the list.
     n: $1 episodes could not be queued. See their statuses in the list.
+  unverifiedCount:
+    1: Could not check $1 episode. It stays selected for retry.
+    n: Could not check $1 episodes. They stay selected for retry.
+  unverifiedEpisode: Could not check availability. $1
 serializeDownloadHistory:
   createdTimeUtc: Created time (UTC)
   part: Part
@@ -856,6 +873,7 @@ useNativeBridge:
   mediaUrlsExpiredFetchingStreamsAgainAndValidating: Media URLs expired. Fetching streams again and validating the cache…
   remuxingLosslesslyWithLocalFfmpeg: Remuxing losslessly with local FFmpeg…
   savingLocalFile: Saving local file…
+  stoppingLocalTask: Waiting for the local helper to stop…
   taskStoppedVerifiedLocalCacheWillBeReused: Task stopped. Verified local cache will be reused on the next handoff.
   theDownloadPageClosedAndTheLocalTask: The download page closed and the local task stopped. Verified cache can be reused on the next handoff.
   theDownloadPageClosedTheLocalTaskDid: The download page closed. The local task did not start.

@@ -151,7 +151,7 @@ def ensure_directory(root, parts=()):
     for part in parts:
         current = current / part
         if not current.exists() and not current.is_symlink():
-            current.mkdir(mode=0o700)
+            current.mkdir(mode=0o700, exist_ok=True)
         require(not current.is_symlink() and current.is_dir(), '目录包含符号链接或不是文件夹。')
     return current
 

@@ -54,10 +54,18 @@ export function useSeasonDownload(
         label: [episode.episodeLabel, episode.episodeTitle]
           .filter(Boolean)
           .join(' · '),
-        isSelectable: !isActive && !isChecking && !!checked && !reason,
+        isSelectable:
+          !isActive
+          && !isChecking
+          && !!checked
+          && !reason
+          && (!checked.retryReason || selected.value.includes(episode.epId)),
         status: isActive
           ? i18n.t('season.alreadyQueued')
           : (reason
+            ?? (checked?.retryReason && !isChecking
+              ? i18n.t('season.unverifiedEpisode', [checked.retryReason])
+              : undefined)
             ?? (checked && !isChecking
               ? i18n.t('season.available')
               : i18n.t('season.checking'))),
@@ -77,7 +85,9 @@ export function useSeasonDownload(
       !isAdding.value
       && !visibleEpisodes.value.some(({ epId }) => checking.has(epId))
       && visibleEpisodes.value.some(
-        ({ epId }) => availability.get(epId)?.unavailableReason,
+        ({ epId }) =>
+          availability.get(epId)?.unavailableReason
+          || availability.get(epId)?.retryReason,
       ),
   )
 
@@ -106,7 +116,11 @@ export function useSeasonDownload(
 
         const checked = availability.get(epId)
 
-        return (recheck ? !checked?.unavailableReason : checked)
+        return (
+          recheck
+            ? !checked?.unavailableReason && !checked?.retryReason
+            : checked
+        )
           ? []
           : [{ epId, cid }]
       },
@@ -124,11 +138,11 @@ export function useSeasonDownload(
       { type: 'season.availability', episodes },
       episodeAvailabilityListSchema,
     ).catch(error => {
-      const unavailableReason = getErrorMessage(error)
+      const retryReason = getErrorMessage(error)
 
       return episodes.map(({ epId }) => ({
         epId,
-        unavailableReason,
+        retryReason,
       }))
     })
 
@@ -177,16 +191,21 @@ export function useSeasonDownload(
         return
       }
 
-      for (const unavailable of result.unavailable) {
-        availability.set(unavailable.epId, unavailable)
+      for (const episode of [...result.unavailable, ...result.unverified]) {
+        availability.set(episode.epId, episode)
       }
 
-      selected.value = []
+      const retryIds = new Set(result.unverified.map(episode => episode.epId))
+
+      selected.value = selected.value.filter(epId => retryIds.has(epId))
       notice.value = [
         result.added ? i18n.t('season.added', result.added) : '',
         result.skipped ? i18n.t('season.skipped', result.skipped) : '',
         result.unavailable.length
           ? i18n.t('season.unavailableCount', result.unavailable.length)
+          : '',
+        result.unverified.length
+          ? i18n.t('season.unverifiedCount', result.unverified.length)
           : '',
       ]
         .filter(Boolean)

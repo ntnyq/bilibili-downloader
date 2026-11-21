@@ -1,6 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+import { browser } from 'wxt/browser'
 import { z } from 'zod'
+import {
+  batchSessionAddReplySchema,
+  batchSessionSaveResultSchema,
+} from '../../types/batchSession'
 import {
   downloadJobSchema,
   downloadJobsSchema,
@@ -12,6 +17,7 @@ import {
   seasonAddResultSchema,
   seasonInfoSchema,
 } from '../../types/season'
+import { createBatchSessionData } from '../../utils/downloads/batch/session'
 import { getDownloadPageUrl } from '../../utils/downloads/getDownloadPageUrl'
 import { installExtension } from '../support/extension'
 
@@ -380,6 +386,7 @@ test('season selection lists restrictions and queues unique playable episodes in
 
   assert.equal(results[0].added + results[1].added, 2)
   assert.equal(results[0].skipped + results[1].skipped, 3)
+  assert.deepEqual(results[0].unverified, [])
   assert.deepEqual(
     results[0].unavailable.map(episode => episode.epId),
     [43, 18, 99],
@@ -794,3 +801,420 @@ for (const kind of ['browser', 'native'] as const) {
     assert.equal(library.records.length, 0)
   })
 }
+
+test('a season deadline leaves unverified episodes eligible for a later retry', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  const episodes = Array.from({ length: 8 }, (_, index) => ({
+    id: index + 1,
+    cid: index + 100,
+    bvid: 'BV1xx411c7mD',
+    title: String(index + 1),
+    duration: 1000,
+  }))
+  const deadline = new AbortController()
+  const timeout = AbortSignal.timeout.bind(AbortSignal)
+  const requested: number[] = []
+  let shouldTimeout = true
+
+  context.mock.method(AbortSignal, 'timeout', (ms: number) =>
+    ms === 25_000 && shouldTimeout ? deadline.signal : timeout(ms),
+  )
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    const url = new URL(input)
+
+    if (url.pathname === '/pgc/view/web/season') {
+      return Response.json({
+        code: 0,
+        result: { season_id: 1182, title: 'Test season', cover: '', episodes },
+      })
+    }
+
+    requested.push(Number(url.searchParams.get('ep_id')))
+
+    if (shouldTimeout && requested.length === 4) {
+      deadline.abort(
+        new DOMException('Shared deadline exceeded', 'TimeoutError'),
+      )
+    }
+
+    return Response.json({
+      code: 0,
+      result: {
+        play_check: { play_detail: 'PLAY_WHOLE' },
+        video_info: {
+          quality: 80,
+          durl: [{ url: 'https://cdn.bilivideo.com/test.mp4', size: 32 }],
+        },
+      },
+    })
+  })
+
+  const request = {
+    type: 'queue.season.add',
+    seasonId: 1182,
+    epIds: episodes.map(episode => episode.id),
+    quality: 'best',
+  } as const
+  const result = await sendDownloadMessage(request, seasonAddResultSchema)
+
+  assert.deepEqual(requested, [1, 2, 3, 4])
+  assert.equal(result.added, 4)
+  assert.deepEqual(result.unavailable, [])
+  const remaining = result.unverified.map(episode => episode.epId)
+
+  assert.deepEqual(remaining, [5, 6, 7, 8])
+
+  shouldTimeout = false
+  const retry = await sendDownloadMessage(
+    { ...request, epIds: remaining },
+    seasonAddResultSchema,
+  )
+
+  assert.equal(retry.added, 4)
+  assert.deepEqual(retry.unverified, [])
+  assert.equal(
+    downloadJobsSchema.parse(extension.stored.downloadJobs).length,
+    8,
+  )
+})
+
+test('cancel waits for a download ID and preserves a saved file in history', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  const runId = crypto.randomUUID()
+  const filename = 'Bilibili/test.mp4'
+  const saving = { ...createJob(), status: 'saving', runId, filename }
+
+  extension.stored.downloadJobs = [saving, { ...createJob(), id: 'queued' }]
+  extension.stored.downloadRunnerTabId = 1
+  const cancel = context.mock.method(
+    browser.downloads,
+    'cancel',
+    async () => {},
+  )
+
+  context.mock.method(browser.downloads, 'search', async () => [
+    { state: 'complete' },
+  ])
+
+  await sendDownloadMessage({ type: 'queue.cancel' }, z.null())
+  assert.equal(cancel.mock.callCount(), 0)
+  assert.deepEqual(
+    downloadJobsSchema
+      .parse(extension.stored.downloadJobs)
+      .map(job => job.status),
+    ['saving', 'cancelled'],
+  )
+
+  extension.stored.downloadJobs = [{ ...saving, downloadId: 9 }]
+  await sendDownloadMessage({ type: 'queue.cancel', id: saving.id }, z.null())
+  assert.equal(cancel.mock.callCount(), 1)
+  assert.equal(
+    downloadJobsSchema.parse(extension.stored.downloadJobs)[0]?.status,
+    'completed',
+  )
+  assert.equal(
+    downloadLibrarySchema.parse(extension.stored.downloadLibrary).records[0]
+      ?.filename,
+    filename,
+  )
+  assert.equal(
+    await sendDownloadMessage(
+      {
+        type: 'runner.update',
+        id: saving.id,
+        runId,
+        update: { status: 'completed', progress: 100 },
+      },
+      z.boolean(),
+    ),
+    true,
+  )
+})
+
+test('closing the runner archives a file completed during cancellation', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  const job = createJob()
+
+  extension.stored.downloadJobs = [{ ...job, status: 'saving', downloadId: 9 }]
+  extension.stored.downloadRunnerTabId = 1
+  let state = 'in_progress'
+
+  context.mock.method(browser.downloads, 'cancel', async () => {
+    state = 'complete'
+  })
+  context.mock.method(browser.downloads, 'search', async () => [{ state }])
+
+  await extension.removed.emit(1)
+
+  assert.equal(
+    downloadJobsSchema.parse(extension.stored.downloadJobs)[0]?.status,
+    'completed',
+  )
+  assert.equal(
+    downloadLibrarySchema.parse(extension.stored.downloadLibrary).records[0]
+      ?.id,
+    job.id,
+  )
+})
+
+test('bulk cancellation commits successful stops even if a browser save stays active', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  extension.stored.downloadJobs = [
+    { ...createJob(), status: 'saving', downloadId: 9 },
+    { ...createJob(), id: 'queued' },
+  ]
+  context.mock.method(browser.downloads, 'cancel', async () => {
+    throw new Error('Browser cancellation failed')
+  })
+  context.mock.method(browser.downloads, 'search', async () => [
+    { state: 'in_progress' },
+  ])
+
+  await assert.rejects(sendDownloadMessage({ type: 'queue.cancel' }, z.null()))
+  assert.deepEqual(
+    downloadJobsSchema
+      .parse(extension.stored.downloadJobs)
+      .map(job => job.status),
+    ['saving', 'cancelled'],
+  )
+})
+
+test('initialized history remains readable and editable with a corrupt queue', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  extension.stored.downloadJobs = [{ ...createJob(), status: 'completed' }]
+  const list = () =>
+    sendDownloadMessage({ type: 'library.list' }, downloadLibrarySchema)
+  const { records } = await list()
+  const [record] = records
+
+  assert.ok(record)
+  extension.stored.downloadJobs = [null]
+  assert.deepEqual((await list()).records, records)
+  await sendDownloadMessage(
+    { type: 'library.delete', identity: record.identity },
+    z.null(),
+  )
+  assert.deepEqual((await list()).records, [])
+  assert.deepEqual(extension.stored.downloadJobs, [null])
+})
+
+test('batch import with completed skipping off can enqueue with corrupt history', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  extension.stored.downloadLibrary = { invalid: true }
+  const job = createJob()
+  const item = { videoId: job.bvid, page: 1, title: job.title }
+  const rowKey = `${item.videoId}:${item.page}`
+  const draft = createBatchSessionData()
+  const options = { ...draft.options, skipCompleted: false }
+  const { session } = await sendDownloadMessage(
+    {
+      type: 'batch.session.save',
+      expectedRevision: null,
+      session: {
+        ...draft,
+        hasPreview: true,
+        options,
+        optionsSnapshot: options,
+        rows: [
+          { key: rowKey, item, selected: true, status: 'pending', outcome: '' },
+        ],
+      },
+    },
+    batchSessionSaveResultSchema,
+  )
+
+  assert.ok(session)
+  context.mock.method(globalThis, 'fetch', async () =>
+    Response.json({
+      code: 0,
+      data: {
+        bvid: job.bvid,
+        title: job.title,
+        pic: '',
+        owner: { name: 'Owner' },
+        pages: [
+          {
+            cid: job.cid,
+            page: job.page,
+            part: job.part,
+            duration: job.duration,
+          },
+        ],
+      },
+    }),
+  )
+
+  const { result } = await sendDownloadMessage(
+    {
+      type: 'batch.add',
+      sessionId: session.id,
+      expectedRevision: session.revision,
+      rowKey,
+      item,
+      ...options,
+    },
+    batchSessionAddReplySchema,
+  )
+
+  assert.equal(result.added, 1)
+  assert.equal(result.shouldStop, false)
+  assert.deepEqual(extension.stored.downloadLibrary, { invalid: true })
+})
+
+test('season availability keeps throttling and server errors retryable', async context => {
+  installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  context.mock.method(globalThis, 'fetch', async (input: string) => {
+    switch (new URL(input).searchParams.get('ep_id')) {
+      case '1':
+        return new Response(null, { status: 429 })
+      case '2':
+        return new Response(null, { status: 503 })
+      case '3':
+        return Response.json({ code: -412 })
+      default:
+        return Response.json({
+          code: 0,
+          result: { play_check: { play_detail: 'AREA_LIMIT' } },
+        })
+    }
+  })
+  const results = await sendDownloadMessage(
+    {
+      type: 'season.availability',
+      episodes: [1, 2, 3, 4].map(epId => ({
+        epId,
+        cid: epId,
+      })),
+    },
+    episodeAvailabilityListSchema,
+  )
+
+  assert.deepEqual(
+    results.filter(item => item.retryReason).map(item => item.epId),
+    [1, 2, 3],
+  )
+  assert.deepEqual(
+    results.filter(item => item.unavailableReason).map(item => item.epId),
+    [4],
+  )
+})
+
+test('large recovery snapshots can be exported and backups can be managed', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  const previous = [{ id: 'old invalid item' }]
+  const corrupt = [createJob(), { title: 'x'.repeat(2 * 1024 * 1024) }]
+
+  extension.stored.downloadJobsRecoveryBackup = previous
+  extension.stored.downloadJobs = corrupt
+  await assert.rejects(
+    sendDownloadMessage({ type: 'queue.recover' }, z.null()),
+    /2 MiB/,
+  )
+  assert.deepEqual(extension.stored.downloadJobs, corrupt)
+  const current = await sendDownloadMessage(
+    { type: 'queue.recovery.snapshot' },
+    z.object({ digest: z.string(), json: z.string() }),
+  )
+
+  assert.deepEqual(JSON.parse(current.json), corrupt)
+  await assert.rejects(
+    sendDownloadMessage(
+      { type: 'queue.recover', exportedDigest: '0'.repeat(64) },
+      z.null(),
+    ),
+    /发生了变化/,
+  )
+  await sendDownloadMessage(
+    { type: 'queue.recover', exportedDigest: current.digest },
+    z.null(),
+  )
+  assert.deepEqual(extension.stored.downloadJobs, [createJob()])
+
+  const backup = await sendDownloadMessage(
+    { type: 'queue.recovery.backups' },
+    z.string(),
+  )
+
+  assert.deepEqual(JSON.parse(backup), {
+    version: 1,
+    backups: { downloadJobsRecoveryBackup: previous },
+  })
+  await sendDownloadMessage({ type: 'queue.recovery.clear' }, z.null())
+  assert.equal(extension.stored.downloadJobsRecoveryBackup, undefined)
+  assert.deepEqual(extension.stored.downloadJobs, [createJob()])
+})
+
+test('ordinary progress skips the library after migrating legacy completions', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  const runId = crypto.randomUUID()
+  const legacy = { ...createJob(), id: 'legacy', cid: 2, status: 'completed' }
+
+  extension.stored.downloadRunnerTabId = 1
+  extension.stored.downloadJobs = [
+    legacy,
+    { ...createJob(), status: 'downloading', runId },
+  ]
+  const progress = {
+    type: 'runner.update',
+    id: 'job',
+    runId,
+    update: { receivedBytes: 1 },
+  } as const
+
+  assert.equal(await sendDownloadMessage(progress, z.boolean()), true)
+  const get = context.mock.method(extension.local, 'get')
+
+  assert.equal(
+    await sendDownloadMessage(
+      { ...progress, update: { receivedBytes: 2 } },
+      z.boolean(),
+    ),
+    true,
+  )
+  assert.ok(
+    get.mock.calls.every(
+      call => !call.arguments[0]?.includes('downloadLibrary'),
+    ),
+  )
+  assert.equal(
+    downloadLibrarySchema.parse(extension.stored.downloadLibrary).records[0]
+      ?.id,
+    legacy.id,
+  )
+})

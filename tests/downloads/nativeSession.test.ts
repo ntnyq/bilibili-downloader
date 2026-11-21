@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { computed, readonly, shallowRef, watch } from 'vue'
 import { browser } from 'wxt/browser'
+import { z } from 'zod'
 import { downloadJobSchema, downloadJobsSchema } from '../../types/download'
 import { downloadLibrarySchema } from '../../types/downloadHistory'
 import { setLanguagePreference } from '../../utils/i18n'
@@ -23,13 +24,24 @@ const scenarios = [
   ['refresh', 'native refresh freezes the output path across language changes'],
   ['changedMedia', 'native refresh still rejects a changed representation'],
   [
+    'lostStart',
+    'native handoff retries a lost start reply on the original lease',
+  ],
+  [
     'retryWrites',
     'native completion survives failed queue writes and a lost reply without cancelling',
   ],
+  [
+    'cancelCompleted',
+    'native cancellation records a file the helper already saved',
+  ],
+  ['cancelConfirmed', 'native cancellation waits for the helper to stop'],
 ] as const
 
 for (const [scenario, description] of scenarios) {
   const changedMedia = scenario === 'changedMedia'
+  const isCancelling =
+    scenario === 'cancelCompleted' || scenario === 'cancelConfirmed'
 
   test(
     description,
@@ -120,7 +132,7 @@ for (const [scenario, description] of scenarios) {
             outcome.resolve(message.type)
           }
 
-          if (message.type === 'cancel') {
+          if (message.type === 'cancel' && !isCancelling) {
             queueMicrotask(() =>
               incoming.emit({
                 version: 1,
@@ -135,16 +147,112 @@ for (const [scenario, description] of scenarios) {
       await setLanguagePreference('zh-CN')
       const bridge = useNativeBridge(() => job)
 
+      const startRunIds: string[] = []
+
+      if (scenario === 'lostStart') {
+        const send = browser.runtime.sendMessage.bind(browser.runtime)
+
+        context.mock.method(
+          browser.runtime,
+          'sendMessage',
+          async (message: unknown) => {
+            const request = requestSchema.parse(message)
+            const reply = await send(message)
+
+            if (request.type === 'native.start') {
+              startRunIds.push(request.runId)
+
+              if (startRunIds.length === 1) {
+                throw new Error('Start reply lost')
+              }
+            }
+
+            return reply
+          },
+        )
+      }
+
       await bridge.start()
       const initial = sent[0]
 
       assert.ok(initial)
+
+      if (scenario === 'lostStart') {
+        const [claimed] = downloadJobsSchema.parse(
+          extension.stored.downloadJobs,
+        )
+
+        assert.equal(claimed?.status, 'native')
+        assert.deepEqual(startRunIds, [claimed.runId, claimed.runId])
+        assert.equal(sent.length, 1)
+        assert.equal(bridge.error.value, '')
+      }
+
       assert.equal(initial.manifest.filename, 'Bilibili/音频 M4A_Test.m4a')
       await incoming.emit({
         version: 1,
         requestId: initial.requestId,
         type: 'started',
       })
+
+      if (isCancelling) {
+        await sendDownloadMessage(
+          { type: 'queue.cancel', id: job.id },
+          z.null(),
+        )
+        const [stopping] = await sendDownloadMessage(
+          { type: 'queue.list' },
+          downloadJobsSchema,
+        )
+
+        assert.equal(await outcome.promise, 'cancel')
+        assert.equal(stopping?.status, 'native')
+        assert.equal(stopping.nativeCancelRequested, true)
+        assert.equal(bridge.isRunning.value, true)
+        await sendDownloadMessage(
+          { type: 'queue.cancel', id: job.id },
+          z.null(),
+        )
+        assert.equal(sent.length, 2)
+
+        const isSaved = scenario === 'cancelCompleted'
+        const filename = '/Downloads/Bilibili/Test.m4a'
+        const terminal = isSaved
+          ? { type: 'completed' as const, filename, quality: 'AAC 128 kbps' }
+          : { type: 'failed' as const, error: 'Cancelled' }
+
+        await incoming.emit({
+          version: 1,
+          requestId: initial.requestId,
+          ...terminal,
+        })
+        const [finished] = await sendDownloadMessage(
+          { type: 'queue.list' },
+          downloadJobsSchema,
+        )
+        const { records } = downloadLibrarySchema.parse(
+          extension.stored.downloadLibrary,
+        )
+
+        assert.equal(finished?.status, isSaved ? 'completed' : 'cancelled')
+        assert.equal(records[0]?.filename, isSaved ? filename : undefined)
+        assert.equal(bridge.isRunning.value, false)
+        assert.ok(stopping.runId)
+        assert.equal(
+          await sendDownloadMessage(
+            {
+              type: 'native.update',
+              id: job.id,
+              runId: stopping.runId,
+              update: { status: isSaved ? 'completed' : 'failed' },
+            },
+            z.boolean(),
+          ),
+          true,
+        )
+
+        return
+      }
 
       if (scenario === 'retryWrites') {
         const send = browser.runtime.sendMessage.bind(browser.runtime)

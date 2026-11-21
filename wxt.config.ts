@@ -55,7 +55,6 @@ export default defineConfig({
     },
     presets: [
       'vue',
-      'pinia',
       'vue-router',
       {
         package: '@vueuse/core',

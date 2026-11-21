@@ -5,7 +5,7 @@
 This is a WXT browser extension built with Vue 3 and TypeScript. Browser contexts
 live under `entrypoints/`: `background/`, `content/`, `popup/`, `options/`, and
 `welcome/`. Keep context-specific code within its entrypoint; move shared UI,
-state, and logic to `components/`, `stores/`, `composables/`, or `utils/`.
+state, and logic to `components/`, `composables/`, or `utils/`.
 Extension metadata and build behavior are defined in `wxt.config.ts`. Static
 styles and icons belong in `assets/`, translations in `locales/`, declarations
 in `types/`, and project tooling helpers in `scripts/`. Keep tests and their
