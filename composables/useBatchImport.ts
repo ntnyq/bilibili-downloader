@@ -95,6 +95,7 @@ export function useBatchImport() {
           if (key === 'quality') {
             shouldSeedQuality = false
           }
+
           updateSession({ options: { ...session.value.options, [key]: value } })
         }
       },
@@ -119,9 +120,11 @@ export function useBatchImport() {
     if (saveTask) {
       return saveTask
     }
+
     saveTask = saveSession().finally(() => {
       saveTask = undefined
     })
+
     return saveTask
   }
 
@@ -129,20 +132,25 @@ export function useBatchImport() {
     if (!isSessionReady.value || hasConflict.value || disposed) {
       return false
     }
+
     isSavingSession.value = true
+
     try {
       while (dirty) {
         if (disposed) {
           return false
         }
+
         const draft = session.value
         const parsed = batchSessionDataSchema.safeParse(draft)
+
         if (!parsed.success) {
           throw new Error(
             parsed.error.issues[0]?.message
               || i18n.t('useBatchImport.theBatchSessionCouldNotBeSavedReduce'),
           )
         }
+
         const result = await sendDownloadMessage(
           {
             type: 'batch.session.save',
@@ -151,23 +159,30 @@ export function useBatchImport() {
           },
           batchSessionSaveResultSchema,
         )
+
         if (result.conflict || !result.session) {
           hasConflict.value = true
+
           throw new Error(
             i18n.t(
               'useBatchImport.anotherDownloadCenterChangedThisBatchSessionLoad',
             ),
           )
         }
+
         revision.value = result.session.revision
+
         if (session.value === draft) {
           applySession(result.session)
         }
+
         sessionError.value = ''
       }
+
       return !disposed
     } catch (error_) {
       sessionError.value = getErrorMessage(error_)
+
       return false
     } finally {
       isSavingSession.value = false
@@ -178,16 +193,20 @@ export function useBatchImport() {
     if (isLoading.value || isAdding.value || isSavingSession.value) {
       return
     }
+
     isSessionReady.value = false
     sessionError.value = ''
+
     try {
       const saved = await sendDownloadMessage(
         { type: 'batch.session.get' },
         batchSessionSchema.nullable(),
       )
+
       if (disposed) {
         return
       }
+
       if (saved) {
         shouldSeedQuality = false
         applySession(saved, true)
@@ -201,6 +220,7 @@ export function useBatchImport() {
         dirty = false
         sessionNotice.value = ''
       }
+
       hasConflict.value = false
       isSessionReady.value = true
       seedQuality()
@@ -224,6 +244,7 @@ export function useBatchImport() {
           quality: preferences.settings.value.quality,
         },
       }
+
       if (dirty || revision.value !== null) {
         updateSession({})
       }
@@ -238,12 +259,15 @@ export function useBatchImport() {
     if (isSessionReady.value || isSavingSession.value) {
       return
     }
+
     isSavingSession.value = true
+
     try {
       const saved = await sendDownloadMessage(
         { type: 'batch.session.reset' },
         batchSessionSchema,
       )
+
       if (!disposed) {
         applySession(saved, true)
         hasConflict.value = false
@@ -259,11 +283,13 @@ export function useBatchImport() {
     } finally {
       isSavingSession.value = false
     }
+
     seedQuality()
   }
 
   function resetPreview() {
     const next = createBatchSessionData()
+
     session.value = {
       ...next,
       source: undefined,
@@ -287,15 +313,19 @@ export function useBatchImport() {
     const keys = new Set(rows.value.map(row => row.key))
     const appended: BatchImportRow[] = []
     let duplicateCount = session.value.duplicateCount
+
     for (const item of items) {
       const key = `${item.videoId}:${item.page}`
+
       if (keys.has(key)) {
         duplicateCount++
         continue
       }
+
       if (rows.value.length + appended.length >= MAX_BATCH_ITEMS) {
         break
       }
+
       keys.add(key)
       appended.push({
         key,
@@ -305,6 +335,7 @@ export function useBatchImport() {
         outcome: '',
       })
     }
+
     return {
       rows: [...rows.value, ...appended],
       duplicateCount,
@@ -322,24 +353,32 @@ export function useBatchImport() {
     ) {
       return
     }
+
     isPreviewing = true
     error.value = ''
+
     try {
       if (!(await flushSession()) || !canEdit.value || disposed) {
         return
       }
+
       const input = sourceInput.value
+
       if (sourceKind.value === 'links') {
         const parsed = parseBatchLinks(input)
+
         if (!parsed.items.length && session.value.hasPreview) {
           updateSession({ inputErrors: parsed.errors, isPreviewStale: true })
           error.value = i18n.t(
             'useBatchImport.noValidVideosFoundCheckYourInputAnd',
           )
+
           return
         }
+
         resetPreview()
         const appended = appendItems(parsed.items)
+
         updateSession({
           title: i18n.t('batchSourceForm.linkList'),
           inputErrors: parsed.errors,
@@ -347,15 +386,19 @@ export function useBatchImport() {
           duplicateCount: parsed.duplicateCount + appended.duplicateCount,
         })
         await flushSession()
+
         return
       }
+
       const parsed = parseBatchSource(sourceKind.value, input)
+
       resetPreview()
       updateSession({
         source: parsed,
         title: i18n.t('useBatchImport.sourcePreview'),
         nextPage: 1,
       })
+
       if (await flushSession()) {
         await loadNextPage()
       }
@@ -386,26 +429,33 @@ export function useBatchImport() {
     ) {
       return
     }
+
     const id = ++requestId
     const page = session.value.nextPage
     const source = session.value.source
+
     if (!page || !source) {
       return
     }
+
     isLoading.value = true
     error.value = ''
     updateSession({ previewNotice: '' })
+
     try {
       const result = await sendDownloadMessage(
         { type: 'batch.page', source, page },
         batchPageSchema,
       )
+
       if (disposed || id !== requestId) {
         return
       }
+
       const appended = appendItems(result.items)
       let nextPage = result.nextPage
       let previewNotice = ''
+
       if (appended.rows.length >= MAX_BATCH_ITEMS) {
         nextPage = undefined
         previewNotice = i18n.t(
@@ -423,6 +473,7 @@ export function useBatchImport() {
           'useBatchImport.thisPageReturnedNoNewVideosLoadingStopped',
         )
       }
+
       updateSession({
         rows: appended.rows,
         duplicateCount: appended.duplicateCount,
@@ -460,6 +511,7 @@ export function useBatchImport() {
     if (!canEdit.value || isAdding.value || isLoading.value) {
       return
     }
+
     updateSession({
       rows: rows.value.map(row =>
         row.key === key
@@ -475,11 +527,13 @@ export function useBatchImport() {
     if (!canEdit.value || isAdding.value || isLoading.value) {
       return
     }
+
     const available = rows.value.filter(
       row =>
         !row.receipt && (row.status === 'pending' || row.status === 'failed'),
     )
     const selected = !available.every(row => row.selected)
+
     updateSession({
       rows: rows.value.map(row =>
         available.includes(row) ? { ...row, selected } : row,
@@ -498,12 +552,14 @@ export function useBatchImport() {
     ) {
       return
     }
+
     const selected = rows.value.filter(row => row.selected)
     const options = session.value.optionsSnapshot || {
       ...session.value.options,
       filenameTemplate: preferences.settings.value.filenameTemplate,
       folderMode: preferences.settings.value.folderMode,
     }
+
     isAdding.value = true
     isStopping.value = false
     error.value = ''
@@ -512,11 +568,13 @@ export function useBatchImport() {
     let finished = 0
     let added = 0
     let skipped = 0
+
     try {
       for (const row of selected) {
         if (disposed || isStopping.value) {
           break
         }
+
         updateSession({
           rows: rows.value.map(item =>
             item.key === row.key
@@ -528,9 +586,11 @@ export function useBatchImport() {
               : item,
           ),
         })
+
         if (!(await flushSession()) || revision.value === null) {
           break
         }
+
         try {
           const reply = await sendDownloadMessage(
             {
@@ -543,9 +603,11 @@ export function useBatchImport() {
             },
             batchSessionAddReplySchema,
           )
+
           if (disposed) {
             return
           }
+
           applySession(reply.session)
           added += reply.result.added
           skipped += reply.result.skipped
@@ -554,6 +616,7 @@ export function useBatchImport() {
             'useBatchImport.processedVideosTasksAddedSkipped',
             [finished, selected.length, added, skipped],
           )
+
           if (reply.result.shouldStop) {
             error.value =
               reply.result.error
@@ -571,6 +634,7 @@ export function useBatchImport() {
               [getErrorMessage(error_)],
             )
           }
+
           break
         }
       }

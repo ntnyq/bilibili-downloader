@@ -21,6 +21,7 @@ export function clearFinishedDownloadJobs(jobs: DownloadJob[]): DownloadJob[] {
       .filter(isJobActive)
       .flatMap(job => (job.bundleId ? [job.bundleId] : [])),
   )
+
   return jobs.filter(
     job =>
       isJobActive(job) || (job.bundleId && activeBundles.has(job.bundleId)),
@@ -49,16 +50,21 @@ export function assertDownloadQueueCapacity(
   const previousActive = new Set(
     previousJobs.filter(isJobActive).map(job => job.id),
   )
+
   if (!nextJobs.some(job => isJobActive(job) && !previousActive.has(job.id))) {
     return
   }
+
   const retained = clearFinishedDownloadJobs(nextJobs)
+
   if (retained.length > MAX_PENDING_JOBS) {
     throw new Error(i18n.t('capacity.theDownloadQueueIsFullBundleSlotsAre'))
   }
+
   const bytes = encoder.encode(JSON.stringify(retained)).byteLength
   const reserve =
     retained.filter(isJobActive).length * ACTIVE_JOB_RESERVED_BYTES
+
   if (bytes + reserve > MAX_DOWNLOAD_QUEUE_BYTES) {
     throw new Error(
       i18n.t('capacity.theDownloadQueueReachedItsStorageLimitComplete'),
@@ -84,31 +90,41 @@ export function pruneDownloadJobs(
   const retained = new Set(clearFinishedDownloadJobs(jobs))
   let retainedBytes = encoder.encode(JSON.stringify([...retained])).byteLength
   const finished = new Map<string, DownloadJob[]>()
+
   for (const job of jobs) {
     if (retained.has(job)) {
       continue
     }
+
     const key = job.bundleId ? `bundle:${job.bundleId}` : `job:${job.id}`
     const group = finished.get(key) || []
+
     group.push(job)
     // Updating insertion order makes the group's newest member its recency.
     finished.delete(key)
     finished.set(key, group)
   }
+
   let historyCount = 0
+
   for (const group of [...finished.values()].reverse()) {
     if (historyCount >= limit) {
       break
     }
+
     const groupBytes = encoder.encode(JSON.stringify(group)).byteLength
+
     if (retainedBytes + groupBytes > MAX_DOWNLOAD_QUEUE_BYTES) {
       continue
     }
+
     for (const job of group) {
       retained.add(job)
     }
+
     historyCount += group.length
     retainedBytes += groupBytes
   }
+
   return jobs.filter(job => retained.has(job))
 }

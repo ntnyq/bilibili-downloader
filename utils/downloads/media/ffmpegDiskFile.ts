@@ -1,4 +1,5 @@
 import { i18n } from '~/utils/i18n'
+
 /**
  * The small Emscripten boundary used by the bundled FFmpeg core (0.12.x).
  */
@@ -94,15 +95,18 @@ export function createFFmpegDiskFile(
       return operation()
     } catch (error) {
       failure ??= error
+
       throw new fs.ErrnoError(
         error instanceof Error && error.name === 'QuotaExceededError' ? 51 : 29,
       )
     }
   }
+
   node.node_ops = {
     getattr(node) {
       return guarded(() => {
         const size = file.getSize()
+
         return {
           ...getattr(node),
           size,
@@ -115,9 +119,11 @@ export function createFFmpegDiskFile(
         if (attributes.mode !== undefined) {
           node.mode = attributes.mode
         }
+
         if (attributes.timestamp !== undefined) {
           node.timestamp = attributes.timestamp
         }
+
         if (attributes.size !== undefined) {
           file.truncate(attributes.size)
         }
@@ -133,17 +139,22 @@ export function createFFmpegDiskFile(
     write(_stream, buffer, offset, length, position) {
       return guarded(() => {
         let written = 0
+
         while (written < length) {
           const count = file.write(
             buffer.subarray(offset + written, offset + length),
             { at: position + written },
           )
+
           if (count <= 0 || count > length - written) {
             throw new Error(i18n.t('ffmpegDiskFile.browserDiskWriteIncomplete'))
           }
+
           written += count
         }
+
         onProgress(file.getSize())
+
         return written
       })
     },
@@ -151,6 +162,7 @@ export function createFFmpegDiskFile(
       const position =
         offset
         + (whence === 1 ? stream.position : whence === 2 ? file.getSize() : 0)
+
       if (
         ![0, 1, 2].includes(whence)
         || !Number.isSafeInteger(position)
@@ -158,17 +170,20 @@ export function createFFmpegDiskFile(
       ) {
         throw new fs.ErrnoError(28)
       }
+
       return position
     },
     allocate(_stream, offset, length) {
       guarded(() => {
         const size = offset + length
+
         if (size > file.getSize()) {
           file.truncate(size)
         }
       })
     },
   }
+
   return {
     getError: () => failure,
   }

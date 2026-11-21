@@ -24,11 +24,13 @@ export function createMixinKey(imageUrl: string, subUrl: string): string {
   const key = [imageUrl, subUrl]
     .map(url => new URL(url).pathname.split('/').at(-1)?.split('.')[0] || '')
     .join('')
+
   if (key.length !== 64) {
     throw new Error(
       i18n.t('wbi.theSigningInformationFormatHasChangedPleaseTry'),
     )
   }
+
   return MIXIN_KEY_TABLE.map(index => key[index])
     .join('')
     .slice(0, 32)
@@ -61,5 +63,6 @@ export function signWbi(
         `${encodeURIComponent(name)}=${encodeURIComponent(String(value).replace(/[!'()*]/g, ''))}`,
     )
     .join('&')
+
   return `${query}&w_rid=${md5(query + key)}`
 }

@@ -8,6 +8,7 @@ import {
   Music2Icon,
   VideoIcon,
 } from '@lucide/vue'
+import { getDownloadPageUrl } from '~/utils/downloads/getDownloadPageUrl'
 import {
   DOWNLOAD_KIND_LABELS,
   QUALITY_LABELS,
@@ -20,11 +21,15 @@ const props = defineProps<{
   record: DownloadHistoryRecord
   isBusy: boolean
 }>()
+
 const emit = defineEmits<{
   requeue: [identity: string]
   remove: [identity: string]
 }>()
+
 const isExpanded = shallowRef(false)
+
+const isEpisode = computed(() => props.record.epId !== undefined)
 const date = computed(
   () => new Date(props.record.completedAt ?? props.record.createdAt),
 )
@@ -60,26 +65,38 @@ const icons = {
         </div>
         <div class="min-w-0 flex-1">
           <a
-            :href="`https://www.bilibili.com/video/${record.bvid}/?p=${record.page}`"
+            :href="getDownloadPageUrl(record)"
             target="_blank"
             rel="noreferrer"
             class="line-clamp-2 rounded-sm text-sm font-medium hover:text-primary"
-            >{{ record.title }}</a
           >
+            {{ record.title }}
+          </a>
           <div
             class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground"
           >
             <Badge
               variant="secondary"
               class="text-[11px] font-normal"
-              >{{ DOWNLOAD_KIND_LABELS[record.kind] }}</Badge
             >
-            <span class="max-w-40 truncate">{{
-              record.owner || i18n.t('downloadLibraryItem.unknownUploader')
-            }}</span>
-            <span v-if="record.pageCount > 1 && record.kind !== 'cover'"
-              >P{{ record.page }}</span
+              {{ DOWNLOAD_KIND_LABELS[record.kind] }}
+            </Badge>
+            <span
+              v-if="isEpisode"
+              class="min-w-0 wrap-break-word"
             >
+              {{ record.part }}
+            </span>
+            <template v-else>
+              <span class="max-w-40 truncate">
+                {{
+                  record.owner || i18n.t('downloadLibraryItem.unknownUploader')
+                }}
+              </span>
+              <span v-if="record.pageCount > 1 && record.kind !== 'cover'">
+                P{{ record.page }}
+              </span>
+            </template>
             <span v-if="record.quality">{{ record.quality }}</span>
           </div>
           <Button
@@ -89,20 +106,22 @@ const icons = {
             size="xs"
             type="button"
             class="mt-2 text-muted-foreground sm:hidden"
-            >{{ i18n.t('downloadLibraryItem.downloadAgain') }}</Button
           >
+            {{ i18n.t('downloadLibraryItem.downloadAgain') }}
+          </Button>
         </div>
         <div class="flex shrink-0 flex-col items-end gap-2">
           <time
             :datetime="date.toISOString()"
             :title="`${record.completedAt === undefined ? i18n.t('downloadLibraryItem.created') : i18n.t('downloadLibraryItem.completed')} ${date.toLocaleString(i18n.t('localeCode'))}`"
             class="text-[11px] text-muted-foreground tabular-nums"
-            >{{
+          >
+            {{
               record.completedAt === undefined
                 ? i18n.t('downloadLibraryItem.legacyRecord')
                 : time
-            }}</time
-          >
+            }}
+          </time>
           <Button
             @click="emit('requeue', record.identity)"
             :disabled="isBusy"
@@ -110,34 +129,38 @@ const icons = {
             size="sm"
             type="button"
             class="hidden text-xs text-muted-foreground sm:inline-flex"
-            >{{ i18n.t('downloadLibraryItem.downloadAgain') }}</Button
           >
+            {{ i18n.t('downloadLibraryItem.downloadAgain') }}
+          </Button>
         </div>
         <DropdownMenu>
-          <DropdownMenuTrigger as-child
-            ><Button
+          <DropdownMenuTrigger as-child>
+            <Button
               :aria-label="
                 i18n.t('downloadLibraryItem.moreRecordActions', [record.title])
               "
               variant="ghost"
               size="icon-sm"
-              ><EllipsisIcon class="size-4" /></Button
-          ></DropdownMenuTrigger>
+            >
+              <EllipsisIcon class="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem @select="isExpanded = !isExpanded">{{
-              isExpanded
-                ? i18n.t('downloadLibraryItem.hideDetails')
-                : i18n.t('downloadLibraryItem.viewDetails')
-            }}</DropdownMenuItem>
+            <DropdownMenuItem @select="isExpanded = !isExpanded">
+              {{
+                isExpanded
+                  ? i18n.t('downloadLibraryItem.hideDetails')
+                  : i18n.t('downloadLibraryItem.viewDetails')
+              }}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               @select="emit('remove', record.identity)"
               :disabled="isBusy"
               class="text-destructive"
-              >{{
-                i18n.t('downloadLibraryItem.deleteRecord')
-              }}</DropdownMenuItem
             >
+              {{ i18n.t('downloadLibraryItem.deleteRecord') }}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -150,10 +173,15 @@ const icons = {
               {{ i18n.t('downloadLibraryItem.videoAndPart') }}
             </dt>
             <dd class="wrap-break-word">
-              {{ record.bvid
-              }}<template v-if="record.kind !== 'cover'">
-                · P{{ record.page }} {{ record.part }}</template
-              >
+              <template v-if="isEpisode">
+                ep{{ record.epId }} · {{ record.part }}
+              </template>
+              <template v-else>
+                {{ record.bvid }}
+                <template v-if="record.kind !== 'cover'">
+                  · P{{ record.page }} {{ record.part }}
+                </template>
+              </template>
             </dd>
           </div>
           <div v-if="record.filename">
@@ -185,14 +213,16 @@ const icons = {
             <dd>{{ date.toLocaleString(i18n.t('localeCode')) }}</dd>
           </div>
         </dl>
-        <CollapsibleTrigger as-child
-          ><Button
+        <CollapsibleTrigger as-child>
+          <Button
             variant="ghost"
             size="xs"
             class="mt-3 text-muted-foreground"
-            >{{ i18n.t('downloadLibraryItem.hideDetails')
-            }}<ChevronDownIcon class="size-3 rotate-180" /></Button
-        ></CollapsibleTrigger>
+          >
+            {{ i18n.t('downloadLibraryItem.hideDetails') }}
+            <ChevronDownIcon class="size-3 rotate-180" />
+          </Button>
+        </CollapsibleTrigger>
       </CollapsibleContent>
     </Collapsible>
   </li>

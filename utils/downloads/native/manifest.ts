@@ -59,6 +59,7 @@ export const nativeManifestSchema = z
   })
   .superRefine((manifest, context) => {
     const count = manifest.inputs.length
+
     if (
       (manifest.kind === 'dash' && count !== 2)
       || (manifest.kind === 'audio' && count !== 1)
@@ -68,6 +69,7 @@ export const nativeManifestSchema = z
         message: i18n.t('manifest.invalidNumberOfMediaTracksInTheLocal'),
       })
     }
+
     if (
       !manifest.filename.endsWith(manifest.kind === 'audio' ? '.m4a' : '.mp4')
     ) {
@@ -106,6 +108,7 @@ export function createNativeManifest(
   ) {
     throw new Error(i18n.t('manifest.onlyVideoAndAudioTasksCanBeSent'))
   }
+
   return nativeManifestSchema.parse({
     version: 1,
     createdAt: Date.now(),

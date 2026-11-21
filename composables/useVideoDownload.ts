@@ -1,9 +1,12 @@
 import { z } from 'zod'
-import { videoInfoSchema } from '~/types/download'
+import { episodeInfoSchema, videoInfoSchema } from '~/types/download'
 import { bundleAddResultSchema } from '~/types/downloadBundle'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { sendDownloadMessage } from '~/utils/downloads/messages'
-import { parseVideoLocation } from '~/utils/downloads/parseVideoLocation'
+import {
+  parseEpisodeLocation,
+  parseVideoLocation,
+} from '~/utils/downloads/parseVideoLocation'
 import { getBundleTaskCount } from '~/utils/downloads/queue/bundles'
 import { selectVideoPages } from '~/utils/downloads/queue/jobs'
 import { i18n } from '~/utils/i18n'
@@ -12,12 +15,13 @@ import type { MaybeRefOrGetter } from 'vue'
 import type {
   DownloadKind,
   DownloadMode,
+  EpisodeInfo,
   SubtitleLanguage,
   VideoInfo,
 } from '~/types/download'
 
 export function useVideoDownload(url: MaybeRefOrGetter<string>) {
-  const video = shallowRef<VideoInfo>()
+  const video = shallowRef<VideoInfo | EpisodeInfo>()
   const isLoading = shallowRef(false)
   const isAdding = shallowRef(false)
   const error = shallowRef('')
@@ -29,10 +33,32 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
   const subtitleLanguage = shallowRef<SubtitleLanguage>('auto')
   const selectedPages = shallowRef<number[]>([])
   const preferences = useDownloadSettings()
-  const location = computed(() => parseVideoLocation(toValue(url)))
-  const currentPage = computed(() =>
-    video.value?.pages.find(page => page.page === location.value?.page),
+  const location = computed(() => {
+    const value = toValue(url)
+
+    return parseEpisodeLocation(value) || parseVideoLocation(value)
+  })
+  const episode = computed(() =>
+    video.value && 'episodeLabel' in video.value ? video.value : undefined,
   )
+  const unavailableReason = computed(
+    () => episode.value?.unavailableReason || '',
+  )
+  const currentPage = computed(() => {
+    const target = location.value
+
+    if (!target) {
+      return
+    }
+
+    if ('epId' in target) {
+      return episode.value?.epId === target.epId
+        ? episode.value.pages[0]
+        : undefined
+    }
+
+    return video.value?.pages.find(page => page.page === target.page)
+  })
   const hasPageAssets = computed(() =>
     isBundleEnabled.value
       ? bundleKinds.value.some(value => value !== 'cover')
@@ -42,12 +68,15 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
     if (!video.value || !currentPage.value) {
       return []
     }
+
     if (!hasPageAssets.value) {
       return video.value.pages.slice(0, 1)
     }
+
     if (mode.value === 'selected' && !selectedPages.value.length) {
       return []
     }
+
     return selectVideoPages(
       video.value.pages,
       currentPage.value.page,
@@ -63,28 +92,49 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
   async function load() {
     const id = ++requestId
     const target = location.value
+
     error.value = ''
     notice.value = ''
     video.value = undefined
     mode.value = 'current'
     selectedPages.value = []
     isLoading.value = !!target
+
     if (!target) {
       return
     }
+
     try {
+      if ('epId' in target) {
+        kind.value = 'video'
+        isBundleEnabled.value = false
+        const result = await sendDownloadMessage(
+          { type: 'episode.get', epId: target.epId },
+          episodeInfoSchema,
+        )
+
+        if (requestId === id) {
+          video.value = result
+        }
+
+        return
+      }
+
       const result = await sendDownloadMessage(
         { type: 'video.get', videoId: target.videoId },
         videoInfoSchema,
       )
+
       if (requestId !== id) {
         return
       }
+
       if (!result.pages.some(page => page.page === target.page)) {
         throw new Error(
           i18n.t('useVideoDownload.theCurrentPartDoesNotExistRefreshThe'),
         )
       }
+
       video.value = result
       selectedPages.value = [target.page]
     } catch (error_) {
@@ -102,16 +152,20 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
     if (
       !video.value
       || !currentPage.value
+      || unavailableReason.value
       || isAdding.value
       || !preferences.isReady.value
       || preferences.isSaving.value
     ) {
       return
     }
+
     const id = requestId
+
     isAdding.value = true
     error.value = ''
     notice.value = ''
+
     try {
       if (isBundleEnabled.value) {
         const result = await sendDownloadMessage(
@@ -127,6 +181,7 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
           },
           bundleAddResultSchema,
         )
+
         if (requestId === id) {
           notice.value = result.added
             ? i18n.t(
@@ -134,6 +189,7 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
                 result.added,
               )
             : i18n.t('useVideoDownload.allSelectedAssetsAreAlreadyQueued')
+
           if (result.skipped) {
             notice.value = [
               notice.value,
@@ -144,21 +200,30 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
             ].join(' ')
           }
         }
+
         return
       }
+
       const result = await sendDownloadMessage(
-        {
-          type: 'queue.add',
-          videoId: video.value.bvid,
-          page: currentPage.value.page,
-          mode: mode.value,
-          selectedPages: selectedPages.value,
-          quality: preferences.settings.value.quality,
-          kind: kind.value,
-          subtitleLanguage: subtitleLanguage.value,
-        },
+        episode.value
+          ? {
+              type: 'queue.episode.add',
+              epId: episode.value.epId,
+              quality: preferences.settings.value.quality,
+            }
+          : {
+              type: 'queue.add',
+              videoId: video.value.bvid,
+              page: currentPage.value.page,
+              mode: mode.value,
+              selectedPages: selectedPages.value,
+              quality: preferences.settings.value.quality,
+              kind: kind.value,
+              subtitleLanguage: subtitleLanguage.value,
+            },
         z.object({ added: z.number() }),
       )
+
       if (requestId === id) {
         notice.value = result.added
           ? i18n.t(
@@ -177,7 +242,16 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
   }
 
   watch(
-    () => `${location.value?.videoId}:${location.value?.page}`,
+    () => {
+      const target = location.value
+
+      return (
+        target
+        && ('epId' in target
+          ? `ep:${target.epId}`
+          : `${target.videoId}:${target.page}`)
+      )
+    },
     () => {
       return load()
     },
@@ -186,8 +260,11 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
   onScopeDispose(() => {
     requestId++
   })
+
   return {
     video,
+    episode,
+    unavailableReason,
     currentPage,
     location,
     isLoading,

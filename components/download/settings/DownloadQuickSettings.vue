@@ -31,9 +31,9 @@ const {
   >
     <template #icon><MousePointerClickIcon class="size-4.5" /></template>
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <Label for="double-click-kind">{{
-        i18n.t('downloadQuickSettings.doubleClickDownloadContent')
-      }}</Label>
+      <Label for="double-click-kind">
+        {{ i18n.t('downloadQuickSettings.doubleClickDownloadContent') }}
+      </Label>
       <Select
         @update:model-value="
           updateSettings({ doubleClickKind: downloadKindSchema.parse($event) })
@@ -44,10 +44,11 @@ const {
         <SelectTrigger
           id="double-click-kind"
           class="w-47.5"
-          ><SelectValue>{{
-            DOWNLOAD_KIND_LABELS[settings.doubleClickKind]
-          }}</SelectValue></SelectTrigger
         >
+          <SelectValue>
+            {{ DOWNLOAD_KIND_LABELS[settings.doubleClickKind] }}
+          </SelectValue>
+        </SelectTrigger>
         <SelectContent>
           <SelectItem
             v-for="kind in downloadKindSchema.options"
@@ -66,7 +67,8 @@ const {
       v-if="settingsError"
       variant="destructive"
       class="mt-3"
-      ><AlertDescription>{{ settingsError }}</AlertDescription></Alert
     >
+      <AlertDescription>{{ settingsError }}</AlertDescription>
+    </Alert>
   </DownloadSettingsSection>
 </template>

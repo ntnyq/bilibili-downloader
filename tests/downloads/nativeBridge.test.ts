@@ -26,8 +26,10 @@ const manifest: NativeManifest = {
 
 test('native refresh accepts signed URL changes and rejects changed cached identity', () => {
   const refreshed = structuredClone(manifest)
+
   refreshed.inputs[0]!.urls = ['https://cdn.bilivideo.com/a?token=fresh']
   assert.ok(isSameNativeTask(manifest, refreshed))
+
   for (const changed of [
     { ...refreshed, quality: 'different' },
     { ...refreshed, filename: 'Bilibili/other.m4a' },
@@ -40,6 +42,7 @@ test('native refresh accepts signed URL changes and rejects changed cached ident
 
 test('native request contains only validated media and respects framing size limit', () => {
   const request = createNativeRequest('start', requestId, manifest)
+
   assert.deepEqual(Object.keys(request), [
     'version',
     'type',
@@ -78,6 +81,7 @@ test('native responses validate task correlation, bounded progress and output re
       quality: 'AAC',
     }).success,
   )
+
   for (const payload of [
     { version: 2, requestId, type: 'started' },
     { version: 1, requestId: 'other', type: 'started' },

@@ -21,27 +21,33 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
 const isCopying = shallowRef(false)
 const copied = shallowRef(false)
 const copyError = shallowRef('')
+
 const copyLabel = computed(() => {
   if (isCopying.value) {
     return i18n.t('downloadPanel.copyingSubtitleText')
   }
+
   return copied.value
     ? i18n.t('downloadPanel.copiedSubtitleText')
     : i18n.t('downloadPanel.copySubtitleText')
 })
+
 const controller = new AbortController()
 
 async function copy() {
   isCopying.value = true
   copied.value = false
   copyError.value = ''
+
   try {
     if (!navigator.clipboard?.write || typeof ClipboardItem === 'undefined') {
       throw new Error(i18n.t('downloadPanel.clipboardUnavailable'))
     }
+
     const content = sendDownloadMessage(
       {
         type: 'subtitle.text',
@@ -52,8 +58,10 @@ async function copy() {
       z.string().min(1),
     ).then(text => {
       controller.signal.throwIfAborted()
+
       return new Blob([text], { type: 'text/plain' })
     })
+
     // Start the clipboard write within the click's user activation.
     await Promise.all([
       content,

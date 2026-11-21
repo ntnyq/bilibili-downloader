@@ -23,17 +23,22 @@ export function useDownloadQueue() {
     area: string,
   ) => {
     const change = changes[JOBS_STORAGE_KEY]
+
     if (area !== 'local' || !change) {
       return
     }
+
     const result = downloadJobsSchema.safeParse(change.newValue || [])
+
     if (result.success) {
       revision++
       jobs.value = result.data
     }
   }
+
   browser.storage.onChanged.addListener(onChanged)
   const initialRevision = revision
+
   sendDownloadMessage({ type: 'queue.list' }, downloadJobsSchema)
     .then(value => {
       if (!disposed && initialRevision === revision) {
@@ -50,6 +55,7 @@ export function useDownloadQueue() {
 
   async function act(message: z.infer<typeof requestSchema>) {
     error.value = ''
+
     try {
       await sendDownloadMessage(message, z.null())
     } catch (error_) {
@@ -73,13 +79,16 @@ export function useDownloadQueue() {
     clear: () => act({ type: 'queue.clear' }),
     async recover() {
       await act({ type: 'queue.recover' })
+
       if (!error.value) {
         const beforeRead = revision
+
         try {
           const value = await sendDownloadMessage(
             { type: 'queue.list' },
             downloadJobsSchema,
           )
+
           if (!disposed && revision === beforeRead) {
             jobs.value = value
           }

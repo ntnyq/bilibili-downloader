@@ -24,15 +24,19 @@ const {
   save,
   resetDefaults,
 } = useDownloadFileSettings()
+
 const templateFieldRef = useTemplateRef<HTMLLabelElement>('templateFieldRef')
+
 const hasTemplateFocus = shallowRef(false)
 const insertionError = shallowRef('')
+
 const previewDirectory = computed(() =>
   preview.value.slice(0, preview.value.lastIndexOf('/') + 1),
 )
 const previewFilename = computed(() =>
   preview.value.slice(preview.value.lastIndexOf('/') + 1),
 )
+
 const VARIABLES = [
   {
     value: '{title}',
@@ -86,9 +90,11 @@ const VARIABLES = [
 
 async function insertVariable(token: string) {
   const input = templateFieldRef.value?.querySelector('input')
+
   if (!input || !isReady.value || isSaving.value) {
     return
   }
+
   const start = hasTemplateFocus.value
     ? (input.selectionStart ?? filenameTemplate.value.length)
     : filenameTemplate.value.length
@@ -97,18 +103,22 @@ async function insertVariable(token: string) {
     filenameTemplate.value.slice(0, start)
     + token
     + filenameTemplate.value.slice(end)
+
   if (next.length > 160) {
     insertionError.value = i18n.t(
       'downloadFileSettings.filenameTemplatesAreLimitedTo160CharactersShorten',
     )
+
     return
   }
+
   insertionError.value = ''
   filenameTemplate.value = next
   await nextTick()
   input.focus()
   input.setSelectionRange(start + token.length, start + token.length)
 }
+
 watch(filenameTemplate, () => {
   insertionError.value = ''
 })
@@ -131,8 +141,9 @@ watch(filenameTemplate, () => {
           <Label
             as="span"
             class="mb-2 block text-xs"
-            >{{ i18n.t('downloadFileSettings.saveFolder') }}</Label
           >
+            {{ i18n.t('downloadFileSettings.saveFolder') }}
+          </Label>
           <Select
             v-model="folderMode"
             :disabled="!isReady || isSaving"
@@ -140,18 +151,18 @@ watch(filenameTemplate, () => {
             <SelectTrigger
               :aria-label="i18n.t('downloadFileSettings.saveFolder')"
               class="w-full"
-              ><SelectValue>{{
-                FOLDER_MODE_LABELS[folderMode]
-              }}</SelectValue></SelectTrigger
             >
-            <SelectContent
-              ><SelectItem
+              <SelectValue>{{ FOLDER_MODE_LABELS[folderMode] }}</SelectValue>
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem
                 v-for="(label, value) in FOLDER_MODE_LABELS"
                 :key="value"
                 :value
-                >{{ label }}</SelectItem
-              ></SelectContent
-            >
+              >
+                {{ label }}
+              </SelectItem>
+            </SelectContent>
           </Select>
           <p class="mt-1.5 text-xs text-muted-foreground">
             {{
@@ -167,11 +178,12 @@ watch(filenameTemplate, () => {
         >
           <span
             class="mb-2 flex items-center justify-between gap-2 text-xs font-medium"
-            >{{ i18n.t('downloadFileSettings.filenameTemplate')
-            }}<span class="text-[11px] font-normal text-muted-foreground">{{
-              i18n.t('downloadFileSettings.noExtensionNeeded')
-            }}</span></span
           >
+            {{ i18n.t('downloadFileSettings.filenameTemplate') }}
+            <span class="text-[11px] font-normal text-muted-foreground">
+              {{ i18n.t('downloadFileSettings.noExtensionNeeded') }}
+            </span>
+          </span>
           <Input
             @focus="hasTemplateFocus = true"
             v-model="filenameTemplate"
@@ -220,40 +232,45 @@ watch(filenameTemplate, () => {
             <FolderIcon
               class="mt-0.5 size-3.5 shrink-0"
               aria-hidden="true"
-            /><span class="break-all">{{ previewDirectory }}</span>
+            />
+            <span class="break-all">{{ previewDirectory }}</span>
           </p>
           <p class="mt-1.5 flex items-start gap-1.5">
             <FileTextIcon
               class="mt-0.5 size-3.5 shrink-0"
               aria-hidden="true"
-            /><span class="break-all">{{ previewFilename }}</span>
+            />
+            <span class="break-all">{{ previewFilename }}</span>
           </p>
         </div>
         <Alert
           v-else
           variant="destructive"
-          ><AlertDescription>{{
-            validation.error?.issues[0]?.message
-          }}</AlertDescription></Alert
         >
+          <AlertDescription>
+            {{ validation.error?.issues[0]?.message }}
+          </AlertDescription>
+        </Alert>
         <div class="flex flex-wrap items-center justify-between gap-3">
           <Button
             :disabled="!validation.success"
             type="submit"
-            >{{
+          >
+            {{
               isSaving
                 ? i18n.t('downloadFileSettings.saving')
                 : i18n.t('downloadFileSettings.saveFileSettings')
-            }}</Button
-          >
+            }}
+          </Button>
           <Button
             @click="resetDefaults"
             variant="ghost"
             size="sm"
             type="button"
             class="text-muted-foreground"
-            >{{ i18n.t('downloadFileSettings.restoreDefaultTemplate') }}</Button
           >
+            {{ i18n.t('downloadFileSettings.restoreDefaultTemplate') }}
+          </Button>
         </div>
       </fieldset>
     </form>
@@ -268,10 +285,9 @@ watch(filenameTemplate, () => {
       v-if="formError || settingsError"
       class="mt-3"
       variant="destructive"
-      ><AlertDescription>{{
-        formError || settingsError
-      }}</AlertDescription></Alert
     >
+      <AlertDescription>{{ formError || settingsError }}</AlertDescription>
+    </Alert>
     <p
       v-if="notice"
       class="mt-3 text-xs text-primary"

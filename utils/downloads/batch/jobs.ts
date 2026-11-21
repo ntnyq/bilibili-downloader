@@ -74,9 +74,11 @@ export function createBatchJobs(
     options.kind === 'cover'
       ? video.pages.slice(0, 1)
       : selectVideoPages(video.pages, item.page, options.mode)
+
   if (!pages.length) {
     throw new Error(i18n.t('jobs.cannotFindTheCurrentPartRefreshTheVideo'))
   }
+
   const activeJobs = existing.filter(isJobActive)
   const blocked = new Set(
     existing
@@ -89,11 +91,13 @@ export function createBatchJobs(
       )
       .map(getJobIdentity),
   )
+
   if (options.skipCompleted && completedIdentities) {
     for (const identity of completedIdentities) {
       blocked.add(identity)
     }
   }
+
   const pending = pages.filter(
     page =>
       !blocked.has(
@@ -106,15 +110,18 @@ export function createBatchJobs(
       ),
   )
   const skipped = pages.length - pending.length
+
   if (!pending.length) {
     return {
       jobs: [],
       skipped,
     }
   }
+
   if (activeJobs.length + pending.length > MAX_PENDING_JOBS) {
     throw new BatchQueueFullError()
   }
+
   const jobs = createDownloadJobs(
     { ...video, pages: pending },
     item.page,
@@ -137,6 +144,7 @@ export function createBatchJobs(
     ...job,
     pageCount: video.pages.length,
   }))
+
   return {
     jobs,
     skipped,

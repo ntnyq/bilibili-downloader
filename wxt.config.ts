@@ -27,6 +27,7 @@ export default defineConfig({
   hooks: {
     'build:publicAssets': function (_wxt, files) {
       const core = join(dirname(require.resolve('@ffmpeg/core')), '../esm')
+
       for (const name of ['ffmpeg-core.js', 'ffmpeg-core.wasm']) {
         files.push({
           absoluteSrc: join(core, name),

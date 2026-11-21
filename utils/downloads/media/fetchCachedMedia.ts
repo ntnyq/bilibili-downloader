@@ -38,17 +38,21 @@ function parseByteCount(value: string | null): number | null {
   if (value === null) {
     return null
   }
+
   if (!/^(?:0|[1-9]\d*)$/u.test(value)) {
     throw new MediaNetworkError(
       i18n.t('fetchCachedMedia.theMediaServerReturnedAnInvalidFileSize'),
     )
   }
+
   const size = Number(value)
+
   if (!Number.isSafeInteger(size)) {
     throw new MediaNetworkError(
       i18n.t('fetchCachedMedia.theMediaServerReturnedAnInvalidFileSize'),
     )
   }
+
   return size
 }
 
@@ -65,6 +69,7 @@ function parseContentRange(value: string | null): MediaRange {
   const start = parseByteCount(match?.[1] ?? null)
   const end = parseByteCount(match?.[2] ?? null)
   const total = parseByteCount(match?.[3] ?? null)
+
   if (
     start === null
     || end === null
@@ -76,6 +81,7 @@ function parseContentRange(value: string | null): MediaRange {
       i18n.t('fetchCachedMedia.theMediaServerReturnedAnInvalidResumeRange'),
     )
   }
+
   return {
     start,
     end,
@@ -97,17 +103,20 @@ function parseContentRange(value: string | null): MediaRange {
  */
 async function createMediaResourceKey(url: string): Promise<string> {
   const parsed = new URL(url)
+
   if (!['https:', 'http:'].includes(parsed.protocol)) {
     throw new MediaNetworkError(
       i18n.t('fetchCachedMedia.invalidMediaUrlProtocol'),
     )
   }
+
   // ETags are scoped to a resource. A different CDN host or media path must
   // start afresh even when an unrelated resource happens to share its ETag.
   const hash = await crypto.subtle.digest(
     'SHA-256',
     new TextEncoder().encode(`${parsed.origin}${parsed.pathname}`),
   )
+
   return Array.from(new Uint8Array(hash), byte =>
     byte.toString(16).padStart(2, '0'),
   ).join('')
@@ -177,17 +186,22 @@ export async function fetchCachedMedia({
       i18n.t('fetchCachedMedia.theAssetExceedsTheRemainingSizeLimitDownload'),
     )
   }
+
   let lastError: unknown
+
   for (const url of urls) {
     signal.throwIfAborted()
     let sourceKey: string
+
     try {
       sourceKey = await createMediaResourceKey(url)
     } catch (error) {
       lastError = error
       continue
     }
+
     let hasRecovered = false
+
     while (true) {
       signal.throwIfAborted()
       const previous = await cache.read(inputKey)
@@ -198,19 +212,24 @@ export async function fetchCachedMedia({
         && previous.etag
           ? previous
           : undefined
+
       if (reusable) {
         assertMediaSizeLimit(reusable.received, maxBytes)
+
         if (reusable.total !== null) {
           assertMediaSizeLimit(reusable.total, maxBytes)
         }
       }
+
       const headers = new Headers()
+
       if (reusable?.complete) {
         headers.set('If-None-Match', reusable.etag ?? '')
       } else if (reusable) {
         headers.set('Range', `bytes=${reusable.received}-`)
         headers.set('If-Range', reusable.etag ?? '')
       }
+
       const controller = new AbortController()
       let timeout: ReturnType<typeof setTimeout> | undefined
       let reader:
@@ -224,18 +243,22 @@ export async function fetchCachedMedia({
         if (pendingBytes) {
           if (checkStorage) {
             const state = await cache.read(inputKey)
+
             if (!state) {
               throw new MediaCacheError(
                 i18n.t('fetchCachedMedia.downloadCacheWasLostDownloadAgain'),
               )
             }
+
             await checkStorage({
               received: state.received,
               total: state.total,
               additionalBytes: pendingBytes,
             })
           }
+
           const bytes = pending.slice(0, pendingBytes)
+
           pendingBytes = 0
           await cache.append(inputKey, bytes)
         }
@@ -258,6 +281,7 @@ export async function fetchCachedMedia({
             ),
           )
         }
+
         hasRecovered = true
         await cache.reset(inputKey, {
           resourceKey: sourceKey,
@@ -265,6 +289,7 @@ export async function fetchCachedMedia({
           total: null,
         })
       }
+
       try {
         onProgress(reusable?.received ?? 0)
         resetTimeout()
@@ -274,28 +299,34 @@ export async function fetchCachedMedia({
           headers,
           signal: AbortSignal.any([signal, controller.signal]),
         })
+
         responseBody = response.body
         const responseKey = response.url
           ? await createMediaResourceKey(response.url)
           : sourceKey
         const etag = parseStrongETag(response.headers.get('etag'))
+
         if (response.status === 304 && reusable?.complete) {
           if (etag !== reusable.etag || responseKey !== sourceKey) {
             await recover()
             continue
           }
+
           await checkStorage?.({
             received: reusable.received,
             total: reusable.total,
             additionalBytes: 0,
           })
+
           return await cache.blob(inputKey)
         }
+
         if (response.status === 416 && reusable && !reusable.complete) {
           const match = response.headers
             .get('content-range')
             ?.match(/^bytes \*\/(\d+)$/u)
           const total = parseByteCount(match?.[1] ?? null)
+
           if (
             etag === reusable.etag
             && responseKey === sourceKey
@@ -309,11 +340,14 @@ export async function fetchCachedMedia({
               additionalBytes: 0,
             })
             await cache.complete(inputKey)
+
             return await cache.blob(inputKey)
           }
+
           await recover()
           continue
         }
+
         if (
           ![200, 206].includes(response.status)
           || !response.body
@@ -331,9 +365,11 @@ export async function fetchCachedMedia({
             ),
           )
         }
+
         const length = parseByteCount(response.headers.get('content-length'))
         let state: Pick<CachedMediaState, 'received' | 'total'>
         let responseBytes: number | null = length
+
         if (response.status === 206) {
           if (!reusable || reusable.complete) {
             throw new MediaNetworkError(
@@ -342,7 +378,9 @@ export async function fetchCachedMedia({
               ),
             )
           }
+
           let range: MediaRange
+
           try {
             range = parseContentRange(response.headers.get('content-range'))
           } catch (error) {
@@ -350,7 +388,9 @@ export async function fetchCachedMedia({
             lastError = error
             continue
           }
+
           responseBytes = range.end - range.start + 1
+
           if (
             etag !== reusable.etag
             || responseKey !== sourceKey
@@ -361,10 +401,13 @@ export async function fetchCachedMedia({
             await recover()
             continue
           }
+
           assertMediaSizeLimit(range.total, maxBytes)
+
           if (reusable.total === null) {
             await cache.setTotal(inputKey, range.total)
           }
+
           state = { received: reusable.received, total: range.total }
         } else {
           if (response.headers.has('content-range')) {
@@ -374,14 +417,17 @@ export async function fetchCachedMedia({
               ),
             )
           }
+
           if (length !== null) {
             assertMediaSizeLimit(length, maxBytes)
           }
+
           if (length === 0) {
             throw new MediaNetworkError(
               i18n.t('fetchCachedMedia.theMediaServerReturnedAnEmptyFile'),
             )
           }
+
           // A 200 response ignored Range or describes a new representation.
           // Delete the old prefix before consuming any bytes from this body.
           await cache.reset(inputKey, {
@@ -392,18 +438,23 @@ export async function fetchCachedMedia({
           onProgress(0)
           state = { received: 0, total: length }
         }
+
         await checkStorage?.({ ...state, additionalBytes: 0 })
         reader = response.body.getReader()
         canPreservePending = true
         let transferred = 0
         let received = state.received
+
         while (true) {
           signal.throwIfAborted()
           const { done, value } = await reader.read()
+
           if (done) {
             break
           }
+
           assertMediaSizeLimit(received + value.byteLength, maxBytes)
+
           if (
             responseBytes !== null
             && transferred + value.byteLength > responseBytes
@@ -412,26 +463,33 @@ export async function fetchCachedMedia({
               i18n.t('fetchCachedMedia.theMediaResponseExceedsItsDeclaredSize'),
             )
           }
+
           transferred += value.byteLength
           received += value.byteLength
+
           for (let offset = 0; offset < value.byteLength;) {
             const size = Math.min(
               MEDIA_CACHE_CHUNK_BYTES - pendingBytes,
               value.byteLength - offset,
             )
+
             pending.set(value.subarray(offset, offset + size), pendingBytes)
             pendingBytes += size
             offset += size
+
             if (pendingBytes === MEDIA_CACHE_CHUNK_BYTES) {
               await flush()
               pending = new Uint8Array(MEDIA_CACHE_CHUNK_BYTES)
             }
           }
+
           onProgress(received)
           resetTimeout()
         }
+
         await flush()
         signal.throwIfAborted()
+
         if (
           !transferred
           || (responseBytes !== null && transferred !== responseBytes)
@@ -442,12 +500,15 @@ export async function fetchCachedMedia({
             ),
           )
         }
+
         if (state.total !== null && received < state.total) {
           // Valid ranges strictly advance toward a stable, finite total. Only
           // representation recovery is bounded; progress must not spend retries.
           continue
         }
+
         await cache.complete(inputKey)
+
         return await cache.blob(inputKey)
       } catch (error) {
         if (
@@ -457,15 +518,19 @@ export async function fetchCachedMedia({
         ) {
           await flush()
         }
+
         signal.throwIfAborted()
+
         if (error instanceof RangeError || error instanceof MediaCacheError) {
           throw error
         }
+
         lastError = error
         break
       } finally {
         clearTimeout(timeout)
         controller.abort()
+
         // Reader cancellation releases the connection after invalid framing,
         // budget failures, and user cancellation; the committed cache remains.
         if (reader) {
@@ -476,6 +541,7 @@ export async function fetchCachedMedia({
       }
     }
   }
+
   throw new MediaNetworkError(
     i18n.t('fetchCachedMedia.allMediaSourcesFailedDownloadCacheRetained'),
     {

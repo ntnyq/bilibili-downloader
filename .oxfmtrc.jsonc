@@ -21,6 +21,12 @@
   "objectWrap": "preserve",
   "overrides": [
     {
+      "files": ["**/*.vue"],
+      "options": {
+        "htmlWhitespaceSensitivity": "ignore",
+      },
+    },
+    {
       "files": ["**/*.{css,scss}"],
       "options": {
         "singleQuote": false,

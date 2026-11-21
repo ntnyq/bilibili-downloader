@@ -9,10 +9,12 @@ defineProps<{
   disabled: boolean
   loading: boolean
 }>()
+
 const emit = defineEmits<{
   preview: []
   stop: []
 }>()
+
 const sourceKind = defineModel<BatchSourceKind>('sourceKind', {
   required: true,
 })
@@ -75,8 +77,9 @@ const activeSource = computed(
             :key="source.kind"
             :value="source.kind"
             :disabled="disabled || loading"
-            >{{ source.label }}</TabsTrigger
           >
+            {{ source.label }}
+          </TabsTrigger>
         </TabsList>
         <TabsContent :value="sourceKind">
           <Label class="mt-4 block text-[12px] font-medium">
@@ -137,7 +140,8 @@ const activeSource = computed(
       size="sm"
       type="button"
       class="mt-2.5 text-muted-foreground hover:text-primary text-[12px]"
-      >{{ i18n.t('batchSourceForm.stopLoading') }}</Button
     >
+      {{ i18n.t('batchSourceForm.stopLoading') }}
+    </Button>
   </form>
 </template>

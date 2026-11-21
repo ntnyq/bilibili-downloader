@@ -28,6 +28,7 @@ export async function saveFile(
   signal.throwIfAborted()
   const url = URL.createObjectURL(blob)
   let downloadId: number | undefined
+
   try {
     downloadId = await browser.downloads.download({
       url,
@@ -36,12 +37,15 @@ export async function saveFile(
       conflictAction: 'uniquify',
     })
     await onStarted(downloadId)
+
     while (true) {
       signal.throwIfAborted()
       const [item] = await browser.downloads.search({ id: downloadId })
+
       if (item?.state === 'complete') {
         return
       }
+
       if (!item || item.state === 'interrupted') {
         throw new Error(
           i18n.t('saveFile.fileSavingFailed', [
@@ -49,12 +53,14 @@ export async function saveFile(
           ]),
         )
       }
+
       await new Promise(resolve => setTimeout(resolve, 500))
     }
   } catch (error) {
     if (downloadId !== undefined) {
       await browser.downloads.cancel(downloadId).catch(() => undefined)
     }
+
     throw error
   } finally {
     // The download must reach a terminal state before releasing its Blob.

@@ -10,6 +10,7 @@ const {
   error: languageError,
   updateLanguage,
 } = useLanguageSettings()
+
 const selectedLanguageLabel = computed(() =>
   languagePreference.value === 'browser'
     ? i18n.t('languageSettings.followBrowser')
@@ -27,9 +28,9 @@ const selectedLanguageLabel = computed(() =>
   >
     <template #icon><LanguagesIcon class="size-4.5" /></template>
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <Label for="display-language">{{
-        i18n.t('languageSettings.label')
-      }}</Label>
+      <Label for="display-language">
+        {{ i18n.t('languageSettings.label') }}
+      </Label>
       <Select
         @update:model-value="updateLanguage"
         :model-value="languagePreference"
@@ -38,15 +39,16 @@ const selectedLanguageLabel = computed(() =>
         <SelectTrigger
           id="display-language"
           class="w-47.5"
-          ><SelectValue>{{ selectedLanguageLabel }}</SelectValue></SelectTrigger
         >
+          <SelectValue>{{ selectedLanguageLabel }}</SelectValue>
+        </SelectTrigger>
         <SelectContent>
-          <SelectItem value="browser">{{
-            i18n.t('languageSettings.followBrowser')
-          }}</SelectItem>
-          <SelectItem value="zh-CN">{{
-            i18n.t('languageSettings.simplifiedChinese')
-          }}</SelectItem>
+          <SelectItem value="browser">
+            {{ i18n.t('languageSettings.followBrowser') }}
+          </SelectItem>
+          <SelectItem value="zh-CN">
+            {{ i18n.t('languageSettings.simplifiedChinese') }}
+          </SelectItem>
           <SelectItem value="en">English</SelectItem>
         </SelectContent>
       </Select>

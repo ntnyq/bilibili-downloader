@@ -31,7 +31,9 @@ test('English and Chinese catalogs have identical keys and substitutions', async
     ),
   )
   const [english, chinese] = catalogs
+
   assert.ok(english && chinese)
+
   for (const [locale, catalog] of [
     ['en', english],
     ['zh_CN', chinese],
@@ -44,7 +46,9 @@ test('English and Chinese catalogs have identical keys and substitutions', async
       `Runtime catalog is stale: ${locale}. Run wxt prepare.`,
     )
   }
+
   assert.deepEqual(Object.keys(english).sort(), Object.keys(chinese).sort())
+
   for (const [key, { message }] of Object.entries(english)) {
     assert.match(key, /^[@\w]+$/, `Invalid browser message key: ${key}`)
     assert.ok(message.trim(), `Empty English message: ${key}`)
@@ -54,6 +58,7 @@ test('English and Chinese catalogs have identical keys and substitutions', async
       `Undeclared named placeholder: ${key}`,
     )
     const translation: string = chinese[key]?.message ?? ''
+
     assert.ok(translation.trim(), `Empty Chinese message: ${key}`)
     assert.doesNotMatch(
       translation,
@@ -108,8 +113,10 @@ for (const [locale, name, language] of [
         encoding: 'utf8',
       },
     )
+
     assert.equal(result.status, 0, result.stderr)
     const output = JSON.parse(result.stdout)
+
     assert.equal(output.name, name)
     assert.equal(output.language, language)
     assert.equal(
@@ -134,6 +141,7 @@ for (const [locale, name, language] of [
 test('remux worker messages work without extension APIs and preserve substitutions', context => {
   const messages = getRemuxMessages()
   const nativeTranslate = i18n.t
+
   context.after(() => {
     i18n.t = nativeTranslate
   })
@@ -146,6 +154,7 @@ test('remux worker messages work without extension APIs and preserve substitutio
     messages['remuxMedia.cannotReadTheMp4VideoTrack'],
   )
   const details = 'FFmpeg: input $1 is invalid'
+
   assert.equal(
     i18n.t('progressiveMedia.legacyVideoRemuxingFailedCheckThatTheAssets', [
       details,
@@ -159,6 +168,7 @@ test('remux worker messages work without extension APIs and preserve substitutio
 test('language changes are persisted, reactive, and synchronized without recreating consumers', async () => {
   await initializeI18n()
   const title = computed(() => i18n.t('extensionName'))
+
   assert.equal(title.value, 'B 站下载器')
   await setLanguagePreference('en')
   assert.equal(languagePreference.value, 'en')
@@ -222,6 +232,7 @@ test('an initial language read cannot overwrite a concurrent change', () => {
     ],
     { cwd: new URL('../..', import.meta.url), encoding: 'utf8' },
   )
+
   assert.equal(result.status, 0, result.stderr)
   assert.equal(result.stdout.trim(), 'en')
 })
@@ -250,6 +261,7 @@ test('a saved manual language overrides the browser language on startup', () => 
       encoding: 'utf8',
     },
   )
+
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), ['B 站下载器', '视频 MP4'])
 })
@@ -259,6 +271,7 @@ test('installed native-helper diagnostics follow the selected language without a
   context.after(() => setLanguagePreference('browser'))
   const diagnostic =
     '服务器未返回完整素材（HTTP 503）。 请在扩展中重新导出同一任务，使用相同缓存目录重试。'
+
   assert.equal(
     localizeNativeError(diagnostic),
     'The server did not return the complete asset (HTTP 503). Export the same task again in the extension and retry using the same cache folder.',
@@ -292,9 +305,12 @@ print(json.dumps(sorted(messages)))
     ],
     { cwd: new URL('../..', import.meta.url), encoding: 'utf8' },
   )
+
   assert.equal(result.status, 0, result.stderr)
   const messages: string[] = JSON.parse(result.stdout)
+
   assert.ok(messages.length > 40)
+
   for (const message of messages) {
     assert.doesNotMatch(
       localizeNativeError(message),
@@ -302,6 +318,7 @@ print(json.dumps(sorted(messages)))
       `Untranslated native diagnostic: ${message}`,
     )
   }
+
   await setLanguagePreference('zh-CN')
   assert.equal(localizeNativeError(diagnostic), diagnostic)
 })
@@ -309,6 +326,7 @@ print(json.dumps(sorted(messages)))
 test('plural arguments containing separators or dollars remain literal in browser and manual modes', async context => {
   context.after(() => setLanguagePreference('browser'))
   const owner = 'Uploader | Name $1'
+
   await setLanguagePreference('browser')
   assert.equal(
     i18n.t('downloadPanel.parts', 2, [owner, 2]),

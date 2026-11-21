@@ -45,6 +45,7 @@ test('selects available resolution, FPS and enhanced tier before codec bitrate',
       ],
     }),
   )
+
   assert.equal(result.quality, '4K')
   assert.equal(result.inputs[0]?.urls[0], 'https://example.bilivideo.com/120')
   assert.equal(result.inputs[1]?.urls[0], 'https://example.bilivideo.com/30280')
@@ -64,6 +65,7 @@ test('prefers SDR and AVC at equal quality, not larger bandwidth across codecs',
       },
     }),
   )
+
   assert.equal(result.inputs[0]?.bandwidth, 1000)
   assert.equal(result.inputs[0]?.urls[0], 'https://example.bilivideo.com/80')
 })
@@ -78,6 +80,7 @@ test('accepts snake-case URLs and backups, rejects preview and missing audio', (
   const data = playDataSchema.parse({
     dash: { video: [video], audio: [stream(30280, 0, 0, 'mp4a.40.2')] },
   })
+
   assert.equal(selectMedia(data).inputs[0]?.urls.length, 2)
   assert.throws(() => selectMedia({ ...data, is_preview: 1 }), /试看/)
   assert.throws(
@@ -95,6 +98,7 @@ test('preserves every progressive fragment and rejects untrusted media URLs', ()
       ],
     }),
   )
+
   assert.equal(result.kind, 'progressive')
   assert.equal(result.inputs.length, 2)
   assert.equal(
@@ -121,6 +125,7 @@ test('does not downgrade resolution solely to avoid HDR', () => {
       },
     }),
   )
+
   assert.equal(result.inputs[0]?.urls[0], 'https://example.bilivideo.com/125')
 })
 
@@ -137,6 +142,7 @@ test('quality caps select the highest eligible actual stream and ignore unavaila
     },
     support_formats: [{ quality: 127, new_description: '8K' }],
   })
+
   for (const [preference, id] of [
     ['best', 120],
     ['1080', 80],
@@ -148,6 +154,7 @@ test('quality caps select the highest eligible actual stream and ignore unavaila
       `https://example.bilivideo.com/${id}`,
     )
   }
+
   const restricted = {
     ...data,
     dash: {
@@ -156,6 +163,7 @@ test('quality caps select the highest eligible actual stream and ignore unavaila
       audio: [stream(30280, 0, 0, 'mp4a.40.2')],
     },
   }
+
   assert.equal(
     selectMedia(restricted, '1080').inputs[0]?.urls[0],
     'https://example.bilivideo.com/32',
@@ -169,6 +177,7 @@ test('quality caps handle portrait video and refuse unknown dimensions or higher
       audio: [stream(30280, 0, 0, 'mp4a.40.2')],
     },
   })
+
   assert.equal(selectMedia(data, '720').kind, 'dash')
   assert.throws(() => selectMedia(data, '480'), /未返回符合/)
   const unknown = playDataSchema.parse({
@@ -177,6 +186,7 @@ test('quality caps handle portrait video and refuse unknown dimensions or higher
       audio: [stream(30280, 0, 0, 'mp4a.40.2')],
     },
   })
+
   assert.throws(() => selectMedia(unknown, '480'), /未返回符合/)
 })
 
@@ -188,6 +198,7 @@ test('progressive fallback enforces cap without dropping fragments or guessing u
       { url: 'https://a.bilivideo.com/2', size: 800 },
     ],
   })
+
   assert.equal(selectMedia(data, '720').inputs.length, 2)
   assert.equal(estimateMediaBytes(selectMedia(data, '720'), 0), 2000)
   assert.equal(
@@ -215,6 +226,7 @@ test('representation identity survives signed URL refresh but changes with codec
       }),
     ).inputs[0]?.id
   const original = select('https://a.bilivideo.com/video.m4s?deadline=1')
+
   assert.equal(select('https://b.bilivideo.com/video.m4s?deadline=2'), original)
   assert.notEqual(select('https://a.bilivideo.com/other.m4s'), original)
   assert.notEqual(select('https://a.bilivideo.com/video.m4s', 'hev1'), original)

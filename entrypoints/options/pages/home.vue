@@ -30,11 +30,13 @@ const {
           href="/downloads.html"
           variant="outline"
           size="sm"
-          ><FolderIcon
+        >
+          <FolderIcon
             class="size-4"
             aria-hidden="true"
-          />{{ i18n.t('downloadPanel.downloadCenter') }}</Button
-        >
+          />
+          {{ i18n.t('downloadPanel.downloadCenter') }}
+        </Button>
       </div>
       <div class="space-y-4">
         <DownloadLanguageSettings />
@@ -59,10 +61,11 @@ const {
             v-if="settingsError"
             class="mt-3 text-xs text-destructive"
             variant="destructive"
-            ><AlertDescription>
-              {{ settingsError }}
-            </AlertDescription></Alert
           >
+            <AlertDescription>
+              {{ settingsError }}
+            </AlertDescription>
+          </Alert>
         </DownloadSettingsSection>
         <DownloadQuickSettings />
         <DownloadFileSettings />
@@ -83,8 +86,9 @@ const {
             variant="link"
             class="mt-2 px-0 text-primary"
             size="sm"
-            >{{ i18n.t('home.viewFullUserGuide') }}</Button
           >
+            {{ i18n.t('home.viewFullUserGuide') }}
+          </Button>
         </div>
       </div>
     </main>

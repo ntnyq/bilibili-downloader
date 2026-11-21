@@ -56,11 +56,13 @@ export function createNativeRequest(
     requestId,
     manifest: nativeManifestSchema.parse(manifest),
   }
+
   if (
     new TextEncoder().encode(JSON.stringify(request)).byteLength
     > 1024 ** 2
   ) {
     throw new Error(i18n.t('bridge.theLocalTaskExceeds1MibAndCannot'))
   }
+
   return request
 }

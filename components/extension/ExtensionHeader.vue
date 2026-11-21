@@ -21,8 +21,9 @@ const isDownloadCenter = window.location.pathname === '/downloads.html'
     <Badge
       variant="outline"
       class="hidden text-[10px] font-normal text-muted-foreground sm:inline-flex"
-      >{{ i18n.t('extensionHeader.extension') }}</Badge
     >
+      {{ i18n.t('extensionHeader.extension') }}
+    </Badge>
     <Button
       as="a"
       href="/welcome.html"
@@ -31,9 +32,11 @@ const isDownloadCenter = window.location.pathname === '/downloads.html'
       variant="ghost"
       size="sm"
       class="ml-auto"
-      ><CircleHelpIcon class="size-4" /><span class="hidden sm:inline">{{
-        i18n.t('extensionHeader.userGuide')
-      }}</span></Button
     >
+      <CircleHelpIcon class="size-4" />
+      <span class="hidden sm:inline">
+        {{ i18n.t('extensionHeader.userGuide') }}
+      </span>
+    </Button>
   </header>
 </template>

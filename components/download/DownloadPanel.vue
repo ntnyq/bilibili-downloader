@@ -21,12 +21,15 @@ const props = defineProps<{
   url: string
   embedded?: boolean
 }>()
+
 defineSlots<{
   'header-actions'?: () => VNode[]
 }>()
 
 const {
   video,
+  episode,
+  unavailableReason,
   currentPage,
   location,
   isLoading,
@@ -68,26 +71,33 @@ const isSplitLayout = computed(
 const relatedJobs = computed(() =>
   jobs.value.filter(
     job =>
-      job.bvid === video.value?.bvid
+      !!video.value
+      && job.epId === video.value.epId
+      && (job.epId !== undefined || job.bvid === video.value.bvid)
       && job.kind === kind.value
       && (kind.value !== 'subtitle'
         || job.subtitleLanguage === subtitleLanguage.value),
   ),
 )
 const latestJob = computed(() => {
-  const relevant = relatedJobs.value.filter(job =>
-    targetPages.value.some(page => page.cid === job.cid),
+  const relevant = relatedJobs.value.filter(
+    job =>
+      episode.value || targetPages.value.some(page => page.cid === job.cid),
   )
+
   return relevant.find(isJobActive) || relevant.at(-1)
 })
 const isAlreadyQueued = computed(() => {
   const pages = targetPages.value
   const info = video.value
+
   if (isBundleEnabled.value) {
     if (!info || !pages.length || !bundleKinds.value.length) {
       return false
     }
+
     const active = new Set(jobs.value.filter(isJobActive).map(getJobIdentity))
+
     return bundleKinds.value.every(asset =>
       (asset === 'cover' ? info.pages.slice(0, 1) : pages).every(page =>
         active.has(
@@ -101,10 +111,13 @@ const isAlreadyQueued = computed(() => {
       ),
     )
   }
+
   return (
     !!pages?.length
     && pages.every(page =>
-      relatedJobs.value.some(job => job.cid === page.cid && isJobActive(job)),
+      relatedJobs.value.some(
+        job => (episode.value || job.cid === page.cid) && isJobActive(job),
+      ),
     )
   )
 })
@@ -112,15 +125,23 @@ const downloadLabel = computed(() => {
   if (isAdding.value) {
     return i18n.t('downloadPanel.addingToQueue')
   }
+
   if (isAlreadyQueued.value) {
     return i18n.t('downloadPanel.addedToDownloadQueue')
   }
+
+  if (episode.value) {
+    return i18n.t('episode.downloadCurrentEpisode')
+  }
+
   if (isBundleEnabled.value) {
     return i18n.t('downloadPanel.downloadBundleAssets', bundleTaskCount.value)
   }
+
   if (kind.value === 'cover') {
     return i18n.t('downloadPanel.downloadVideoCover')
   }
+
   if (kind.value !== 'video') {
     return isMultipart.value
       ? i18n.t('downloadPanel.downloadAssetParts', targetPages.value.length, [
@@ -129,18 +150,21 @@ const downloadLabel = computed(() => {
         ])
       : i18n.t('labels.downloading', [DOWNLOAD_KIND_LABELS[kind.value]])
   }
+
   if (mode.value === 'selected') {
     return i18n.t(
       'downloadPanel.downloadSelectedParts',
       targetPages.value.length,
     )
   }
+
   if (mode.value === 'all' && isMultipart.value) {
     return i18n.t(
       'downloadPanel.downloadAllParts',
       video.value?.pages.length ?? 0,
     )
   }
+
   return isMultipart.value
     ? i18n.t('downloadPanel.downloadCurrentPart', [
         currentPage.value?.page ?? 1,
@@ -151,6 +175,7 @@ const isDownloadDisabled = computed(
   () =>
     isAdding.value
     || isAlreadyQueued.value
+    || !!unavailableReason.value
     || (isBundleEnabled.value && !bundleKinds.value.length)
     || !targetPages.value.length
     || !preferences.isReady.value
@@ -168,18 +193,28 @@ const canEstimateSize = computed(
     !isBundleEnabled.value
     && kind.value === 'video'
     && mode.value === 'current'
+    && !unavailableReason.value
     && preferences.isReady.value
     && !preferences.isSaving.value,
 )
 
+const isQualityDisabled = computed(
+  () =>
+    !preferences.isReady.value
+    || preferences.isSaving.value
+    || isAdding.value
+    || !!unavailableReason.value,
+)
+const panelError = computed(
+  () =>
+    unavailableReason.value
+    || downloadError.value
+    || queueError.value
+    || preferences.error.value,
+)
+
 const optionsUrl = browser.runtime.getURL('/options.html')
-const {
-  settings,
-  isReady,
-  isSaving,
-  error: settingsError,
-  updateSettings,
-} = preferences
+const { settings, updateSettings } = preferences
 </script>
 
 <template>
@@ -192,7 +227,8 @@ const {
       class="flex shrink-0 items-center justify-between gap-3 border-b px-4 py-3.5"
     >
       <div class="flex items-center gap-3 text-[15px] font-semibold">
-        <ExtensionLogo class="size-8" />{{ i18n.t('extensionName') }}
+        <ExtensionLogo class="size-8" />
+        {{ i18n.t('extensionName') }}
       </div>
       <div class="flex items-center gap-1">
         <Button
@@ -235,8 +271,9 @@ const {
           href="https://www.bilibili.com"
           target="_blank"
           rel="noreferrer"
-          >{{ i18n.t('downloadPanel.openBilibili') }}</a
         >
+          {{ i18n.t('downloadPanel.openBilibili') }}
+        </a>
       </div>
       <div
         v-else-if="video && currentPage"
@@ -246,7 +283,10 @@ const {
         "
       >
         <div class="flex items-center gap-3">
-          <div class="h-15 w-24 shrink-0 overflow-hidden rounded-lg bg-accent">
+          <div
+            :class="episode ? 'h-18 w-13.5' : 'h-15 w-24'"
+            class="flex shrink-0 items-center justify-center overflow-hidden rounded-lg bg-accent"
+          >
             <img
               v-if="video.cover"
               :src="video.cover"
@@ -256,7 +296,7 @@ const {
             />
             <FilmIcon
               v-else
-              class="shrink-0 mx-auto mt-4.5 block size-6 text-primary"
+              class="size-6 text-primary"
               aria-hidden="true"
             />
           </div>
@@ -267,7 +307,25 @@ const {
             >
               {{ video.title }}
             </h2>
-            <p class="mt-1.25 truncate text-[12px] text-muted-foreground">
+            <p
+              v-if="episode"
+              :title="currentPage.part"
+              class="mt-1.25 flex items-baseline gap-1.5 text-[12px] text-muted-foreground"
+            >
+              <span class="max-w-full truncate font-semibold text-foreground">
+                {{ episode.episodeLabel }}
+              </span>
+              <span
+                v-if="episode.episodeTitle"
+                class="truncate"
+              >
+                {{ episode.episodeTitle }}
+              </span>
+            </p>
+            <p
+              v-else
+              class="mt-1.25 truncate text-[12px] text-muted-foreground"
+            >
               {{
                 i18n.t('downloadPanel.parts', video.pages.length, [
                   video.owner,
@@ -282,6 +340,7 @@ const {
             v-model:enabled="isBundleEnabled"
             v-model:kinds="bundleKinds"
             v-model:subtitle-language="subtitleLanguage"
+            v-if="!episode"
             :folder-mode="settings.folderMode"
             :disabled="isAdding"
           >
@@ -297,10 +356,13 @@ const {
           <DownloadQuality
             @update:model-value="updateSettings({ quality: $event })"
             v-if="
-              isBundleEnabled ? bundleKinds.includes('video') : kind === 'video'
+              episode
+              || (isBundleEnabled
+                ? bundleKinds.includes('video')
+                : kind === 'video')
             "
             :model-value="settings.quality"
-            :disabled="!isReady || isSaving || isAdding"
+            :disabled="isQualityDisabled"
           />
         </div>
         <div
@@ -326,20 +388,21 @@ const {
         </div>
       </div>
       <div
-        v-if="downloadError || queueError || settingsError"
+        v-if="panelError"
         class="mt-3 rounded-lg bg-accent p-3 text-[12px] text-destructive leading-5"
         role="alert"
       >
-        {{ downloadError || queueError || settingsError }}
+        {{ panelError }}
         <Button
           @click="load"
-          v-if="!video"
+          v-if="!video || unavailableReason"
           variant="ghost"
           size="sm"
           type="button"
           class="ml-2 text-muted-foreground hover:text-primary underline"
-          >{{ i18n.t('downloadPanel.reload') }}</Button
         >
+          {{ i18n.t('downloadPanel.reload') }}
+        </Button>
       </div>
       <p
         v-if="notice"
@@ -381,27 +444,40 @@ const {
     >
       <template v-if="video && currentPage">
         <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
-          <span>{{
-            hasPageAssets
-              ? i18n.t('downloadPanel.partsSelected', targetPages.length)
-              : i18n.t('downloadPanel.oneCoverPerVideo')
-          }}</span>
+          <span
+            v-if="episode"
+            class="font-semibold"
+          >
+            MP4
+          </span>
+          <span v-else>
+            {{
+              hasPageAssets
+                ? i18n.t('downloadPanel.partsSelected', targetPages.length)
+                : i18n.t('downloadPanel.oneCoverPerVideo')
+            }}
+          </span>
           <DownloadSizeEstimate
             v-if="canEstimateSize"
-            :key="`${video.bvid}:${currentPage.cid}:${settings.quality}`"
+            :key="`${episode?.epId ?? video.bvid}:${currentPage.cid}:${settings.quality}`"
             :bvid="video.bvid"
+            :ep-id="episode?.epId"
             :part="currentPage"
             :quality="settings.quality"
           />
-          <span class="ms-auto text-foreground"
-            >{{
+          <span
+            v-if="!episode"
+            class="ms-auto text-foreground"
+          >
+            {{
               isBundleEnabled
                 ? i18n.t('downloadPanel.bundleAssets', bundleTaskCount)
                 : DOWNLOAD_KIND_LABELS[kind]
-            }}<template v-if="!isBundleEnabled && kind === 'video'">
-              · {{ QUALITY_LABELS[settings.quality] }}</template
-            ></span
-          >
+            }}
+            <template v-if="!isBundleEnabled && kind === 'video'">
+              · {{ QUALITY_LABELS[settings.quality] }}
+            </template>
+          </span>
         </div>
         <div class="my-2 flex flex-wrap gap-2">
           <Button
@@ -413,7 +489,8 @@ const {
             <DownloadIcon
               class="shrink-0 size-4"
               aria-hidden="true"
-            />{{ downloadLabel }}
+            />
+            {{ downloadLabel }}
           </Button>
           <DownloadSubtitleCopy
             v-if="subtitlePart"
@@ -425,22 +502,25 @@ const {
         </div>
       </template>
       <div class="flex items-center justify-between gap-2">
-        <span class="inline-flex items-center gap-1.5"
-          ><FolderIcon
+        <span class="inline-flex items-center gap-1.5">
+          <FolderIcon
             class="size-4"
             aria-hidden="true"
-          />{{ i18n.t('downloadPanel.bilibiliFolder') }}</span
-        >
+          />
+          {{ i18n.t('downloadPanel.bilibiliFolder') }}
+        </span>
         <Button
           @click="openManager"
           variant="ghost"
           size="sm"
           class="h-7 text-primary"
-          >{{ i18n.t('downloadPanel.downloadCenter')
-          }}<ArrowUpRightIcon
+        >
+          {{ i18n.t('downloadPanel.downloadCenter') }}
+          <ArrowUpRightIcon
             class="size-4"
             aria-hidden="true"
-        /></Button>
+          />
+        </Button>
       </div>
     </footer>
   </section>

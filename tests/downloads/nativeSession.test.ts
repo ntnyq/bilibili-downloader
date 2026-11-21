@@ -24,8 +24,10 @@ for (const changedMedia of [false, true]) {
       : 'native refresh freezes the output path across language changes',
     async context => {
       const extension = installExtension(context)
+
       registerDownloads()
       replaceProperty(context, globalThis, 'window', new EventTarget())
+
       // Supply the Vue globals normally injected by WXT.
       for (const [key, value] of Object.entries({
         computed,
@@ -34,6 +36,7 @@ for (const changedMedia of [false, true]) {
       })) {
         replaceProperty(context, globalThis, key, value)
       }
+
       const job = downloadJobSchema.parse({
         id: crypto.randomUUID(),
         bvid: 'BV1xx411c7mD',
@@ -52,9 +55,11 @@ for (const changedMedia of [false, true]) {
         receivedBytes: 0,
         totalBytes: 0,
       })
+
       extension.stored.downloadJobs = [job]
       extension.stored.downloadRunnerTabId = 1
       let refreshed = false
+
       context.mock.method(
         globalThis,
         'fetch',
@@ -90,15 +95,18 @@ for (const changedMedia of [false, true]) {
         manifest: NativeManifest
       }[] = []
       const outcome = Promise.withResolvers<string>()
+
       replaceProperty(context, browser.runtime, 'connectNative', () => ({
         onMessage: incoming,
         onDisconnect: disconnected,
         disconnect() {},
         postMessage(message: (typeof sent)[number]) {
           sent.push(message)
+
           if (message.type !== 'start') {
             outcome.resolve(message.type)
           }
+
           if (message.type === 'cancel') {
             queueMicrotask(() =>
               incoming.emit({
@@ -113,8 +121,10 @@ for (const changedMedia of [false, true]) {
       }))
       await setLanguagePreference('zh-CN')
       const bridge = useNativeBridge(() => job)
+
       await bridge.start()
       const initial = sent[0]
+
       assert.ok(initial)
       assert.equal(initial.manifest.filename, 'Bilibili/音频 M4A_Test.m4a')
       await incoming.emit({
@@ -133,8 +143,10 @@ for (const changedMedia of [false, true]) {
       const settled = new Promise<void>(resolve => {
         if (!bridge.isRunning.value) {
           resolve()
+
           return
         }
+
         const unwatch = watch(
           bridge.isRunning,
           running => {
@@ -146,6 +158,7 @@ for (const changedMedia of [false, true]) {
           { flush: 'sync' },
         )
       })
+
       if (!changedMedia) {
         assert.equal(sent[1]?.manifest.filename, initial.manifest.filename)
         assert.match(sent[1]?.manifest.inputs[0]?.urls[0] ?? '', /token=new/)
@@ -157,11 +170,13 @@ for (const changedMedia of [false, true]) {
           quality: 'AAC 128 kbps',
         })
       }
+
       await settled
       const [saved] = await sendDownloadMessage(
         { type: 'queue.list' },
         downloadJobsSchema,
       )
+
       assert.equal(saved?.status, changedMedia ? 'failed' : 'completed')
     },
   )

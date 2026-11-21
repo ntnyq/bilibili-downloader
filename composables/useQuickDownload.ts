@@ -35,25 +35,33 @@ export function useQuickDownload(url: MaybeRefOrGetter<string>) {
     if (isAdding.value) {
       return
     }
+
     clearFeedback()
     const target = parseVideoLocation(toValue(url))
+
     if (!target) {
       error.value = i18n.t(
         'useQuickDownload.cannotIdentifyTheCurrentVideoRefreshThePage',
       )
+
       return
     }
+
     if (!isReady.value) {
       error.value =
         settingsError.value
         || i18n.t(
           'useQuickDownload.loadingDownloadSettingsPleaseTryAgainShortly',
         )
+
       return
     }
+
     const id = revision
     const kind = settings.value.doubleClickKind
+
     isAdding.value = true
+
     try {
       const result = await sendDownloadMessage(
         {
@@ -67,6 +75,7 @@ export function useQuickDownload(url: MaybeRefOrGetter<string>) {
         },
         z.object({ added: z.number() }),
       )
+
       if (id === revision) {
         notice.value = result.added
           ? i18n.t('useQuickDownload.addedToTheDownloadQueue', [

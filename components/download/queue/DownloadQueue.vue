@@ -69,6 +69,7 @@ const emptyTitle = computed(() => {
   if (query.value) {
     return i18n.t('downloadQueue.noMatchingTasks')
   }
+
   return filter.value === 'all'
     ? i18n.t('downloadQueue.saveTheVideosYouLove')
     : i18n.t('downloadQueue.noTasksYet')
@@ -122,6 +123,7 @@ async function showFile(id?: number) {
   if (id === undefined) {
     return
   }
+
   try {
     await browser.downloads.show(id)
   } catch (error_) {
@@ -313,8 +315,9 @@ async function showFile(id?: number) {
             target="_blank"
             rel="noreferrer"
             class="mt-6 bili-primary-button inline-flex"
-            >{{ i18n.t('downloadQueue.exploreBilibili') }}</a
           >
+            {{ i18n.t('downloadQueue.exploreBilibili') }}
+          </a>
         </div>
         <p
           v-if="exportNotice"

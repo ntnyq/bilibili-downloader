@@ -55,7 +55,9 @@ const {
   addSelected,
   stopAdding,
 } = useBatchImport()
+
 const isEditingSource = shallowRef(false)
+
 const isSourceVisible = computed(
   () => isEditingSource.value || !hasPreview.value || isPreviewStale.value,
 )
@@ -72,9 +74,11 @@ const sessionStatusLabel = computed(() => {
       ? i18n.t('downloadBatchImport.thePreviousSessionIsUnavailable')
       : i18n.t('downloadBatchImport.loadingPreviousSession')
   }
+
   if (isSavingSession.value) {
     return i18n.t('downloadBatchImport.savingDraftAndProgress')
   }
+
   return (
     sessionNotice.value
     || i18n.t(
@@ -90,6 +94,7 @@ const loadNextPageLabel = computed(() => {
   if (isLoading.value) {
     return i18n.t('batchSourceForm.loading')
   }
+
   return (nextPage.value ?? 1) > 1
     ? i18n.t('downloadBatchImport.loadNextPage')
     : i18n.t('downloadPanel.reload')
@@ -121,6 +126,7 @@ const sourceLabels = {
 
 async function previewSource() {
   await preview()
+
   if (hasPreview.value && !isPreviewStale.value && !importError.value) {
     isEditingSource.value = false
   }
@@ -155,8 +161,9 @@ async function previewSource() {
         size="sm"
         type="button"
         class="mt-2 text-muted-foreground hover:text-primary text-[12px] disabled:opacity-55"
-        >{{ i18n.t('downloadBatchImport.loadSavedSession') }}</Button
       >
+        {{ i18n.t('downloadBatchImport.loadSavedSession') }}
+      </Button>
       <template v-if="!isSessionReady">
         <p class="mt-2 text-[11px] text-muted-foreground leading-4.5">
           {{ i18n.t('downloadBatchImport.ifSavedDataIsCorruptClearTheBatch') }}
@@ -168,8 +175,9 @@ async function previewSource() {
           size="sm"
           type="button"
           class="mt-1.5 text-[12px] text-destructive hover:text-primary disabled:opacity-55"
-          >{{ i18n.t('downloadBatchImport.clearCorruptSession') }}</Button
         >
+          {{ i18n.t('downloadBatchImport.clearCorruptSession') }}
+        </Button>
       </template>
     </div>
     <div
@@ -186,8 +194,9 @@ async function previewSource() {
           :disabled="isLoading || isAdding"
           variant="ghost"
           size="xs"
-          >{{ i18n.t('downloadBatchImport.backToPreview') }}</Button
         >
+          {{ i18n.t('downloadBatchImport.backToPreview') }}
+        </Button>
       </div>
       <BatchSourceForm
         @preview="previewSource"
@@ -232,8 +241,9 @@ async function previewSource() {
             <Badge
               variant="secondary"
               class="mt-1 text-[11px] font-normal"
-              >{{ sourceLabels[sourceKind] }}</Badge
             >
+              {{ sourceLabels[sourceKind] }}
+            </Badge>
           </div>
           <Button
             @click="isEditingSource = true"
@@ -242,31 +252,37 @@ async function previewSource() {
             variant="ghost"
             size="sm"
             class="text-xs text-muted-foreground"
-            >{{ i18n.t('downloadBatchImport.changeSource')
-            }}<ChevronRightIcon
+          >
+            {{ i18n.t('downloadBatchImport.changeSource') }}
+            <ChevronRightIcon
               class="size-4"
               aria-hidden="true"
-          /></Button>
+            />
+          </Button>
         </div>
         <div
           class="flex flex-wrap gap-x-4 gap-y-2 border-y px-4 py-3 text-xs text-muted-foreground sm:px-5"
           role="status"
         >
-          <span
-            >{{ i18n.t('downloadBatchImport.previewedCount', rows.length)
-            }}<span v-if="total !== undefined">{{
-              i18n.t('downloadBatchImport.inSource', [total])
-            }}</span></span
-          >
-          <span v-if="duplicateCount">{{
-            i18n.t('downloadBatchImport.duplicatesCombined', duplicateCount)
-          }}</span>
-          <span v-if="unavailableCount">{{
-            i18n.t(
-              'downloadBatchImport.unavailableVideosSkipped',
-              unavailableCount,
-            )
-          }}</span>
+          <span>
+            {{ i18n.t('downloadBatchImport.previewedCount', rows.length) }}
+            <span v-if="total !== undefined">
+              {{ i18n.t('downloadBatchImport.inSource', [total]) }}
+            </span>
+          </span>
+          <span v-if="duplicateCount">
+            {{
+              i18n.t('downloadBatchImport.duplicatesCombined', duplicateCount)
+            }}
+          </span>
+          <span v-if="unavailableCount">
+            {{
+              i18n.t(
+                'downloadBatchImport.unavailableVideosSkipped',
+                unavailableCount,
+              )
+            }}
+          </span>
         </div>
         <Collapsible
           v-if="inputErrors.length"
@@ -280,8 +296,8 @@ async function previewSource() {
                 'downloadBatchImport.linesCouldNotBeRecognizedOtherValidLines',
                 inputErrors.length,
               )
-            }}</CollapsibleTrigger
-          >
+            }}
+          </CollapsibleTrigger>
           <CollapsibleContent>
             <ul class="mt-2 max-h-40 overflow-y-auto space-y-1.5">
               <li
@@ -340,11 +356,12 @@ async function previewSource() {
           v-if="isLoading"
           variant="outline"
           size="sm"
-          >{{ i18n.t('batchSourceForm.stopLoading') }}</Button
         >
-        <span class="text-[11px] text-muted-foreground">{{
-          i18n.t('downloadBatchImport.loadOnePageAtATimeAndReview')
-        }}</span>
+          {{ i18n.t('batchSourceForm.stopLoading') }}
+        </Button>
+        <span class="text-[11px] text-muted-foreground">
+          {{ i18n.t('downloadBatchImport.loadOnePageAtATimeAndReview') }}
+        </span>
       </div>
       <template v-if="rows.length">
         <BatchImportOptions
@@ -424,7 +441,8 @@ async function previewSource() {
           <InfoIcon
             class="mr-1 inline size-4"
             aria-hidden="true"
-          />{{
+          />
+          {{
             i18n.t(
               'downloadBatchImport.keepThisPageOpenDuringImportAndDownloads',
             )

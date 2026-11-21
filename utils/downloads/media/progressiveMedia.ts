@@ -42,6 +42,7 @@ function readProperty(value: unknown, name: string): unknown {
  */
 function isFFmpegCore(value: unknown): value is FFmpegCore {
   const fs = readProperty(value, 'FS')
+
   return (
     isRecord(value)
     && typeof readProperty(value, 'exec') === 'function'
@@ -78,8 +79,10 @@ export function runProgressiveFFmpeg(
   onProgress: (bytes: number) => void,
 ) {
   const logs: string[] = []
+
   core.setLogger(({ message }) => {
     logs.push(message.slice(0, 1000))
+
     if (logs.length > 12) {
       logs.shift()
     }
@@ -93,6 +96,7 @@ export function runProgressiveFFmpeg(
   )
   file.truncate(0)
   const disk = createFFmpegDiskFile(core.FS, '/output.mp4', file, onProgress)
+
   // Synchronous remuxing can legitimately run for hours on slow storage. The
   // parent cancels by terminating this dedicated worker, not by elapsed time.
   core.setTimeout(-1)
@@ -118,9 +122,11 @@ export function runProgressiveFFmpeg(
     '/output.mp4',
   )
   const error = disk.getError()
+
   if (error) {
     throw error
   }
+
   if (exitCode !== 0 || !file.getSize()) {
     throw new Error(
       i18n.t('progressiveMedia.legacyVideoRemuxingFailedCheckThatTheAssets', [
@@ -178,13 +184,16 @@ export async function loadFFmpegCore(
 ) {
   const module: unknown = await import(/* @vite-ignore */ coreURL)
   const createCore = readProperty(module, 'default')
+
   if (typeof createCore !== 'function') {
     throw new TypeError(i18n.t('progressiveMedia.cannotLoadBrowserFfmpeg'))
   }
+
   const core: unknown = await createCore({
     wasmBinary: options.wasmBinary,
     mainScriptUrlOrBlob: `${coreURL}#${btoa(JSON.stringify({ wasmURL: options.wasmURL }))}`,
   })
+
   if (!isFFmpegCore(core)) {
     throw new Error(
       i18n.t(
@@ -192,6 +201,7 @@ export async function loadFFmpegCore(
       ),
     )
   }
+
   return core
 }
 
@@ -220,6 +230,7 @@ export async function mergeProgressiveMedia(
   if (!inputs.length) {
     throw new Error(i18n.t('progressiveMedia.invalidNumberOfMediaAssets'))
   }
+
   if (!isSyncAccessFileHandle(handle)) {
     throw new Error(
       i18n.t(
@@ -227,10 +238,12 @@ export async function mergeProgressiveMedia(
       ),
     )
   }
+
   const core = await loadFFmpegCore(
     new URL('/ffmpeg/ffmpeg-core.js', self.location.href).href,
     { wasmURL: new URL('/ffmpeg/ffmpeg-core.wasm', self.location.href).href },
   )
+
   core.FS.mkdir('/inputs')
   core.FS.mount(
     core.FS.filesystems.WORKERFS,
@@ -243,6 +256,7 @@ export async function mergeProgressiveMedia(
     '/inputs',
   )
   const file = await handle.createSyncAccessHandle()
+
   try {
     runProgressiveFFmpeg(core, file, inputs.length, onProgress)
     file.flush()

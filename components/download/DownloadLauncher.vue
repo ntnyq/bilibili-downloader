@@ -10,11 +10,13 @@ import {
 import { useOverlayTarget } from '~/composables/useOverlayTarget'
 import { useQuickDownload } from '~/composables/useQuickDownload'
 import { createDownloadClickHandler } from '~/utils/downloads/launcher'
+import { parseEpisodeLocation } from '~/utils/downloads/parseVideoLocation'
 import { i18n } from '~/utils/i18n'
 
 const props = defineProps<{
   url: string
 }>()
+
 const overlayTarget = useOverlayTarget()
 const {
   isAdding,
@@ -30,16 +32,32 @@ const triggerRef = useTemplateRef('triggerRef')
 
 const isOpen = shallowRef(false)
 
+const isEpisode = computed(() => !!parseEpisodeLocation(props.url))
+
 const clicks = createDownloadClickHandler({
-  open() {
-    clearFeedback()
-    isOpen.value = !isOpen.value
-  },
+  open: togglePanel,
   download() {
     isOpen.value = false
     download()
   },
 })
+
+function togglePanel() {
+  clearFeedback()
+  isOpen.value = !isOpen.value
+}
+
+function onTriggerClick(event: MouseEvent) {
+  if (isEpisode.value) {
+    if (event.detail < 2) {
+      togglePanel()
+    }
+
+    return
+  }
+
+  clicks.click(event.detail)
+}
 
 function keepLauncherInteraction(event: {
   preventDefault: () => void
@@ -47,6 +65,7 @@ function keepLauncherInteraction(event: {
 }) {
   const { originalEvent } = event.detail
   const root = overlayTarget?.value?.getRootNode()
+
   if (
     (anchorRef.value && originalEvent.composedPath().includes(anchorRef.value))
     // Focus on a portalled picker can be retargeted to the shadow host.
@@ -81,12 +100,12 @@ onScopeDispose(clicks.cancel)
           class="inline-flex"
         >
           <Button
-            @click="clicks.click($event.detail)"
+            @click="onTriggerClick"
             @dblclick.prevent
             ref="triggerRef"
             :disabled="isAdding"
-            :title="hint"
-            :aria-label="hint"
+            :title="isEpisode ? i18n.t('downloadLauncher.download') : hint"
+            :aria-label="isEpisode ? i18n.t('downloadLauncher.download') : hint"
             :aria-expanded="isOpen"
             aria-haspopup="dialog"
             variant="ghost"

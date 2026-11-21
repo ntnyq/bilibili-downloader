@@ -50,11 +50,14 @@ export function useDownloadLibrary() {
     area: string,
   ) => {
     const change = changes[DOWNLOAD_LIBRARY_STORAGE_KEY]
+
     if (area !== 'local' || !change || isDisposed) {
       return
     }
+
     revision++
     const result = downloadLibrarySchema.safeParse(change.newValue)
+
     if (result.success) {
       library.value = result.data
       isReady.value = true
@@ -69,14 +72,17 @@ export function useDownloadLibrary() {
     if (isRefreshing.value || isDisposed) {
       return
     }
+
     isRefreshing.value = true
     error.value = ''
     const currentRevision = revision
+
     try {
       const result = await sendDownloadMessage(
         { type: 'library.list' },
         downloadLibrarySchema,
       )
+
       if (!isDisposed && revision === currentRevision) {
         library.value = result
         isReady.value = true
@@ -94,11 +100,14 @@ export function useDownloadLibrary() {
     if (isBusy.value || isDisposed) {
       return
     }
+
     isBusy.value = true
     error.value = ''
     notice.value = ''
+
     try {
       await sendDownloadMessage(message, z.null())
+
       if (!isDisposed) {
         notice.value = success
       }

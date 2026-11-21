@@ -23,6 +23,7 @@ function createRow(page = 1, videoId = 'BV1xx411c7mD'): BatchImportRow {
 
 function createSession(): BatchSession {
   const data = createBatchSessionData()
+
   data.drafts = {
     links: 'BV1xx411c7mD',
     favorites: '123',
@@ -45,14 +46,18 @@ function createSession(): BatchSession {
   }
   data.optionsSnapshot = { ...data.options }
   const result = saveBatchSession(null, data, null, 100)
+
   assert.ok(result.session)
+
   return result.session
 }
 
 function createRequest(session: BatchSession, index = 0) {
   const row = session.rows[index]
+
   assert.ok(row)
   assert.ok(session.optionsSnapshot)
+
   return {
     sessionId: session.id,
     rowKey: row.key,
@@ -66,12 +71,14 @@ test('restores drafts, source, pagination, selection and snapshot without resumi
   const session = createSession()
   const first = session.rows[0]
   const second = session.rows[1]
+
   assert.ok(first)
   assert.ok(second)
   first.status = 'adding'
   second.selected = false
   const before = structuredClone(session)
   const restored = restoreBatchSession(session)
+
   assert.deepEqual(restored.drafts, session.drafts)
   assert.deepEqual(restored.source, session.source)
   assert.equal(restored.nextPage, 3)
@@ -93,6 +100,7 @@ test('compare-and-swap rejects a stale tab and a new preview invalidates old req
     session.revision,
     200,
   )
+
   assert.ok(first.session)
   assert.equal(first.session.revision, 2)
   const conflict = saveBatchSession(
@@ -100,6 +108,7 @@ test('compare-and-swap rejects a stale tab and a new preview invalidates old req
     { ...session, title: '旧页面' },
     session.revision,
   )
+
   assert.equal(conflict.conflict, true)
   assert.deepEqual(conflict.session, first.session)
   const replacement = saveBatchSession(
@@ -107,6 +116,7 @@ test('compare-and-swap rejects a stale tab and a new preview invalidates old req
     createBatchSessionData(),
     first.session.revision,
   )
+
   assert.ok(replacement.session)
   assert.notEqual(replacement.session.id, session.id)
   assert.equal(replacement.session.optionsSnapshot, undefined)
@@ -120,6 +130,7 @@ test('compare-and-swap rejects a stale tab and a new preview invalidates old req
 test('durable receipt is replayed after lost reply even with old revision and completed skipping off', () => {
   const session = createSession()
   const request = createRequest(session)
+
   assert.equal(request.skipCompleted, false)
   const result = {
     added: 1,
@@ -133,12 +144,14 @@ test('durable receipt is replayed after lost reply even with old revision and co
     result,
     200,
   )
+
   assert.equal(committed.revision, session.revision + 1)
   assert.equal(committed.rows[0]?.status, 'done')
   assert.equal(committed.rows[0]?.selected, false)
   assert.deepEqual(getBatchSessionRow(committed, request).receipt, result)
   assert.deepEqual(restoreBatchSession(committed).rows[0]?.receipt, result)
   const second = createRequest(committed, 1)
+
   assert.throws(
     () =>
       getBatchSessionRow(committed, {
@@ -158,6 +171,7 @@ test('a zero-commit failure can be explicitly selected and retried with the froz
     shouldStop: true,
     error: '请求中断',
   })
+
   assert.equal(failed.rows[0]?.status, 'failed')
   assert.equal(failed.rows[0]?.receipt, undefined)
   assert.equal(failed.rows[0]?.selected, false)
@@ -176,6 +190,7 @@ test('a zero-commit failure can be explicitly selected and retried with the froz
     },
     failed.revision,
   )
+
   assert.ok(selected.session)
   assert.equal(
     getBatchSessionRow(selected.session, createRequest(selected.session))
@@ -193,6 +208,7 @@ test('saved snapshots and committed receipts cannot be changed or erased by a cl
     shouldStop: false,
   })
   const data = restoreBatchSession(committed)
+
   data.options.quality = '1080'
   data.optionsSnapshot = undefined
   data.rows = data.rows.map(row => ({
@@ -202,6 +218,7 @@ test('saved snapshots and committed receipts cannot be changed or erased by a cl
     status: 'pending',
   }))
   const saved = saveBatchSession(committed, data, committed.revision)
+
   assert.ok(saved.session)
   assert.deepEqual(saved.session.options, session.optionsSnapshot)
   assert.deepEqual(saved.session.optionsSnapshot, session.optionsSnapshot)
@@ -223,6 +240,7 @@ test('all-parts and covers remember completed source aliases across resumes', ()
     { kind: 'cover' as const },
   ]) {
     const session = createSession()
+
     session.optionsSnapshot = { ...session.options, ...options }
     session.rows.push(createRow(1, 'av123'))
     const committed = commitBatchSessionResult(session, createRow().key, {
@@ -231,6 +249,7 @@ test('all-parts and covers remember completed source aliases across resumes', ()
       shouldStop: false,
       bvid: 'BV1xx411c7mD',
     })
+
     assert.equal(
       findBatchSessionReceiptRow(committed, createRow(2).key)?.key,
       createRow().key,
@@ -241,12 +260,14 @@ test('all-parts and covers remember completed source aliases across resumes', ()
       createRow().key,
     )
   }
+
   const current = createSession()
   const committed = commitBatchSessionResult(current, createRow().key, {
     added: 1,
     skipped: 0,
     shouldStop: false,
   })
+
   assert.equal(
     findBatchSessionReceiptRow(committed, createRow(2).key),
     undefined,
@@ -255,6 +276,7 @@ test('all-parts and covers remember completed source aliases across resumes', ()
 
 test('session budget counts UTF-8 bytes and rejects duplicate or forged row keys', () => {
   const session = createBatchSessionData()
+
   session.rows = Array.from({ length: 500 }, (_, index) => ({
     ...createRow(index + 1),
     item: { ...createRow(index + 1).item, title: '字'.repeat(1000) },

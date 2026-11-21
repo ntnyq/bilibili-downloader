@@ -54,9 +54,9 @@ const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
     >
       <SheetHeader class="sr-only">
         <SheetTitle>{{ i18n.t('common.sidebar') }}</SheetTitle>
-        <SheetDescription>{{
-          i18n.t('common.mobileSidebar')
-        }}</SheetDescription>
+        <SheetDescription>
+          {{ i18n.t('common.mobileSidebar') }}
+        </SheetDescription>
       </SheetHeader>
       <div class="flex h-full w-full flex-col">
         <slot />

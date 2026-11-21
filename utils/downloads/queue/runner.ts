@@ -1,7 +1,7 @@
 import { z } from 'zod'
 import { browser } from '#imports'
 import { downloadJobSchema, downloadJobsSchema } from '~/types/download'
-import { getVideoMedia } from '~/utils/bilibili/api'
+import { getDownloadMedia } from '~/utils/bilibili/episode'
 import { i18n } from '~/utils/i18n'
 import { JOBS_STORAGE_KEY } from '../constants'
 import { createDownloadPath } from '../files/createDownloadPath'
@@ -34,12 +34,14 @@ type RunnerRequest = Extract<
 
 function waitForRunner(milliseconds: number, signal?: AbortSignal) {
   signal?.throwIfAborted()
+
   return new Promise<void>((resolve, reject) => {
     let timer: ReturnType<typeof setTimeout>
     const abort = () => {
       clearTimeout(timer)
       reject(signal?.reason)
     }
+
     timer = setTimeout(() => {
       signal?.removeEventListener('abort', abort)
       resolve()
@@ -59,11 +61,15 @@ async function sendRunnerMessage<Result>(
   signal?: AbortSignal,
 ): Promise<Result> {
   let delay = 1000
+
   while (true) {
     signal?.throwIfAborted()
+
     try {
       const result = await sendDownloadMessage(message, schema)
+
       onError('')
+
       return result
     } catch (error) {
       signal?.throwIfAborted()
@@ -108,20 +114,25 @@ async function runDownloadJob(
         onError,
         signal,
       )
+
       // A pause may win the storage write before its change event arrives.
       confirmJobUpdate(accepted, controller)
     })
+
     // A transient progress-message failure must not poison later state updates.
     // Awaited transitions still receive their own error.
     updates = next.catch(() => undefined)
+
     return next.then(() => undefined)
   }
+
   if (!['video', 'audio'].includes(job.kind)) {
     try {
       const asset = await fetchAsset(job, signal, receivedBytes => {
         if (Date.now() - lastProgressAt < 500) {
           return
         }
+
         lastProgressAt = Date.now()
         update({ status: 'downloading', receivedBytes }).catch(error => {
           if (!signal.aborted) {
@@ -133,6 +144,7 @@ async function runDownloadJob(
         { ...job, quality: asset.quality },
         asset.extension,
       )
+
       await update({
         status: 'saving',
         quality: asset.quality,
@@ -146,22 +158,25 @@ async function runDownloadJob(
     } finally {
       await updates
     }
+
     return
   }
+
   const cache = await createMediaCache(job.id)
+
   try {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         signal.throwIfAborted()
         await update({ status: 'resolving', receivedBytes: 0, progress: 0 })
-        const media = await getVideoMedia(
-          job.bvid,
-          job.cid,
+        const media = await getDownloadMedia(
+          job,
           signal,
           job.kind === 'audio' ? 'best' : job.qualityPreference,
           job.kind === 'audio' ? 'audio' : 'video',
         )
         const estimatedBytes = estimateMediaBytes(media, job.duration)
+
         await update({ quality: media.quality, totalBytes: estimatedBytes })
         // A different selection must never combine tracks from an older run.
         const identity = [
@@ -173,10 +188,12 @@ async function runDownloadJob(
         const keys = media.inputs.map((_, index) =>
           JSON.stringify([...identity, index]),
         )
+
         await cache.retain(keys)
         await update({ status: 'downloading' })
         let receivedBytes = 0
         const inputs: Blob[] = []
+
         for (const [index, input] of media.inputs.entries()) {
           const blob = await fetchCachedMedia({
             cache,
@@ -191,8 +208,10 @@ async function runDownloadJob(
               if (Date.now() - lastProgressAt < 500) {
                 return
               }
+
               lastProgressAt = Date.now()
               const currentBytes = receivedBytes + received
+
               update({
                 receivedBytes: currentBytes,
                 progress: estimatedBytes
@@ -205,9 +224,11 @@ async function runDownloadJob(
               })
             },
           })
+
           receivedBytes += blob.size
           inputs.push(blob)
         }
+
         signal.throwIfAborted()
         await update({
           status: 'merging',
@@ -229,11 +250,13 @@ async function runDownloadJob(
             })
           },
         )
+
         try {
           const filename = createDownloadPath({
             ...job,
             quality: media.quality,
           })
+
           await update({ status: 'saving', progress: 97, filename })
           await saveFile(output.blob, filename, signal, downloadId =>
             update({ downloadId }),
@@ -241,12 +264,15 @@ async function runDownloadJob(
         } finally {
           await output.dispose().catch(console.warn)
         }
+
         await update({ status: 'completed', progress: 100 })
         // Cleanup errors must not turn a saved file into a failed task.
         await cache.clear().catch(console.warn)
+
         return
       } catch (error) {
         signal.throwIfAborted()
+
         // Refresh expired URLs once. The cache verifies the representation
         // again before using any bytes from the previous request.
         if (!(error instanceof MediaNetworkError) || attempt > 0) {
@@ -258,6 +284,7 @@ async function runDownloadJob(
     if (shouldClearAbortedJobCache(signal)) {
       await cache.clear().catch(console.warn)
     }
+
     await updates
   }
 }
@@ -281,22 +308,28 @@ export async function startDownloadRunner(
 ) {
   const request = <Result>(message: RunnerRequest, schema: z.ZodType<Result>) =>
     sendRunnerMessage(message, schema, onError, signal)
+
   await navigator.locks.request(
     'bilibili-download-runner',
     { ifAvailable: true },
     async lock => {
       signal?.throwIfAborted()
+
       if (!lock) {
         onError(i18n.t('runner.aDownloadCenterIsAlreadyRunningUseThe'))
+
         return
       }
+
       await request(
         { type: 'runner.ready', runnerId: crypto.randomUUID() },
         z.null(),
       )
       let lastPruneAt = 0
+
       while (true) {
         signal?.throwIfAborted()
+
         if (Date.now() - lastPruneAt > 10000) {
           lastPruneAt = Date.now()
           await navigator.locks.request(
@@ -306,10 +339,12 @@ export async function startDownloadRunner(
               if (!cacheLock) {
                 return
               }
+
               const jobs = await request(
                 { type: 'queue.list' },
                 downloadJobsSchema,
               )
+
               await pruneMediaCache(
                 jobs
                   .filter(
@@ -320,20 +355,26 @@ export async function startDownloadRunner(
             },
           )
         }
+
         const controller = new AbortController()
         const job = await request(
           { type: 'runner.claim', runId: crypto.randomUUID() },
           downloadJobSchema.nullable(),
         )
+
         if (!job) {
           await waitForRunner(1000, signal)
           continue
         }
+
         const abort = () => controller.abort(signal?.reason)
+
         signal?.addEventListener('abort', abort, { once: true })
+
         if (signal?.aborted) {
           abort()
         }
+
         const onJobsChanged = (
           changes: Record<string, Browser.storage.StorageChange>,
           area: string,
@@ -341,12 +382,14 @@ export async function startDownloadRunner(
           if (area !== 'local' || !changes[JOBS_STORAGE_KEY]) {
             return
           }
+
           const result = downloadJobsSchema.safeParse(
             changes[JOBS_STORAGE_KEY].newValue,
           )
           const previous = downloadJobsSchema.safeParse(
             changes[JOBS_STORAGE_KEY].oldValue,
           )
+
           if (result.success) {
             abortChangedJobRun(
               job,
@@ -358,9 +401,12 @@ export async function startDownloadRunner(
             )
           }
         }
+
         browser.storage.onChanged.addListener(onJobsChanged)
+
         try {
           const jobs = await request({ type: 'queue.list' }, downloadJobsSchema)
+
           abortStaleJobRun(
             job,
             jobs.find(item => item.id === job.id),

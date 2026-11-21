@@ -8,10 +8,13 @@ const props = defineProps<{
   pages: VideoPage[]
   currentPage: number
 }>()
+
 const mode = defineModel<DownloadMode>('mode', { required: true })
 const selectedPages = defineModel<number[]>('selectedPages', { required: true })
+
 const search = shallowRef('')
 const isSelectedOnly = shallowRef(false)
+
 const selected = computed(() => new Set(selectedPages.value))
 const query = computed(() => search.value.trim().toLocaleLowerCase())
 const visiblePages = computed(() =>
@@ -61,6 +64,7 @@ const modes = [
 
 function invertSelection() {
   const next = new Set(selected.value)
+
   for (const page of visiblePages.value) {
     if (next.has(page.page)) {
       next.delete(page.page)
@@ -68,8 +72,10 @@ function invertSelection() {
       next.add(page.page)
     }
   }
+
   selectedPages.value = [...next]
 }
+
 function selectVisible() {
   selectedPages.value = [
     ...new Set([
@@ -78,14 +84,18 @@ function selectVisible() {
     ]),
   ]
 }
+
 function clearVisible() {
   const visible = new Set(visiblePages.value.map(page => page.page))
+
   selectedPages.value = selectedPages.value.filter(page => !visible.has(page))
 }
+
 function resetFilters() {
   search.value = ''
   isSelectedOnly.value = false
 }
+
 function togglePage(page: number, checked: boolean | 'indeterminate') {
   selectedPages.value =
     checked === true
@@ -97,10 +107,10 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
 <template>
   <div class="mt-3 border-t pt-3">
     <div class="mb-2 flex justify-between text-xs">
-      <span>{{ i18n.t('downloadPartPicker.downloadRange') }}</span
-      ><span class="text-muted-foreground">{{
-        i18n.t('downloadPartPicker.partsTotal', pages.length)
-      }}</span>
+      <span>{{ i18n.t('downloadPartPicker.downloadRange') }}</span>
+      <span class="text-muted-foreground">
+        {{ i18n.t('downloadPartPicker.partsTotal', pages.length) }}
+      </span>
     </div>
     <Tabs
       v-model="mode"
@@ -114,12 +124,13 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
           v-for="item in modes"
           :key="item.value"
           :value="item.value"
-          >{{
+        >
+          {{
             item.value === 'current'
               ? i18n.t('downloadPartPicker.currentPart2', [currentPage])
               : item.label
-          }}</TabsTrigger
-        >
+          }}
+        </TabsTrigger>
       </TabsList>
       <TabsContent :value="mode">
         <div
@@ -145,12 +156,14 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
             class="mb-2 flex flex-wrap items-center justify-between gap-1 text-[11px]"
           >
             <div class="flex items-center gap-1">
-              <span class="text-primary">{{
-                i18n.t('downloadPartPicker.partsSelected', pages.length, [
-                  targetPages.length,
-                  pages.length,
-                ])
-              }}</span>
+              <span class="text-primary">
+                {{
+                  i18n.t('downloadPartPicker.partsSelected', pages.length, [
+                    targetPages.length,
+                    pages.length,
+                  ])
+                }}
+              </span>
               <Button
                 @click="isSelectedOnly = !isSelectedOnly"
                 :aria-pressed="isSelectedOnly"
@@ -158,8 +171,9 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
                 variant="ghost"
                 size="xs"
                 type="button"
-                >{{ i18n.t('downloadPartPicker.selectedOnly') }}</Button
               >
+                {{ i18n.t('downloadPartPicker.selectedOnly') }}
+              </Button>
             </div>
             <div class="flex gap-0.5">
               <Button
@@ -212,7 +226,8 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
               height: `${Math.min(visiblePages.length * 48 + 8, 256)}px`,
             }"
             class="rounded-lg border"
-            ><ul class="p-1">
+          >
+            <ul class="p-1">
               <li
                 v-for="page in visiblePages"
                 :key="page.cid"
@@ -225,29 +240,32 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
                     @update:model-value="togglePage(page.page, $event)"
                     :model-value="selected.has(page.page)"
                   />
-                  <span class="shrink-0 text-[11px] text-muted-foreground"
-                    >P{{ page.page }}</span
-                  >
+                  <span class="shrink-0 text-[11px] text-muted-foreground">
+                    P{{ page.page }}
+                  </span>
                   <span class="min-w-0 flex-1">
                     <span
                       :title="page.part"
                       class="block truncate"
-                      >{{ page.part }}</span
                     >
+                      {{ page.part }}
+                    </span>
                     <span
                       v-if="page.page === currentPage"
                       class="mt-0.5 block text-[10px] text-primary"
-                      >{{ i18n.t('downloadPartPicker.playing') }}</span
                     >
+                      {{ i18n.t('downloadPartPicker.playing') }}
+                    </span>
                   </span>
                   <span
                     class="shrink-0 text-[11px] text-muted-foreground tabular-nums"
-                    >{{ formatDuration(page.duration) }}</span
                   >
+                    {{ formatDuration(page.duration) }}
+                  </span>
                 </Label>
               </li>
-            </ul></ScrollArea
-          >
+            </ul>
+          </ScrollArea>
           <div
             v-else
             class="rounded-lg border px-3 py-6 text-center text-xs text-muted-foreground"
@@ -266,8 +284,9 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
               size="sm"
               type="button"
               class="mt-2 text-primary"
-              >{{ i18n.t('downloadPartPicker.showAllParts') }}</Button
             >
+              {{ i18n.t('downloadPartPicker.showAllParts') }}
+            </Button>
           </div>
         </div>
         <p
@@ -276,16 +295,18 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
         >
           <span
             class="shrink-0 rounded border bg-background px-1 text-[10px] text-muted-foreground"
-            >P{{ currentPage }}</span
           >
+            P{{ currentPage }}
+          </span>
           <span
             :title="targetPages[0]?.part"
             class="min-w-0 flex-1 truncate"
-            >{{ targetPages[0]?.part }}</span
           >
-          <span class="shrink-0 text-[11px] text-muted-foreground">{{
-            formatDuration(totalDuration)
-          }}</span>
+            {{ targetPages[0]?.part }}
+          </span>
+          <span class="shrink-0 text-[11px] text-muted-foreground">
+            {{ formatDuration(totalDuration) }}
+          </span>
         </p>
         <div
           v-if="mode !== 'current'"
@@ -319,18 +340,21 @@ function togglePage(page: number, checked: boolean | 'indeterminate') {
               size="xs"
               type="button"
               class="h-6 text-[11px]"
-              >P{{ page.page
-              }}<XIcon
+            >
+              P{{ page.page }}
+              <XIcon
                 class="size-3"
                 aria-hidden="true"
-            /></Button>
+              />
+            </Button>
             <span
               v-if="targetPages.length > 6"
               class="self-center text-[11px] text-muted-foreground"
-              >{{
-                i18n.t('downloadPartPicker.moreParts', targetPages.length - 6)
-              }}</span
             >
+              {{
+                i18n.t('downloadPartPicker.moreParts', targetPages.length - 6)
+              }}
+            </span>
           </div>
         </div>
       </TabsContent>

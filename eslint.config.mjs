@@ -10,7 +10,9 @@ export default defineESLintConfig({
   vue: {
     vuePerfectionist: {
       autoImport: true,
-      overrides: {},
+      overrides: {
+        'vue-perfectionist/require-composable-return-bindings': 'off',
+      },
     },
   },
 })

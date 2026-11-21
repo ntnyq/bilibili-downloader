@@ -4,4 +4,5 @@
 export const DOWNLOAD_PAGE_MATCHES = [
   'https://www.bilibili.com/video/*',
   'https://www.bilibili.com/s/video/*',
+  'https://www.bilibili.com/bangumi/play/ep*',
 ]

@@ -6,12 +6,14 @@ import type { DownloadJob } from '~/types/download'
 const props = defineProps<{
   job: DownloadJob
 }>()
+
 const {
   isExporting,
   error: exportError,
   notice,
   downloadNativeTask,
 } = useNativeDownload()
+
 const canExport = computed(
   () =>
     (props.job.kind === 'video' || props.job.kind === 'audio')
@@ -42,10 +44,11 @@ const canExport = computed(
       v-if="exportError"
       class="mt-1.75 text-destructive"
       variant="destructive"
-      ><AlertDescription>
-        {{ exportError }}
-      </AlertDescription></Alert
     >
+      <AlertDescription>
+        {{ exportError }}
+      </AlertDescription>
+    </Alert>
     <p
       v-if="notice"
       class="mt-1.75 text-primary"

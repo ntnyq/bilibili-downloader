@@ -8,12 +8,9 @@ import {
   downloadSettingsSchema,
 } from '~/types/download'
 import { DOWNLOAD_LIBRARY_STORAGE_KEY } from '~/types/downloadHistory'
-import {
-  BilibiliApiError,
-  getVideoInfo,
-  getVideoMedia,
-} from '~/utils/bilibili/api'
+import { BilibiliApiError, getVideoInfo } from '~/utils/bilibili/api'
 import { getBatchPage } from '~/utils/bilibili/batch'
+import { getDownloadMedia, getEpisodeInfo } from '~/utils/bilibili/episode'
 import { MEDIA_DOMAINS } from '~/utils/bilibili/streams'
 import { subtitlesToText } from '~/utils/bilibili/subtitles'
 import { createVideoInfoCache } from '~/utils/bilibili/videoInfoCache'
@@ -85,13 +82,18 @@ let nextBatchRequestAt = 0
 function scheduleBatchRequest<T>(operation: () => Promise<T>): Promise<T> {
   const next = batchLock.then(async () => {
     const delay = nextBatchRequestAt - Date.now()
+
     if (delay > 0) {
       await new Promise(resolve => setTimeout(resolve, delay))
     }
+
     nextBatchRequestAt = Date.now() + BATCH_REQUEST_INTERVAL_MS
+
     return operation()
   })
+
   batchLock = next.catch(() => undefined)
+
   return next
 }
 
@@ -99,6 +101,7 @@ function shouldStopBatch(error: unknown): boolean {
   if (error instanceof BilibiliApiError) {
     return error.shouldStopBatch
   }
+
   return (
     error instanceof TypeError
     || error instanceof DOMException
@@ -108,29 +111,37 @@ function shouldStopBatch(error: unknown): boolean {
 
 function serialize<T>(operation: () => Promise<T>): Promise<T> {
   const next = queueLock.then(operation)
+
   queueLock = next.catch(() => undefined)
+
   return next
 }
 
 async function readJobs(): Promise<DownloadJob[]> {
   const stored = await browser.storage.local.get(JOBS_STORAGE_KEY)
+
   return downloadJobsSchema.parse(stored[JOBS_STORAGE_KEY] || [])
 }
 
 async function readSettings() {
   const stored = await browser.storage.local.get(SETTINGS_STORAGE_KEY)
+
   return downloadSettingsSchema.parse(stored[SETTINGS_STORAGE_KEY] || {})
 }
 
 async function readBatchSession() {
   const stored = await browser.storage.local.get(BATCH_SESSION_STORAGE_KEY)
+
   if (stored[BATCH_SESSION_STORAGE_KEY] === undefined) {
     return null
   }
+
   const result = batchSessionSchema.safeParse(stored[BATCH_SESSION_STORAGE_KEY])
+
   if (!result.success) {
     throw new Error(i18n.t('downloads.theBatchSessionIsCorruptAndCannotBe'))
   }
+
   return result.data
 }
 
@@ -140,9 +151,11 @@ async function readLibrary(jobs: DownloadJob[]) {
     stored[DOWNLOAD_LIBRARY_STORAGE_KEY],
     jobs,
   )
+
   if (stored[DOWNLOAD_LIBRARY_STORAGE_KEY] === undefined) {
     await browser.storage.local.set({ [DOWNLOAD_LIBRARY_STORAGE_KEY]: library })
   }
+
   return library
 }
 
@@ -156,6 +169,7 @@ async function writeJobs(
     DOWNLOAD_LIBRARY_STORAGE_KEY,
   ])
   const previous = downloadJobsSchema.parse(stored[JOBS_STORAGE_KEY] || [])
+
   assertDownloadQueueCapacity(previous, jobs)
   const completed = new Set(
     previous.filter(job => job.status === 'completed').map(job => job.id),
@@ -170,6 +184,7 @@ async function writeJobs(
     }
   }
   const libraryPatch: Record<string, unknown> = {}
+
   // Progress updates should not parse and re-encode thousands of history records.
   if (
     stored[DOWNLOAD_LIBRARY_STORAGE_KEY] === undefined
@@ -180,6 +195,7 @@ async function writeJobs(
         stored[DOWNLOAD_LIBRARY_STORAGE_KEY],
         previous,
       )
+
       libraryPatch[DOWNLOAD_LIBRARY_STORAGE_KEY] = recordLibraryCompletions(
         library,
         previous,
@@ -191,6 +207,7 @@ async function writeJobs(
       warnHistoryFailure(error)
     }
   }
+
   try {
     await browser.storage.local.set({
       ...extra,
@@ -201,6 +218,7 @@ async function writeJobs(
     if (!(DOWNLOAD_LIBRARY_STORAGE_KEY in libraryPatch)) {
       throw error
     }
+
     // A history quota/write failure must not keep a saved file in progress.
     // Queue-only failures still propagate, so callers never receive a false ACK.
     warnHistoryFailure(error)
@@ -243,8 +261,10 @@ function ensureHeaders() {
     })
     .catch(error => {
       headerRules = undefined
+
       throw error
     })
+
   return headerRules
 }
 
@@ -254,13 +274,16 @@ async function openRunner(active: boolean) {
   const stored = await browser.storage.local.get(RUNNER_STORAGE_KEY)
   const existing =
     tabs.find(tab => tab.id === stored[RUNNER_STORAGE_KEY]) || tabs[0]
+
   if (existing?.id !== undefined) {
     if (active) {
       await browser.tabs.update(existing.id, { active: true })
       await browser.windows.update(existing.windowId, { focused: true })
     }
+
     return
   }
+
   await browser.tabs.create({ url, active })
 }
 
@@ -276,17 +299,21 @@ async function recoverInterruptedJobs(
     ) {
       continue
     }
+
     if (job.downloadId !== undefined) {
       const [download] = await browser.downloads.search({ id: job.downloadId })
+
       if (download?.state === 'complete') {
         job.status = 'completed'
         job.progress = 100
         continue
       }
+
       if (download?.state === 'in_progress') {
         await browser.downloads.cancel(job.downloadId).catch(() => undefined)
       }
     }
+
     job.status = 'failed'
     job.error = ['video', 'audio'].includes(job.kind)
       ? i18n.t('downloads.theDownloadCenterWasClosedOrRefreshedInterrupting')
@@ -304,6 +331,7 @@ function isRunner(sender: Browser.runtime.MessageSender): boolean {
 async function ensureBatchTabOpen(sender: Browser.runtime.MessageSender) {
   const tabId = sender.tab?.id
   const tab = tabId === undefined ? undefined : await browser.tabs.get(tabId)
+
   if (tab?.url !== browser.runtime.getURL('/downloads.html')) {
     throw new Error(
       i18n.t('downloads.theDownloadCenterClosedThisImportHasStopped'),
@@ -319,11 +347,13 @@ async function handleRequest(
     if (!isRunner(sender)) {
       throw new Error(i18n.t('downloads.useBatchImportInTheDownloadCenter'))
     }
+
     return serialize(async () => {
       if (message.type === 'batch.session.reset') {
         const stored = await browser.storage.local.get(
           BATCH_SESSION_STORAGE_KEY,
         )
+
         if (
           batchSessionSchema.safeParse(stored[BATCH_SESSION_STORAGE_KEY])
             .success
@@ -332,54 +362,71 @@ async function handleRequest(
             i18n.t('downloads.theCurrentSessionIsStillReadableLoadThe'),
           )
         }
+
         const result = saveBatchSession(null, createBatchSessionData(), null)
+
         await browser.storage.local.set({
           [BATCH_SESSION_STORAGE_KEY]: result.session,
         })
+
         return result.session
       }
+
       const current = await readBatchSession()
+
       if (message.type === 'batch.session.get') {
         return current
       }
+
       if (message.type !== 'batch.session.save') {
         throw new Error(i18n.t('downloads.unsupportedBatchSessionAction'))
       }
+
       const result = saveBatchSession(
         current,
         message.session,
         message.expectedRevision,
       )
+
       if (!result.conflict) {
         await browser.storage.local.set({
           [BATCH_SESSION_STORAGE_KEY]: result.session,
         })
       }
+
       return result
     })
   }
+
   if (message.type === 'batch.page' || message.type === 'batch.add') {
     if (!isRunner(sender)) {
       throw new Error(i18n.t('downloads.useBatchImportInTheDownloadCenter'))
     }
+
     if (message.type === 'batch.page') {
       await ensureHeaders()
+
       return scheduleBatchRequest(async () => {
         await ensureBatchTabOpen(sender)
+
         return getBatchPage(message.source, message.page)
       })
     }
+
     const replay = await serialize(async () => {
       const session = await readBatchSession()
       const row = getBatchSessionRow(session, message)
+
       if (row.receipt) {
         return {
           result: row.receipt,
           session,
         }
       }
+
       if (session) {
         const previous = findBatchSessionReceiptRow(session, message.rowKey)
+
         if (previous?.receipt) {
           const result = {
             added: 0,
@@ -388,20 +435,26 @@ async function handleRequest(
             bvid: previous.receipt.bvid,
           }
           const next = commitBatchSessionResult(session, message.rowKey, result)
+
           await browser.storage.local.set({ [BATCH_SESSION_STORAGE_KEY]: next })
+
           return {
             result,
             session: next,
           }
         }
       }
+
       return null
     })
+
     if (replay) {
       return replay
     }
+
     let video: VideoInfo | undefined
     let failure: BatchAddResult | undefined
+
     try {
       await ensureHeaders()
       video = await scheduleBatchRequest(async () => {
@@ -410,6 +463,7 @@ async function handleRequest(
         await serialize(async () => {
           getBatchSessionRow(await readBatchSession(), message)
         })
+
         return getVideoInfo(message.item.videoId)
       })
     } catch (error) {
@@ -420,6 +474,7 @@ async function handleRequest(
         shouldStop: shouldStopBatch(error),
       }
     }
+
     if (
       video
       && message.kind !== 'cover'
@@ -433,24 +488,30 @@ async function handleRequest(
         shouldStop: false,
       }
     }
+
     return serialize(async () => {
       const session = await readBatchSession()
       const row = getBatchSessionRow(session, message)
+
       if (!session) {
         throw new Error(
           i18n.t('downloads.theBatchSessionDoesNotExistPreviewAgain'),
         )
       }
+
       if (row.receipt) {
         return {
           result: row.receipt,
           session,
         }
       }
+
       const existing = await readJobs()
+
       await ensureBatchTabOpen(sender)
       let added: DownloadJob[] = []
       let result: BatchAddResult
+
       try {
         if (failure) {
           result = failure
@@ -460,6 +521,7 @@ async function handleRequest(
             message.rowKey,
             video.bvid,
           )
+
           if (previous?.receipt) {
             result = {
               added: 0,
@@ -476,6 +538,7 @@ async function handleRequest(
               message,
               library.records.map(record => record.identity),
             )
+
             added = created.jobs
             result = {
               added: added.length,
@@ -498,53 +561,108 @@ async function handleRequest(
           shouldStop: true,
         }
       }
+
       const next = commitBatchSessionResult(session, message.rowKey, result)
+
       if (added.length) {
         await openRunner(false)
       }
+
       // Queue membership and the receipt share one write; a lost reply can be replayed.
       await writeJobs([...existing, ...added], {
         [BATCH_SESSION_STORAGE_KEY]: next,
       })
+
       return {
         result,
         session: next,
       }
     })
   }
+
   if (message.type === 'video.get') {
     await ensureHeaders()
+
     return getCachedVideoInfo(message.videoId)
   }
+
+  if (message.type === 'episode.get') {
+    await ensureHeaders()
+    const episode = await getEpisodeInfo(message.epId)
+
+    if (episode.unavailableReason) {
+      return episode
+    }
+
+    try {
+      await getDownloadMedia(
+        { ...episode, cid: episode.pages[0].cid },
+        AbortSignal.timeout(20000),
+        'best',
+      )
+
+      return episode
+    } catch (error) {
+      return {
+        ...episode,
+        unavailableReason: getErrorMessage(error),
+      }
+    }
+  }
+
   if (message.type === 'video.estimate') {
     await ensureHeaders()
-    const media = await getVideoMedia(
-      message.bvid,
-      message.cid,
+    const media = await getDownloadMedia(
+      message,
       AbortSignal.timeout(20000),
       message.quality,
     )
+
     return estimateMediaBytes(media, message.duration)
   }
+
   if (message.type === 'subtitle.text') {
     await ensureHeaders()
     const { data } = await fetchSubtitle(message, AbortSignal.timeout(20000))
+
     return subtitlesToText(data)
   }
+
   if (message.type === 'queue.add' || message.type === 'queue.bundle.add') {
     await ensureHeaders()
   }
+
   // Slow API requests must not hold the queue lock and block cancellation.
+  let episode: Awaited<ReturnType<typeof getEpisodeInfo>> | undefined
+
+  if (message.type === 'queue.episode.add') {
+    await ensureHeaders()
+    episode = await getEpisodeInfo(message.epId)
+
+    if (episode.unavailableReason) {
+      throw new Error(episode.unavailableReason)
+    }
+
+    await getDownloadMedia(
+      { ...episode, cid: episode.pages[0].cid },
+      AbortSignal.timeout(20000),
+      message.quality,
+    )
+  }
+
   const video =
     message.type === 'queue.add' || message.type === 'queue.bundle.add'
       ? await getVideoInfo(message.videoId)
       : undefined
+
   return serialize(async () => {
     if (message.type === 'settings.get') {
       return readSettings()
     }
+
     if (message.type === 'settings.update') {
       const settings = { ...(await readSettings()), ...message.settings }
+
       if (
         message.settings.notifyOnComplete === true
         && !(await browser.permissions.contains({
@@ -557,22 +675,30 @@ async function handleRequest(
           ),
         )
       }
+
       await browser.storage.local.set({ [SETTINGS_STORAGE_KEY]: settings })
+
       if (message.settings.isPaused === false) {
         await openRunner(false)
       }
+
       return settings
     }
+
     if (message.type === 'library.clear') {
       await browser.storage.local.set({
         [DOWNLOAD_LIBRARY_STORAGE_KEY]: createDownloadLibrary(),
       })
+
       return null
     }
+
     if (message.type === 'runner.open') {
       await openRunner(true)
+
       return null
     }
+
     if (message.type === 'queue.recover') {
       const backupKey = 'downloadJobsRecoveryBackup'
       const stored = await browser.storage.local.get([
@@ -580,11 +706,14 @@ async function handleRequest(
         backupKey,
       ])
       const raw = stored[JOBS_STORAGE_KEY]
+
       if (raw === undefined || downloadJobsSchema.safeParse(raw).success) {
         return null
       }
+
       const recovered = (Array.isArray(raw) ? raw : []).flatMap(value => {
         const result = downloadJobSchema.safeParse(value)
+
         return result.success ? [result.data] : []
       })
       const snapshot = JSON.stringify(raw)
@@ -600,29 +729,39 @@ async function handleRequest(
         || JSON.stringify(stored[backupKey]) === snapshot
           ? backupKey
           : `${backupKey}:${suffix}`
+
       // Persist the snapshot before changing the queue. Distinct corrupt
       // snapshots survive later recoveries; retries reuse the same backup key.
       await browser.storage.local.set({ [key]: raw })
       await browser.storage.local.set({ [JOBS_STORAGE_KEY]: recovered })
+
       return null
     }
+
     const jobs = await readJobs()
+
     if (message.type.startsWith('library.')) {
       const library = await readLibrary(jobs)
+
       if (message.type === 'library.list') {
         return library
       }
+
       if (message.type === 'library.delete') {
         const next = deleteLibraryRecord(library, message.identity)
+
         await browser.storage.local.set({
           [DOWNLOAD_LIBRARY_STORAGE_KEY]: next,
         })
+
         return null
       }
+
       if (message.type === 'library.requeue') {
         const record = library.records.find(
           item => item.identity === message.identity,
         )
+
         if (!record) {
           throw new Error(
             i18n.t(
@@ -630,17 +769,43 @@ async function handleRequest(
             ),
           )
         }
+
         const job = createJobFromHistory(record, jobs)
+
         await openRunner(false)
         await writeJobs([...jobs, job])
+
         return null
       }
     }
+
     if (message.type === 'queue.list') {
       return jobs
     }
+
+    if (message.type === 'queue.episode.add' && episode) {
+      const added = createDownloadJobs(
+        episode,
+        episode.pages[0].page,
+        'current',
+        jobs,
+        {
+          quality: message.quality,
+          settings: await readSettings(),
+        },
+      )
+
+      if (added.length) {
+        await openRunner(false)
+        await writeJobs([...jobs, ...added])
+      }
+
+      return {
+        added: added.length,
+      }
+    }
+
     if (message.type === 'queue.add' && video) {
-      await ensureHeaders()
       const added = createDownloadJobs(
         video,
         message.page,
@@ -654,12 +819,15 @@ async function handleRequest(
           settings: await readSettings(),
         },
       )
+
       await openRunner(false)
       await writeJobs([...jobs, ...added])
+
       return {
         added: added.length,
       }
     }
+
     if (message.type === 'queue.bundle.add' && video) {
       const result = createBundleJobs(video, message.page, message.mode, jobs, {
         kinds: message.kinds,
@@ -668,43 +836,58 @@ async function handleRequest(
         subtitleLanguage: message.subtitleLanguage,
         settings: await readSettings(),
       })
+
       if (result.jobs.length) {
         await openRunner(false)
         await writeJobs([...jobs, ...result.jobs])
       }
+
       return {
         added: result.jobs.length,
         skipped: result.skipped,
         bundleId: result.bundleId,
       }
     }
+
     if (message.type === 'queue.pause') {
       await writeJobs(pauseJob(jobs, message.id))
+
       return null
     }
+
     if (message.type === 'queue.resume') {
       const next = resumeJob(jobs, message.id)
+
       await openRunner(false)
       await writeJobs(next)
+
       return null
     }
+
     if (message.type === 'queue.move') {
       await writeJobs(moveQueuedJob(jobs, message.id, message.direction))
+
       return null
     }
+
     if (message.type === 'queue.cancel') {
       for (const job of jobs) {
         if (isJobActive(job) && (!message.id || job.id === message.id)) {
           job.status = 'cancelled'
         }
       }
+
       await writeJobs(jobs)
+
       return null
     }
+
     if (message.type === 'queue.clear') {
       await writeJobs(clearFinishedDownloadJobs(jobs))
+
       return null
     }
+
     if (
       message.type === 'queue.retry'
       || message.type === 'queue.retryFailed'
@@ -713,18 +896,23 @@ async function handleRequest(
         jobs,
         message.type === 'queue.retry' ? message.id : undefined,
       )
+
       await openRunner(false)
       await writeJobs(next)
+
       return null
     }
+
     if (!isRunner(sender)) {
       throw new Error(i18n.t('downloads.downloadTasksCanOnlyRunInTheDownload'))
     }
+
     if (message.type === 'runner.ready') {
       const owner = await browser.storage.local.get([
         RUNNER_STORAGE_KEY,
         RUNNER_INSTANCE_STORAGE_KEY,
       ])
+
       if (
         message.runnerId
         && owner[RUNNER_STORAGE_KEY] === sender.tab?.id
@@ -732,55 +920,75 @@ async function handleRequest(
       ) {
         return null
       }
+
       await ensureHeaders()
       await recoverInterruptedJobs(jobs)
       await writeJobs(jobs, {
         [RUNNER_STORAGE_KEY]: sender.tab?.id,
         [RUNNER_INSTANCE_STORAGE_KEY]: message.runnerId ?? null,
       })
+
       return null
     }
+
     const stored = await browser.storage.local.get(RUNNER_STORAGE_KEY)
+
     if (stored[RUNNER_STORAGE_KEY] !== sender.tab?.id) {
       throw new Error(
         i18n.t('downloads.anotherDownloadCenterIsProcessingTheQueue'),
       )
     }
+
     if (message.type === 'native.start') {
       const job = startNativeJob(jobs, message.id)
+
       await writeJobs(jobs.map(item => (item.id === job.id ? job : item)))
+
       return job
     }
+
     if (message.type === 'native.update') {
       const job = jobs.find(item => item.id === message.id)
+
       if (!job || !applyNativeJobUpdate(job, message.runId, message.update)) {
         return false
       }
+
       await writeJobs(jobs)
+
       if (job.status === 'completed') {
         notifyCompleted(job).catch(console.warn)
       }
+
       return true
     }
+
     if (message.type === 'runner.claim') {
       if (message.runId) {
         const claimed = jobs.find(job => job.runId === message.runId)
+
         if (claimed) {
           return isJobRunning(claimed) ? claimed : null
         }
       }
+
       const settings = await readSettings()
       const job = getNextQueuedJob(jobs, settings.isPaused)
+
       if (!job) {
         return null
       }
+
       job.status = 'resolving'
       job.runId = message.runId ?? crypto.randomUUID()
       await writeJobs(jobs)
+
       return job
     }
+
     if (message.type === 'runner.update') {
       const job = jobs.find(item => item.id === message.id)
+
       if (
         message.runId
         && job?.runId === message.runId
@@ -789,17 +997,22 @@ async function handleRequest(
       ) {
         return true
       }
+
       if (!job || !canApplyJobUpdate(job, message.runId)) {
         return false
       }
+
       Object.assign(job, message.update)
       await writeJobs(jobs)
+
       if (job.status === 'completed') {
         // Notification delivery is best-effort; a saved file must stay completed.
         notifyCompleted(job).catch(console.warn)
       }
+
       return true
     }
+
     throw new Error(i18n.t('downloads.unsupportedDownloadAction'))
   })
 }
@@ -811,6 +1024,7 @@ async function notifyCompleted(job: DownloadJob) {
   ) {
     return
   }
+
   await browser.notifications.create(`download:${job.id}`, {
     type: 'basic',
     iconUrl: browser.runtime.getURL('/icons/128.png'),
@@ -825,35 +1039,45 @@ export function registerDownloads(ready: Promise<void> = Promise.resolve()) {
       const channel = z
         .object({ channel: z.literal('bilibili-download') })
         .safeParse(raw)
+
       if (!channel.success || sender.id !== browser.runtime.id) {
         return
       }
+
       ready
         .then(async () => {
           const parsed = requestSchema.safeParse(raw)
+
           if (!parsed.success) {
             sendResponse({
               ok: false,
               error: i18n.t('downloads.invalidDownloadRequestParameters'),
             })
+
             return
           }
+
           const data = await handleRequest(parsed.data, sender)
+
           sendResponse({ ok: true, data })
         })
         .catch(error => {
           sendResponse({ ok: false, error: getErrorMessage(error) })
         })
+
       return true
     },
   )
   const handleRunnerClosed = (tabId: number) => {
     serialize(async () => {
       const stored = await browser.storage.local.get(RUNNER_STORAGE_KEY)
+
       if (stored[RUNNER_STORAGE_KEY] !== tabId) {
         return
       }
+
       const jobs = await readJobs()
+
       await recoverInterruptedJobs(jobs, true)
       await writeJobs(jobs)
       await browser.storage.local.remove([
@@ -862,6 +1086,7 @@ export function registerDownloads(ready: Promise<void> = Promise.resolve()) {
       ])
     }).catch(console.error)
   }
+
   browser.tabs.onRemoved.addListener(handleRunnerClosed)
   browser.tabs.onUpdated.addListener((tabId, changes) => {
     if (

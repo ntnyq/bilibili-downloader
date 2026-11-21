@@ -92,9 +92,11 @@ export async function remuxMedia(
   onProgress: (bytes: number) => void = () => {},
 ) {
   signal.throwIfAborted()
+
   if (blobs.length !== (kind === 'dash' ? 2 : 1)) {
     throw new Error(i18n.t('progressiveMedia.invalidNumberOfMediaAssets'))
   }
+
   const inputs = blobs.map(
     blob =>
       new Input({
@@ -116,7 +118,9 @@ export async function remuxMedia(
     async read(trackId, offset, length) {
       signal.throwIfAborted()
       const data = await store.read(trackId, offset, length)
+
       signal.throwIfAborted()
+
       return data
     },
   })
@@ -125,7 +129,9 @@ export async function remuxMedia(
   ) => {
     signal.throwIfAborted()
     const value = await operation()
+
     signal.throwIfAborted()
+
     return value
   }
   const output = createRemuxOutput(
@@ -160,17 +166,23 @@ export async function remuxMedia(
     },
   )
   const disposeInputs = () => inputs.forEach(input => input.dispose())
+
   signal.addEventListener('abort', disposeInputs, { once: true })
+
   try {
     const tracks: PacketTrack[] = []
+
     if (kind === 'dash') {
       const track = await inputs[0]!.getPrimaryVideoTrack()
       const codec = await track?.getCodec()
       const config = await track?.getDecoderConfig()
+
       if (!track || !codec || !config) {
         throw new Error(i18n.t('remuxMedia.cannotReadTheMp4VideoTrack'))
       }
+
       const source = new EncodedVideoPacketSource(codec)
+
       output.addVideoTrack(source, {
         transformationMatrix: await track.getTransformationMatrix(),
         decoderConfig: config,
@@ -182,12 +194,16 @@ export async function remuxMedia(
         close: () => source.close(),
       })
     }
+
     const track = await inputs.at(-1)!.getPrimaryAudioTrack()
     const config = await track?.getDecoderConfig()
+
     if (!track || (await track.getCodec()) !== 'aac' || !config) {
       throw new Error(i18n.t('remuxMedia.cannotReadTheAacTrackInTheMp4'))
     }
+
     const source = new EncodedAudioPacketSource('aac')
+
     output.addAudioTrack(source, { decoderConfig: config })
     tracks.push({
       sink: new EncodedPacketSink(track),
@@ -195,15 +211,19 @@ export async function remuxMedia(
       add: packet => source.add(packet, { decoderConfig: config }),
       close: () => source.close(),
     })
+
     for (const entry of tracks) {
       entry.packet = await entry.sink.getFirstPacket()
+
       if (!entry.packet) {
         throw new Error(i18n.t('remuxMedia.theAssetTrackHasNoPacketsToRemux'))
       }
     }
+
     signal.throwIfAborted()
     await output.start()
     let bytes = 0
+
     while (true) {
       signal.throwIfAborted()
       // Only compare each track's next packet; never sort within a video track,
@@ -212,22 +232,27 @@ export async function remuxMedia(
         .filter(entry => entry.packet)
         .toSorted((a, b) => a.packet!.timestamp - b.packet!.timestamp)[0]
       const packet = entry?.packet
+
       if (!entry || !packet) {
         break
       }
+
       await entry.add(packet)
       bytes += packet.byteLength
       onProgress(bytes)
       entry.packet = await entry.sink.getNextPacket(packet)
+
       if (!entry.packet) {
         entry.close()
       }
     }
+
     signal.throwIfAborted()
     await output.finalize()
   } catch (error) {
     await output.cancel().catch(() => {})
     signal.throwIfAborted()
+
     throw error
   } finally {
     signal.removeEventListener('abort', disposeInputs)

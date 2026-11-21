@@ -29,6 +29,7 @@ export function createVideoInfoCache(
 
   function pruneExpired() {
     const now = Date.now()
+
     for (const [videoId, entry] of cached) {
       if (entry.expiresAt <= now) {
         cached.delete(videoId)
@@ -41,13 +42,17 @@ export function createVideoInfoCache(
   ): Promise<VideoInfo> {
     pruneExpired()
     const entry = cached.get(videoId)
+
     if (entry) {
       // Refresh recency without extending the metadata's expiry.
       cached.delete(videoId)
       cached.set(videoId, entry)
+
       return entry.video
     }
+
     const request = pending.get(videoId)
+
     if (request) {
       return request
     }
@@ -59,18 +64,23 @@ export function createVideoInfoCache(
           video,
           expiresAt: Date.now() + VIDEO_INFO_CACHE_TTL_MS,
         })
+
         for (const oldest of cached.keys()) {
           if (cached.size <= VIDEO_INFO_CACHE_MAX_ENTRIES) {
             break
           }
+
           cached.delete(oldest)
         }
+
         return video
       })
       .finally(() => {
         pending.delete(videoId)
       })
+
     pending.set(videoId, next)
+
     return next
   }
 }

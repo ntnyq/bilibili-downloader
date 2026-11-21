@@ -49,6 +49,7 @@ function createMemoryCache() {
     },
     async blob() {
       assert.ok(state?.complete)
+
       return new Blob(chunks)
     },
     async clear() {
@@ -57,6 +58,7 @@ function createMemoryCache() {
     },
     retain: async () => {},
   }
+
   return {
     cache,
     appended,
@@ -87,8 +89,10 @@ async function seed(
   const resourceKey = Array.from(new Uint8Array(hash), byte =>
     byte.toString(16).padStart(2, '0'),
   ).join('')
+
   await cache.reset(INPUT_KEY, { resourceKey, etag, total })
   await cache.append(INPUT_KEY, new Uint8Array(bytes))
+
   if (complete) {
     await cache.complete(INPUT_KEY)
   }
@@ -117,6 +121,7 @@ async function bytes(blob: Blob): Promise<number[]> {
 
 test('persists an interrupted prefix and resumes with Range/If-Range after a signed URL refresh', async () => {
   const { cache } = createMemoryCache()
+
   await assert.rejects(
     download(
       cache,
@@ -132,8 +137,10 @@ test('persists an interrupted prefix and resumes with Range/If-Range after a sig
     cache,
     async (_url, init) => {
       const headers = new Headers(init?.headers)
+
       assert.equal(headers.get('range'), 'bytes=2-')
       assert.equal(headers.get('if-range'), '"v1"')
+
       return new Response(new Uint8Array([3, 4, 5]), {
         status: 206,
         headers: {
@@ -145,11 +152,13 @@ test('persists an interrupted prefix and resumes with Range/If-Range after a sig
     },
     { urls: ['https://cdn.test/video.m4s?signature=refreshed'] },
   )
+
   assert.deepEqual(await bytes(result), [1, 2, 3, 4, 5])
 })
 
 test('a full 200 response replaces the old prefix before consuming its bytes', async () => {
   const { cache } = createMemoryCache()
+
   await seed(cache)
   const result = await download(
     cache,
@@ -158,6 +167,7 @@ test('a full 200 response replaces the old prefix before consuming its bytes', a
         headers: { 'content-length': '2', etag: '"v2"' },
       }),
   )
+
   assert.deepEqual(await bytes(result), [8, 9])
   assert.equal((await cache.read(INPUT_KEY))?.etag, '"v2"')
 })
@@ -174,12 +184,15 @@ test('mismatched validators, lengths, totals and ranges trigger one fresh reques
     { 'content-range': 'bytes 2-4/9007199254740992' },
     { 'content-length': '2' },
   ]
+
   for (const headers of invalidHeaders) {
     const { cache } = createMemoryCache()
+
     await seed(cache)
     let attempts = 0
     const result = await download(cache, async (_url, init) => {
       attempts++
+
       if (attempts === 1) {
         return new Response(new Uint8Array([3, 4, 5]), {
           status: 206,
@@ -191,11 +204,14 @@ test('mismatched validators, lengths, totals and ranges trigger one fresh reques
           }),
         })
       }
+
       assert.equal(new Headers(init?.headers).has('range'), false)
+
       return new Response(new Uint8Array([7, 8]), {
         headers: { 'content-length': '2', etag: '"v3"' },
       })
     })
+
     assert.equal(attempts, 2)
     assert.deepEqual(await bytes(result), [7, 8])
   }
@@ -208,23 +224,27 @@ test('missing validators and different CDN hosts/paths always start a new repres
     { etag: '"v1"', url: 'https://cdn.test/another.m4s' },
   ]) {
     const { cache } = createMemoryCache()
+
     await seed(cache, { etag: configuration.etag })
     const result = await download(
       cache,
       async (_url, init) => {
         assert.equal(new Headers(init?.headers).has('range'), false)
+
         return new Response(new Uint8Array([7, 8]), {
           headers: { etag: '"v1"' },
         })
       },
       { urls: [configuration.url] },
     )
+
     assert.deepEqual(await bytes(result), [7, 8])
   }
 })
 
 test('a weak ETag from a server never enables partial resume', async () => {
   const { cache } = createMemoryCache()
+
   await assert.rejects(
     download(
       cache,
@@ -238,6 +258,7 @@ test('a weak ETag from a server never enables partial resume', async () => {
   assert.equal((await cache.read(INPUT_KEY))?.etag, null)
   await download(cache, async (_url, init) => {
     assert.equal(new Headers(init?.headers).has('range'), false)
+
     return new Response(new Uint8Array([3]))
   })
 })
@@ -249,26 +270,32 @@ test('completed files are revalidated and unknown-length completion records its 
     async () =>
       new Response(new Uint8Array([1, 2]), { headers: { etag: '"v1"' } }),
   )
+
   assert.equal(initial.size, 2)
   assert.equal((await cache.read(INPUT_KEY))?.total, 2)
   const reused = await download(cache, async (_url, init) => {
     assert.equal(new Headers(init?.headers).get('if-none-match'), '"v1"')
+
     return new Response(null, { status: 304, headers: { etag: '"v1"' } })
   })
+
   assert.deepEqual(await bytes(reused), [1, 2])
   let attempts = 0
   const refreshed = await download(cache, async () => {
     attempts++
+
     return attempts === 1
       ? new Response(null, { status: 304 })
       : new Response(new Uint8Array([9]))
   })
+
   assert.equal(attempts, 2)
   assert.deepEqual(await bytes(refreshed), [9])
 })
 
 test('a valid 416 completes a full prefix and all other 416 recovery is bounded', async () => {
   const { cache } = createMemoryCache()
+
   await seed(cache, { total: 2 })
   const result = await download(
     cache,
@@ -278,12 +305,15 @@ test('a valid 416 completes a full prefix and all other 416 recovery is bounded'
         headers: { 'content-range': 'bytes */2', etag: '"v1"' },
       }),
   )
+
   assert.deepEqual(await bytes(result), [1, 2])
   await seed(cache)
   let attempts = 0
+
   await assert.rejects(
     download(cache, async () => {
       attempts++
+
       return new Response(null, {
         status: 416,
         headers: { 'content-range': 'bytes */1', etag: '"v2"' },
@@ -296,23 +326,28 @@ test('a valid 416 completes a full prefix and all other 416 recovery is bounded'
 
 test('learns a missing total from 206 and safely continues capped ranges', async () => {
   const { cache } = createMemoryCache()
+
   await seed(cache, { total: null })
   let attempts = 0
   const result = await download(cache, async (_url, init) => {
     attempts++
+
     if (attempts === 1) {
       return new Response(new Uint8Array([3]), {
         status: 206,
         headers: { 'content-range': 'bytes 2-2/5', etag: '"v1"' },
       })
     }
+
     assert.equal((await cache.read(INPUT_KEY))?.total, 5)
     assert.equal(new Headers(init?.headers).get('range'), 'bytes=3-')
+
     return new Response(new Uint8Array([4, 5]), {
       status: 206,
       headers: { 'content-range': 'bytes 3-4/5', etag: '"v1"' },
     })
   })
+
   assert.equal(attempts, 2)
   assert.deepEqual(await bytes(result), [1, 2, 3, 4, 5])
 })
@@ -320,15 +355,18 @@ test('learns a missing total from 206 and safely continues capped ranges', async
 test('continues more than 32 valid ranges without spending a retry budget', async () => {
   const { cache } = createMemoryCache()
   const total = 100
+
   await seed(cache, { bytes: [1], total })
   let requests = 0
   const result = await download(
     cache,
     async (_url, init) => {
       const start = requests + 1
+
       assert.equal(new Headers(init?.headers).get('range'), `bytes=${start}-`)
       assert.equal(new Headers(init?.headers).get('if-range'), '"v1"')
       requests++
+
       return new Response(new Uint8Array([start + 1]), {
         status: 206,
         headers: {
@@ -340,6 +378,7 @@ test('continues more than 32 valid ranges without spending a retry budget', asyn
     },
     { maxBytes: total },
   )
+
   assert.equal(requests, 99)
   assert.deepEqual(
     await bytes(result),
@@ -349,13 +388,16 @@ test('continues more than 32 valid ranges without spending a retry budget', asyn
 
 test('does not loop when a capped range stops making progress', async () => {
   const { cache } = createMemoryCache()
+
   await seed(cache, { total: 100 })
   let requests = 0
+
   await assert.rejects(
     download(
       cache,
       async () => {
         requests++
+
         return new Response(null, {
           status: 206,
           headers: { 'content-range': 'bytes 2-2/100', etag: '"v1"' },
@@ -376,11 +418,13 @@ test('shared input budget applies to cached totals, declared sizes, and streamed
   ]) {
     const { cache } = createMemoryCache()
     let attempts = 0
+
     await assert.rejects(
       download(
         cache,
         async () => {
           attempts++
+
           return new Response(new Uint8Array(4), { headers })
         },
         { maxBytes: 3, urls: [URL, 'https://backup.test/file'] },
@@ -389,7 +433,9 @@ test('shared input budget applies to cached totals, declared sizes, and streamed
     )
     assert.equal(attempts, 1)
   }
+
   const { cache } = createMemoryCache()
+
   await seed(cache)
   await assert.rejects(
     download(cache, async () => assert.fail('No oversized request'), {
@@ -403,6 +449,7 @@ test('abort flushes a small pending prefix and cancels the response body', async
   const { cache } = createMemoryCache()
   const controller = new AbortController()
   let cancelled = false
+
   await assert.rejects(
     download(
       cache,
@@ -442,6 +489,7 @@ test('large network buffers are split into bounded files and quota errors are no
     async () => new Response(new Uint8Array(size)),
     { maxBytes: size },
   )
+
   assert.equal(result.size, size)
   assert.deepEqual(appended, [
     MEDIA_CACHE_CHUNK_BYTES,
@@ -455,11 +503,13 @@ test('large network buffers are split into bounded files and quota errors are no
       throw new MediaCacheError('空间不足')
     },
   }
+
   await assert.rejects(
     download(
       failedCache,
       async () => {
         attempts++
+
         return new Response(new Uint8Array([1]))
       },
       { urls: [URL, 'https://backup.test/file'] },
@@ -486,6 +536,7 @@ test('unsolicited, compressed, malformed and overlong responses never complete',
     }),
   ]) {
     const { cache } = createMemoryCache()
+
     await assert.rejects(
       download(cache, async () => response),
       MediaNetworkError,
@@ -496,52 +547,66 @@ test('unsolicited, compressed, malformed and overlong responses never complete',
 
 test('redirects cannot append a different resource even when its ETag matches', async () => {
   const { cache } = createMemoryCache()
+
   await seed(cache)
   let attempts = 0
   const result = await download(cache, async (_url, init) => {
     attempts++
+
     if (attempts === 1) {
       const response = new Response(new Uint8Array([3, 4, 5]), {
         status: 206,
         headers: { 'content-range': 'bytes 2-4/5', etag: '"v1"' },
       })
+
       Object.defineProperty(response, 'url', {
         value: 'https://backup.test/other.m4s',
       })
+
       return response
     }
+
     assert.equal(new Headers(init?.headers).has('range'), false)
+
     return new Response(new Uint8Array([9]))
   })
+
   assert.equal(attempts, 2)
   assert.deepEqual(await bytes(result), [9])
 })
 
 test('invalid and unavailable primary URLs still allow safe fallback downloads', async () => {
   const { cache } = createMemoryCache()
+
   await seed(cache)
   let attempts = 0
   const result = await download(
     cache,
     async (_url, init) => {
       attempts++
+
       if (attempts === 1) {
         return new Response(null, { status: 403 })
       }
+
       assert.equal(new Headers(init?.headers).has('range'), false)
+
       return new Response(new Uint8Array([9]), { headers: { etag: '"v1"' } })
     },
     { urls: ['not-a-url', URL, 'https://backup.test/video.m4s'] },
   )
+
   assert.equal(attempts, 2)
   assert.deepEqual(await bytes(result), [9])
 })
 
 test('checks declared storage before reading the body and retains a resumable prefix', async () => {
   const { cache, appended } = createMemoryCache()
+
   await seed(cache)
   const failure = new RangeError('insufficient storage')
   const states: unknown[] = []
+
   await assert.rejects(
     download(
       cache,
@@ -557,6 +622,7 @@ test('checks declared storage before reading the body and retains a resumable pr
       {
         async checkStorage(state) {
           states.push(state)
+
           throw failure
         },
       },
@@ -573,16 +639,19 @@ test('checks unknown-length storage before committing a chunk and stops without 
   const failure = new RangeError('quota shrank')
   const states: unknown[] = []
   let requests = 0
+
   await assert.rejects(
     download(
       cache,
       async () => {
         requests++
+
         return new Response(new Uint8Array([1, 2, 3]))
       },
       {
         async checkStorage(state) {
           states.push(state)
+
           if (state.additionalBytes) {
             throw failure
           }
@@ -601,6 +670,7 @@ test('checks unknown-length storage before committing a chunk and stops without 
 
 test('revalidated complete caches still reserve output space without downloading again', async () => {
   const { cache } = createMemoryCache()
+
   await seed(cache, { bytes: [1, 2], total: 2, complete: true })
   const states: unknown[] = []
   const blob = await download(
@@ -612,6 +682,7 @@ test('revalidated complete caches still reserve output space without downloading
       },
     },
   )
+
   assert.equal(blob.size, 2)
   assert.deepEqual(states, [{ received: 2, total: 2, additionalBytes: 0 }])
 })

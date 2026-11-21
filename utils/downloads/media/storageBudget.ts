@@ -34,11 +34,13 @@ function getRequiredStorageBytes(
     Math.ceil(inputBytes * OUTPUT_SIZE_FACTOR)
     + remainingInputBytes
     + STORAGE_RESERVE_BYTES
+
   if (!Number.isSafeInteger(required) || required < 0) {
     throw new RangeError(
       i18n.t('storageBudget.mediaSizeExceedsTheBrowserSSafeInteger'),
     )
   }
+
   return required
 }
 
@@ -56,6 +58,7 @@ export async function getAvailableMediaStorageBytes(
 ): Promise<number | null> {
   try {
     const { quota, usage } = await estimate()
+
     if (
       quota !== undefined
       && usage !== undefined
@@ -69,6 +72,7 @@ export async function getAvailableMediaStorageBytes(
   } catch {
     // Estimates are advisory. If unavailable, actual OPFS writes enforce quota.
   }
+
   return null
 }
 
@@ -125,6 +129,7 @@ export function createMediaStorageChecker(
   return async ({ received, total, additionalBytes }: MediaStorageState) => {
     const didReset =
       previousReceived !== undefined && received < previousReceived
+
     writtenSinceSample +=
       previousReceived === undefined || didReset
         ? 0
@@ -139,6 +144,7 @@ export function createMediaStorageChecker(
       completedInputBytes + currentInputBytes,
       remainingInputBytes,
     )
+
     if (
       sampledAt === undefined
       || didReset
@@ -150,6 +156,7 @@ export function createMediaStorageChecker(
       sampledAt = now()
       writtenSinceSample = 0
     }
+
     assertStorageCapacity(
       available === null ? null : Math.max(0, available - writtenSinceSample),
       required,

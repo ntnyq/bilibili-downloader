@@ -9,13 +9,18 @@ export function estimateMediaBytes(
   duration: number,
 ): number {
   let total = 0
+
   for (const input of media.inputs) {
     const bytes = input.size || (input.bandwidth * duration) / 8
+
     if (!bytes) {
       return 0
     }
+
     total += bytes
   }
+
   const rounded = Math.round(total)
+
   return Number.isSafeInteger(rounded) ? rounded : 0
 }

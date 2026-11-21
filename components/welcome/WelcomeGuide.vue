@@ -33,7 +33,8 @@ const { openManager, error: queueError } = useDownloadQueue()
           <InfoIcon
             class="size-4 text-primary"
             aria-hidden="true"
-          />{{ i18n.t('welcomeGuide.beforeYouDownload') }}
+          />
+          {{ i18n.t('welcomeGuide.beforeYouDownload') }}
         </h2>
         <p>
           {{
@@ -56,8 +57,9 @@ const { openManager, error: queueError } = useDownloadQueue()
         <FolderDownIcon
           class="size-4 shrink-0"
           aria-hidden="true"
-        />{{ i18n.t('welcomeGuide.openDownloadCenter') }}</Button
-      >
+        />
+        {{ i18n.t('welcomeGuide.openDownloadCenter') }}
+      </Button>
       <p
         v-if="queueError"
         class="mt-3 text-destructive"

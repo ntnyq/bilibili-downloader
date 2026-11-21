@@ -59,19 +59,23 @@ export function selectSubtitle(
         - Number(matchesLanguage(a.language, 'zh'))
       || Number(a.isAutomatic) - Number(b.isAutomatic),
   )[0]
+
   if (!chosen) {
     if (data.need_login_subtitle) {
       throw new Error(i18n.t('subtitles.signInToBilibiliToAccessSubtitlesThen'))
     }
+
     throw new Error(
       language === 'auto'
         ? i18n.t('subtitles.thisPartHasNoExportableSubtitles')
         : i18n.t('subtitles.thisPartHasNoSubtitlesInTheSelected'),
     )
   }
+
   if (!chosen.url) {
     throw new Error(i18n.t('subtitles.thisSubtitleUrlIsNotSupportedUpdateThe'))
   }
+
   return {
     url: chosen.url,
     label: `${chosen.lan_doc || chosen.lan}${chosen.isAutomatic ? i18n.t('subtitles.automatic') : ''}`,
@@ -103,6 +107,7 @@ const subtitleBodySchema = z.object({
  */
 function timestamp(seconds: number): string {
   const milliseconds = Math.round(seconds * 1000)
+
   return `${String(Math.floor(milliseconds / 3600000)).padStart(2, '0')}:${String(Math.floor(milliseconds / 60000) % 60).padStart(2, '0')}:${String(Math.floor(milliseconds / 1000) % 60).padStart(2, '0')},${String(milliseconds % 1000).padStart(3, '0')}`
 }
 
@@ -122,9 +127,11 @@ function parseSubtitleCues(value: unknown) {
         cue.content && Math.round(cue.to * 1000) > Math.round(cue.from * 1000),
     )
     .toSorted((a, b) => a.from - b.from)
+
   if (!cues.length) {
     throw new Error(i18n.t('subtitles.subtitleContentIsEmptyNoFileWasSaved'))
   }
+
   return cues
 }
 

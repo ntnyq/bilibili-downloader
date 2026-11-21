@@ -33,29 +33,37 @@ for (const real of [true, false]) {
       count,
       real,
     )
+
     assert.deepEqual(bytes, legacy)
     const input = new mediabunny.Input({
       formats: [mediabunny.MP4],
       source: new mediabunny.BlobSource(new Blob([bytes])),
     })
+
     try {
       const track = await input.getPrimaryVideoTrack()
+
       assert.ok(track)
       let packets = 0
+
       for await (const packet of new mediabunny.EncodedPacketSink(
         track,
       ).packets()) {
         if (!real) {
           assert.ok(packet.duration >= 0)
         }
+
         packets++
       }
+
       assert.equal(packets, 3 * count)
       const sink = new mediabunny.EncodedPacketSink(track)
+
       for (const second of real
         ? [10, 1, 6, 0]
         : [(count / 24) * 2 + 1, 1, count / 24 + 1]) {
         const key = await sink.getKeyPacket(second)
+
         assert.ok(key)
         assert.equal(key.type, 'key')
       }
@@ -78,6 +86,7 @@ for (const browser of [false, true]) {
       await testFragmentIndex(context),
       library,
     )
+
     assert.deepEqual(
       bytes,
       await generateStoredSamples(undefined, await testFragmentIndex(context)),
@@ -103,6 +112,7 @@ for (const operation of [
         throw failure
       },
     }
+
     await assert.rejects(
       generateStoredSamples(failing, await testFragmentIndex(context)),
       error => error === failure,
@@ -128,6 +138,7 @@ test('awaits external sort backpressure before publishing a fragment', async con
   ).then(() => {
     complete = true
   })
+
   await entered.promise
   assert.equal(complete, false)
   gate.resolve()
@@ -154,9 +165,11 @@ test('pages queued descriptors and media when an entire track arrives before ano
     })
     const video = new mediabunny.EncodedVideoPacketSource('avc')
     const audio = new mediabunny.EncodedAudioPacketSource('aac')
+
     output.addVideoTrack(video, { decoderConfig: config })
     output.addAudioTrack(audio, { decoderConfig: audioConfig })
     await output.start()
+
     for (let at = 0; at < 10003; at++) {
       await video.add(
         new mediabunny.EncodedPacket(
@@ -168,24 +181,30 @@ test('pages queued descriptors and media when an entire track arrives before ano
         { decoderConfig: config },
       )
     }
+
     video.close()
+
     for (let at = 0; at < 37; at++) {
       await audio.add(
         new mediabunny.EncodedPacket(packet.data, 'key', at / 24, 1 / 24),
         { decoderConfig: audioConfig },
       )
     }
+
     audio.close()
     await output.finalize()
     assert.ok(target.buffer)
     const buffer = target.buffer
+
     return new Uint8Array(buffer, 0, buffer.byteLength)
   }
+
   assert.deepEqual(await generate(true), await generate(false))
 })
 
 test('bounds GOP metadata heap and buffers while appending, sorting and writing trun', async () => {
   const measurements = []
+
   for (const count of [20000, 400000]) {
     const { stdout } = await promisify(execFile)(
       process.execPath,
@@ -204,16 +223,21 @@ test('bounds GOP metadata heap and buffers while appending, sorting and writing 
       { timeout: 120000 },
     )
     const measurement: unknown = JSON.parse(stdout)
+
     assert.ok(measurement && typeof measurement === 'object')
     const heap: unknown = Reflect.get(measurement, 'retainedHeapBytes')
     const buffers: unknown = Reflect.get(measurement, 'retainedBufferBytes')
+
     assert.equal(typeof heap, 'number')
     assert.equal(typeof buffers, 'number')
+
     if (typeof heap !== 'number' || typeof buffers !== 'number') {
       throw new TypeError('Missing metadata memory measurements')
     }
+
     measurements.push({ heap, buffers })
   }
+
   assert.ok(measurements[1]!.heap - measurements[0]!.heap < 2 * 1024 * 1024)
   assert.ok(measurements[1]!.buffers - measurements[0]!.buffers < 512 * 1024)
 })
@@ -230,6 +254,7 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
           )
 
     const { config } = await videoPackets()
+
     class SparseTarget extends library.NullTarget {
       head = new Uint8Array(65536)
       end = 0
@@ -237,9 +262,11 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
         if (position < this.head.length) {
           this.head.set(data.subarray(0, this.head.length - position), position)
         }
+
         this.end = Math.max(this.end, position + data.length)
       }
     }
+
     const target = new SparseTarget()
     const page = new Uint8Array(65536)
     let reset = 0
@@ -253,10 +280,12 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
           ...backing,
           async get(track, id) {
             const row = await backing.get(track, id)
+
             return track === 1 && id < 2 ? { ...row, size: 2 ** 31 } : row
           },
           async readMedia(_track, _offset, length) {
             assert.ok(length <= 65536)
+
             return page.subarray(0, length)
           },
           async release(track, before) {
@@ -268,11 +297,14 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
       target,
     })
     const source = new library.EncodedVideoPacketSource('avc')
+
     output.addVideoTrack(source, { decoderConfig: config })
     const audio = new library.EncodedAudioPacketSource('aac')
     const { config: audioConfig } = await audioPacket()
+
     output.addAudioTrack(audio, { decoderConfig: audioConfig })
     await output.start()
+
     for (let at = 0; at < 3; at++) {
       await source.add(
         new library.EncodedPacket(
@@ -288,6 +320,7 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
         { decoderConfig: audioConfig },
       )
     }
+
     // Virtual payload pages and two large descriptor sizes exercise >4 GiB
     // without allocating a giant packet or retaining a full metadata array.
     source.close()
@@ -295,31 +328,39 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
     await output.finalize()
     const view = new DataView(target.head.buffer)
     let offset = 0
+
     while (
       new TextDecoder().decode(target.head.subarray(offset + 4, offset + 8))
       !== 'mdat'
     ) {
       const size = view.getUint32(offset)
+
       assert.ok(size >= 8 && offset + size < target.head.length)
       offset += size
     }
+
     assert.equal(view.getUint32(offset), 1)
     const declared = view.getBigUint64(offset + 8)
+
     assert.equal(declared, 2n ** 32n + 4n + 16n)
     // Two tracks with one entry each produce a 128-byte final MFRA.
     assert.equal(BigInt(target.end - 128), BigInt(offset) + declared)
     assert.equal(reset, 2)
     let moof = 0
+
     while (
       new TextDecoder().decode(target.head.subarray(moof + 4, moof + 8))
       !== 'moof'
     ) {
       moof += view.getUint32(moof)
     }
+
     const children = (start: number, end: number, type: string) => {
       const found = []
+
       for (let at = start; at < end; at += view.getUint32(at)) {
         assert.ok(view.getUint32(at) >= 8)
+
         if (
           new TextDecoder().decode(target.head.subarray(at + 4, at + 8))
           === type
@@ -327,11 +368,13 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
           found.push(at)
         }
       }
+
       return found
     }
     const traf = children(moof + 8, moof + view.getUint32(moof), 'traf')[1]!
     const tfhd = children(traf + 8, traf + view.getUint32(traf), 'tfhd')[0]!
     const trun = children(traf + 8, traf + view.getUint32(traf), 'trun')[0]!
+
     assert.ok(view.getUint32(tfhd + 8) & 1)
     assert.equal(view.getUint32(tfhd + 8) & 0x20000, 0)
     assert.equal(
@@ -351,6 +394,7 @@ test('honors cancellation after GOP sorting and closes the incomplete output', a
   const audio = await readFile(
     new URL('../fixtures/downloads/audio.m4a', import.meta.url),
   )
+
   await assert.rejects(
     remuxMedia(
       'dash',

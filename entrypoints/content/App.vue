@@ -1,16 +1,23 @@
 <script lang="ts" setup>
 import { provideOverlayTarget } from '~/composables/useOverlayTarget'
-import { parseVideoLocation } from '~/utils/downloads/parseVideoLocation'
+import {
+  parseEpisodeLocation,
+  parseVideoLocation,
+} from '~/utils/downloads/parseVideoLocation'
 import { i18n } from '~/utils/i18n'
 
 const props = defineProps<{
   getUrl: () => string
 }>()
+
 const overlayTargetRef = useTemplateRef<HTMLDivElement>('overlayTargetRef')
+
 provideOverlayTarget(overlayTargetRef)
 
 const url = computed(() => props.getUrl())
-const isVideoPage = computed(() => !!parseVideoLocation(url.value))
+const isVideoPage = computed(
+  () => !!(parseVideoLocation(url.value) || parseEpisodeLocation(url.value)),
+)
 </script>
 
 <template>

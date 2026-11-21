@@ -29,13 +29,16 @@ function installBrowser(
   const directory = {
     async getDirectoryHandle(name: string) {
       directories.push(name)
+
       return directory
     },
     async getFileHandle() {
       files++
+
       if (options.fileError) {
         throw options.fileError
       }
+
       return {
         async getFile() {
           return new File(['media'], 'output.media', { type: 'text/plain' })
@@ -44,12 +47,15 @@ function installBrowser(
     },
     async removeEntry(name: string, optionsValue: { recursive: boolean }) {
       assert.equal(optionsValue.recursive, true)
+
       if (removalAttempts++ < (options.removeLocks ?? 0)) {
         throw new DOMException('stream locked', 'NoModificationAllowedError')
       }
+
       removed.push(name)
     },
   }
+
   class RemuxWorker extends EventTarget {
     constructor() {
       super()
@@ -63,6 +69,7 @@ function installBrowser(
       assert.equal(message.directory, directory)
       options.onPost?.()
       posted.resolve()
+
       if (options.response) {
         queueMicrotask(() =>
           this.dispatchEvent(
@@ -76,6 +83,7 @@ function installBrowser(
       terminated++
     }
   }
+
   const globals = {
     navigator: {
       storage: {
@@ -90,8 +98,10 @@ function installBrowser(
     },
     Worker: RemuxWorker,
   }
+
   for (const [name, value] of Object.entries(globals)) {
     const previous = Object.getOwnPropertyDescriptor(globalThis, name)
+
     Object.defineProperty(globalThis, name, { configurable: true, value })
     context.after(() => {
       if (previous) {
@@ -101,6 +111,7 @@ function installBrowser(
       }
     })
   }
+
   return {
     removed,
     directories,
@@ -119,6 +130,7 @@ function installBrowser(
 
 test('keeps the disk output alive for saving and supplies the correct media MIME', async context => {
   const browser = installBrowser(context, { response: { type: 'complete' } })
+
   for (const kind of ['dash', 'audio', 'progressive'] as const) {
     const before = browser.removed.length
     const output = await mergeBrowserMedia(
@@ -127,6 +139,7 @@ test('keeps the disk output alive for saving and supplies the correct media MIME
       new AbortController().signal,
       () => {},
     )
+
     assert.equal(
       output.blob.type,
       kind === 'audio' ? 'audio/x-m4a' : 'video/mp4',
@@ -138,12 +151,14 @@ test('keeps the disk output alive for saving and supplies the correct media MIME
     assert.equal(browser.removed.at(-1), browser.directories.at(-1))
     assert.equal(browser.messages.at(-1)?.kind, kind)
   }
+
   assert.equal(browser.workers(), 3)
   assert.equal(browser.terminated(), 3)
 })
 
 test('refuses insufficient output quota before creating files or starting a worker', async context => {
   const browser = installBrowser(context, { freeBytes: 1 })
+
   await assert.rejects(
     mergeBrowserMedia(
       'audio',
@@ -160,6 +175,7 @@ test('refuses insufficient output quota before creating files or starting a work
 test('terminates a cancelled worker and removes the unfinished output', async context => {
   const controller = new AbortController()
   const browser = installBrowser(context, { onPost: () => controller.abort() })
+
   await assert.rejects(
     mergeBrowserMedia(
       'audio',
@@ -181,6 +197,7 @@ test('reports worker quota failures and removes their partial output', async con
       message: 'disk full',
     },
   })
+
   await assert.rejects(
     mergeBrowserMedia(
       'audio',
@@ -203,6 +220,7 @@ test('only times out a worker that never acknowledges startup', async context =>
     () => {},
   )
   const rejected = assert.rejects(pending, /Worker 启动超时/)
+
   await browser.posted
   context.mock.timers.tick(120000)
   await rejected
@@ -220,6 +238,7 @@ test('keeps an acknowledged worker alive through long parsing and finalization w
     new AbortController().signal,
     bytes => progress.push(bytes),
   )
+
   await browser.posted
   browser.respond({ type: 'ready' })
   context.mock.timers.tick(31 * 60 * 1000)
@@ -229,6 +248,7 @@ test('keeps an acknowledged worker alive through long parsing and finalization w
   assert.equal(browser.removed.length, 0)
   browser.respond({ type: 'complete' })
   const output = await pending
+
   assert.deepEqual(progress, [5])
   assert.equal(output.blob.size, 5)
   await output.dispose()
@@ -245,6 +265,7 @@ test('can cancel an acknowledged worker after a long period without progress', a
     () => {},
   )
   const rejected = assert.rejects(pending, { name: 'AbortError' })
+
   await browser.posted
   browser.respond({ type: 'ready' })
   context.mock.timers.tick(2 * 60 * 60 * 1000)
@@ -265,6 +286,7 @@ test('retries transient OPFS locks when removing the entire output/index directo
     new AbortController().signal,
     () => {},
   )
+
   await output.dispose()
   assert.equal(browser.removalAttempts(), 3)
   assert.equal(browser.removed.length, 1)
@@ -273,6 +295,7 @@ test('retries transient OPFS locks when removing the entire output/index directo
 test('cleans the job directory when creating the output file fails', async context => {
   const failure = new DOMException('disk full', 'QuotaExceededError')
   const browser = installBrowser(context, { fileError: failure })
+
   await assert.rejects(
     mergeBrowserMedia(
       'audio',

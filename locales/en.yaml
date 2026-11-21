@@ -496,6 +496,17 @@ downloads:
   unsupportedBatchSessionAction: Unsupported batch session action.
   unsupportedDownloadAction: Unsupported download action.
   useBatchImportInTheDownloadCenter: Use batch import in the Download Center.
+episode:
+  browserQueueOnly: Episodes can only be downloaded through the browser queue.
+  downloadCurrentEpisode: Download current episode
+  drmProtected: This episode is protected by DRM.
+  episodeNotFound: Bilibili could not find this episode. Refresh the playback page and try again.
+  fullPlaybackUnavailable: Bilibili did not provide full playback for this episode.
+  moreActions: 'More actions: $1, $2'
+  number: Episode $1
+  previewOnly: Bilibili only provides a preview for this episode.
+  regionRestricted: This episode is unavailable in your region.
+  trailerOnly: Bilibili only provides a trailer for this episode.
 exportNativeTask:
   onlyVideoAndAudioTasksSupportLocalDownloading: Only video and audio tasks support local downloading.
   theLocalTaskFileExceeds1MbChoose: The local task file exceeds 1 MB. Choose a video with fewer parts.

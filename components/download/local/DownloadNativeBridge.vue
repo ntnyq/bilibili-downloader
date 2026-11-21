@@ -6,6 +6,7 @@ import type { DownloadJob } from '~/types/download'
 const props = defineProps<{
   job: DownloadJob
 }>()
+
 const {
   isRunning,
   status,
@@ -13,6 +14,7 @@ const {
   outputPath,
   start,
 } = useNativeBridge(() => props.job)
+
 const canStart = computed(
   () =>
     (props.job.kind === 'video' || props.job.kind === 'audio')

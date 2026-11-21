@@ -133,11 +133,13 @@ export function getJobStatusLabel(job: DownloadJob): string | undefined {
       ? i18n.t('labels.resolvingAvailableQuality')
       : i18n.t('labels.loadingAssetInformation')
   }
+
   if (job.status === 'downloading') {
     return job.kind === 'video'
       ? i18n.t('labels.downloadingVideoAndAudio')
       : i18n.t('labels.downloading', [DOWNLOAD_KIND_LABELS[job.kind]])
   }
+
   if (job.status === 'merging') {
     return job.kind === 'audio'
       ? i18n.t('labels.remuxingM4a')

@@ -12,6 +12,7 @@ const {
   error: settingsError,
   updateSettings,
 } = useDownloadSettings()
+
 const isRequesting = shallowRef(false)
 const notice = shallowRef('')
 const notificationError = shallowRef('')
@@ -20,9 +21,11 @@ async function toggleNotifications(enabled: boolean) {
   if (!isReady.value || isSaving.value || isRequesting.value) {
     return
   }
+
   notificationError.value = ''
   notice.value = ''
   isRequesting.value = true
+
   try {
     // Keep the permission request on the original user gesture.
     if (
@@ -37,6 +40,7 @@ async function toggleNotifications(enabled: boolean) {
         ),
       )
     }
+
     if (await updateSettings({ notifyOnComplete: enabled })) {
       notice.value = enabled
         ? i18n.t('downloadNotificationSettings.completionNotificationsEnabled')
@@ -92,10 +96,11 @@ async function toggleNotifications(enabled: boolean) {
       v-if="notificationError || settingsError"
       variant="destructive"
       class="mt-3"
-      ><AlertDescription>{{
-        notificationError || settingsError
-      }}</AlertDescription></Alert
     >
+      <AlertDescription>
+        {{ notificationError || settingsError }}
+      </AlertDescription>
+    </Alert>
     <p
       v-if="notice"
       class="mt-3 text-xs text-primary"

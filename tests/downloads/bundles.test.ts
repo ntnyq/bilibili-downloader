@@ -40,6 +40,7 @@ test('expands the selected parts for every asset and creates one cover per video
     subtitleLanguage: 'zh',
     quality: '720',
   })
+
   assert.equal(result.jobs.length, 9)
   assert.equal(result.skipped, 0)
   assert.ok(result.bundleId)
@@ -66,6 +67,7 @@ test('expands the selected parts for every asset and creates one cover per video
   const folders = result.jobs.map(job =>
     createDownloadPath(job).split('/').slice(0, -1).join('/'),
   )
+
   assert.equal(new Set(folders).size, 1)
 })
 
@@ -99,6 +101,7 @@ test('normalizes repeated kinds and validates invalid selections before enqueue'
     kinds: ['cover'],
     selectedPages: [],
   })
+
   assert.equal(cover.jobs.length, 1)
 })
 
@@ -112,6 +115,7 @@ test('deduplicates active assets, counts skipped jobs, and keeps subtitle langua
     kinds: ['video', 'cover', 'subtitle'],
     subtitleLanguage: 'en',
   })
+
   assert.equal(result.skipped, 2)
   assert.equal(result.jobs.length, 1)
   assert.equal(result.jobs[0]?.kind, 'subtitle')
@@ -122,6 +126,7 @@ test('deduplicates active assets, counts skipped jobs, and keeps subtitle langua
     kinds: ['video', 'cover', 'subtitle'],
     subtitleLanguage: 'zh',
   })
+
   assert.deepEqual(duplicate, { jobs: [], skipped: 3 })
 })
 
@@ -134,6 +139,7 @@ test('archive directories preserve owner grouping and do not change single-asset
     kinds: ['video', 'cover'],
     settings,
   })
+
   assert.ok(bundle.jobs.every(job => job.folderMode === 'owner-video'))
   assert.ok(
     bundle.jobs.every(
@@ -149,6 +155,7 @@ test('archive directories preserve owner grouping and do not change single-asset
 
 test('capacity failures leave the original queue untouched instead of partially adding a bundle', () => {
   const [base] = createDownloadJobs(video, 1, 'current', [])
+
   assert.ok(base)
   const existing = Array.from({ length: MAX_PENDING_JOBS - 1 }, (_, index) => ({
     ...base,
@@ -156,6 +163,7 @@ test('capacity failures leave the original queue untouched instead of partially 
     cid: 1000 + index,
   }))
   const original = structuredClone(existing)
+
   assert.throws(
     () =>
       createBundleJobs(video, 1, 'current', existing, {
@@ -174,6 +182,7 @@ test('summaries never mark failed, cancelled, or missing members as completed', 
     progress: 100,
   }))
   const [summary] = summarizeDownloadBundles(states)
+
   assert.ok(summary)
   assert.equal(summary.status, 'failed')
   assert.equal(summary.total, 3)
@@ -182,6 +191,7 @@ test('summaries never mark failed, cancelled, or missing members as completed', 
   assert.equal(summary.cancelled, 1)
   assert.equal(summary.progress, 33)
   const [incomplete] = summarizeDownloadBundles(states.slice(0, 1))
+
   assert.equal(incomplete?.status, 'incomplete')
   assert.equal(incomplete?.missing, 2)
   const [complete] = summarizeDownloadBundles(
@@ -191,6 +201,7 @@ test('summaries never mark failed, cancelled, or missing members as completed', 
       progress: 100,
     })),
   )
+
   assert.equal(complete?.status, 'completed')
   assert.equal(complete?.progress, 100)
 })
@@ -209,6 +220,7 @@ test('history pruning and clearing preserve every member of a large active bundl
     status: index < 149 ? 'completed' : 'queued',
   }))
   const [base] = createDownloadJobs(video, 1, 'current', [])
+
   assert.ok(base)
   const unrelated = Array.from({ length: 200 }, (_, index): DownloadJob => ({
     ...base,
@@ -216,6 +228,7 @@ test('history pruning and clearing preserve every member of a large active bundl
     status: 'completed',
   }))
   const pruned = pruneDownloadJobs([...jobs, ...unrelated])
+
   assert.equal(pruned.length, 250)
   assert.equal(summarizeDownloadBundles(pruned)[0]?.completed, 149)
   assert.deepEqual(clearFinishedDownloadJobs(pruned), jobs)
@@ -223,6 +236,7 @@ test('history pruning and clearing preserve every member of a large active bundl
     ...job,
     status: 'completed',
   }))
+
   assert.equal(pruneDownloadJobs([...unrelated, ...completed]).length, 150)
   assert.equal(
     pruneDownloadJobs([...completed, ...unrelated.slice(0, 1)]).length,
@@ -251,6 +265,7 @@ test('paused bundles reserve all their members so accumulated completed assets c
   const [addition] = createDownloadJobs(video, 1, 'current', [], {
     kind: 'cover',
   })
+
   assert.ok(addition)
   assert.throws(
     () => createBundleJobs(video, 1, 'current', existing, { kinds: ['cover'] }),
@@ -264,10 +279,12 @@ test('paused bundles reserve all their members so accumulated completed assets c
     ...job,
     status: 'completed',
   }))
+
   assert.doesNotThrow(() =>
     assertDownloadQueueCapacity(finished, [...finished, addition]),
   )
   const oversized = [...existing, addition]
+
   assert.doesNotThrow(() =>
     assertDownloadQueueCapacity(
       oversized,
@@ -281,8 +298,10 @@ test('paused bundles reserve all their members so accumulated completed assets c
 
 test('new work reserves storage growth and finished history is evicted as complete groups at the byte bound', () => {
   const [base] = createDownloadJobs(video, 1, 'current', [])
+
   assert.ok(base)
   const oversized = { ...base, title: 'x'.repeat(MAX_DOWNLOAD_QUEUE_BYTES) }
+
   assert.throws(() => assertDownloadQueueCapacity([], [oversized]), /存储上限/)
   assert.doesNotThrow(() =>
     assertDownloadQueueCapacity([oversized], [{ ...oversized, progress: 50 }]),
@@ -294,6 +313,7 @@ test('new work reserves storage growth and finished history is evicted as comple
     title: oversized.title,
     status: 'completed',
   }))
+
   assert.deepEqual(pruneDownloadJobs(jobs), [])
 })
 
@@ -305,6 +325,7 @@ test('retrying a finished bundle reserves its whole group again before any membe
     status: 'failed',
   }))
   const [base] = createDownloadJobs(video, 1, 'current', [], { kind: 'audio' })
+
   assert.ok(base)
   const active = Array.from(
     { length: MAX_PENDING_JOBS - 1 },
@@ -318,6 +339,7 @@ test('retrying a finished bundle reserves its whole group again before any membe
   const next = existing.map((job, index): DownloadJob =>
     index === 0 ? { ...job, status: 'queued' } : job,
   )
+
   assert.throws(
     () => assertDownloadQueueCapacity(existing, next),
     /组合全部结束/,

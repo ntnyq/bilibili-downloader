@@ -28,9 +28,11 @@ self.addEventListener(
     let index: ReturnType<typeof createOpfsFragmentIndex> | undefined
     let samples: ReturnType<typeof createOpfsFragmentSamples> | undefined
     const post = (message: RemuxResponse) => self.postMessage(message)
+
     // Acknowledge startup before parsing indexes or entering synchronous WASM.
     // Neither phase guarantees packet progress or an available event loop.
     post({ type: 'ready' })
+
     try {
       let lastProgressAt = 0
       const onProgress = (bytes: number) => {
@@ -39,11 +41,14 @@ self.addEventListener(
           post({ type: 'progress', bytes })
         }
       }
+
       if (data.kind === 'progressive') {
         await mergeProgressiveMedia(data.inputs, data.handle, onProgress)
         post({ type: 'complete' })
+
         return
       }
+
       writer = await data.handle.createWritable()
       index = createOpfsFragmentIndex(data.directory)
       samples = createOpfsFragmentSamples(data.directory)
@@ -53,6 +58,7 @@ self.addEventListener(
         close: () => fileWriter.close(),
         abort: () => fileWriter.abort(),
       })
+
       await remuxMedia(
         data.kind,
         data.inputs,

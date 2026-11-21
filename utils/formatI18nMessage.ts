@@ -7,6 +7,7 @@ export function formatI18nMessage(message: string, args: unknown[]): string {
   const count = args.find(value => typeof value === 'number')
   const substitutions =
     args.find(Array.isArray) ?? (count === undefined ? [] : [count])
+
   if (typeof count === 'number') {
     const forms = message.split(' | ')
     const index =
@@ -19,8 +20,10 @@ export function formatI18nMessage(message: string, args: unknown[]): string {
         : count === 1
           ? 0
           : forms.length - 1
+
     message = forms[index] ?? message
   }
+
   return message.replace(/\$\$|\$(\d)/g, (placeholder, index) =>
     placeholder === '$$'
       ? '$'

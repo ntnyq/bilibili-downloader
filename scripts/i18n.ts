@@ -13,6 +13,7 @@ export async function createI18nCatalogModule() {
         const messages = generateChromeMessages(
           await parseMessagesFile(resolve(`locales/${locale}.yaml`)),
         )
+
         return [
           locale,
           Object.fromEntries(
@@ -25,6 +26,7 @@ export async function createI18nCatalogModule() {
       }),
     ),
   )
+
   return `export const catalogs: Record<'en' | 'zh_CN', Record<string, string>> = ${JSON.stringify(catalogs)}`
 }
 
@@ -46,6 +48,7 @@ export function runtimeI18nPlugin(): NonNullable<
         if (!files.has(file)) {
           return
         }
+
         pending = pending
           .then(async () => {
             await writeFile(
@@ -56,6 +59,7 @@ export function runtimeI18nPlugin(): NonNullable<
           })
           .catch(error => server.config.logger.error(String(error)))
       }
+
       server.watcher.add([...files])
       server.watcher.on('change', update)
       server.httpServer?.once('close', () =>

@@ -22,6 +22,7 @@ export const MEDIA_DOMAINS = [
 export function normalizeMediaUrl(value: string): string | undefined {
   try {
     const url = new URL(value)
+
     if (
       !['http:', 'https:'].includes(url.protocol)
       || url.username
@@ -34,7 +35,9 @@ export function normalizeMediaUrl(value: string): string | undefined {
     ) {
       return
     }
+
     url.protocol = 'https:'
+
     return url.href
   } catch {
     return undefined
@@ -119,15 +122,18 @@ export function selectAudio(
       i18n.t('streams.thisVideoProvidesOnlyPreviewOrProtectedContent'),
     )
   }
+
   const audio = (data.dash?.audio || [])
     .filter(
       stream =>
         stream.codecs.startsWith('mp4a') && streamUrls(stream).length > 0,
     )
     .toSorted((a, b) => b.bandwidth - a.bandwidth)[0]
+
   if (!audio) {
     throw new Error(i18n.t('streams.noSeparateAacTrackIsAvailableForM4a'))
   }
+
   return {
     kind: 'audio',
     inputs: [toMediaInput(audio)],
@@ -169,9 +175,11 @@ function streamUrls(stream: Stream): string[] {
 function toMediaInput(stream: Stream): MediaInput {
   const urls = streamUrls(stream)
   const firstUrl = urls[0]
+
   if (!firstUrl) {
     throw new Error(i18n.t('streams.noUsableMediaUrlWasReturned'))
   }
+
   return {
     id: JSON.stringify([
       stream.id,
@@ -201,6 +209,7 @@ function frameRate(stream: Stream): number {
   )
     .split('/')
     .map(Number)
+
   return denominator ? numerator / denominator : 0
 }
 
@@ -214,9 +223,11 @@ function codecRank(stream: Stream): number {
   if (stream.codecs.startsWith('avc')) {
     return 3
   }
+
   if (/^(?:hev|hvc)/.test(stream.codecs)) {
     return 2
   }
+
   return 1
 }
 
@@ -242,6 +253,7 @@ export function selectMedia(
       i18n.t('streams.thisVideoProvidesOnlyPreviewOrProtectedContent2'),
     )
   }
+
   const videos = (data.dash?.video || []).filter(
     stream =>
       streamUrls(stream).length > 0
@@ -262,12 +274,14 @@ export function selectMedia(
   )[0]
   const qualityName = (id: number) => {
     const format = data.support_formats.find(item => item.quality === id)
+
     return (
       format?.new_description
       || format?.display_desc
       || i18n.t('streams.quality', [id])
     )
   }
+
   if (video) {
     const audio = (data.dash?.audio || [])
       .filter(
@@ -275,17 +289,21 @@ export function selectMedia(
           stream.codecs.startsWith('mp4a') && streamUrls(stream).length > 0,
       )
       .toSorted((a, b) => b.bandwidth - a.bandwidth)[0]
+
     if (!audio) {
       throw new Error(i18n.t('streams.noUsableAacTrackWasReturnedSignIn'))
     }
+
     return {
       kind: 'dash',
       quality: qualityName(video.id),
       inputs: [video, audio].map(toMediaInput),
     }
   }
+
   if (data.durl?.length) {
     const resolution = QUALITY_RESOLUTIONS[data.quality || 0]
+
     if (
       preference !== 'best'
       && (!resolution || resolution > Number(preference))
@@ -296,6 +314,7 @@ export function selectMedia(
         ]),
       )
     }
+
     const inputs = data.durl.map((stream, index) => ({
       id: JSON.stringify([
         'progressive',
@@ -310,15 +329,18 @@ export function selectMedia(
       bandwidth: 0,
       size: stream.size,
     }))
+
     if (inputs.some(input => !input.urls.length)) {
       throw new Error(i18n.t('streams.thisVideoCdnIsNotSupportedUpdateThe'))
     }
+
     return {
       kind: 'progressive',
       quality: qualityName(data.quality || 0),
       inputs,
     }
   }
+
   if (preference !== 'best') {
     throw new Error(
       i18n.t('streams.noStreamMatchesChangeTheQualitySettingAnd', [
@@ -326,5 +348,6 @@ export function selectMedia(
       ]),
     )
   }
+
   throw new Error(i18n.t('streams.noDownloadableVideoStreamWasReturnedSignIn'))
 }

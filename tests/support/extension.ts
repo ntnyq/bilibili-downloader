@@ -24,6 +24,7 @@ registerHooks({
 
 export function createEvent<Arguments extends unknown[]>() {
   const listeners = new Set<(...args: Arguments) => unknown>()
+
   return {
     addListener(listener: (...args: Arguments) => unknown) {
       return listeners.add(listener)
@@ -45,6 +46,7 @@ export function replaceProperty(
   value: unknown,
 ) {
   const previous = Object.getOwnPropertyDescriptor(target, key)
+
   Object.defineProperty(target, key, { configurable: true, value })
   context.after(() => {
     if (previous) {
@@ -87,12 +89,14 @@ export function installExtension(context: TestContext) {
           },
         ]),
       )
+
       Object.assign(stored, structuredClone(values))
       await changes.emit(patch, 'local')
     },
     async remove(keys: string | string[]) {
       for (const key of Array.isArray(keys) ? keys : [keys]) {
         const oldValue = stored[key]
+
         delete stored[key]
         await changes.emit({ [key]: { oldValue } }, 'local')
       }
@@ -108,12 +112,15 @@ export function installExtension(context: TestContext) {
     new Promise<unknown>((resolve, reject) => {
       if (!messages.listeners.size) {
         reject(new Error('No background message listener'))
+
         return
       }
+
       messages
         .emit(message, sender, reply => resolve(structuredClone(reply)))
         .catch(reject)
     })
+
   for (const [key, value] of Object.entries({
     getURL: (path: string) => `chrome-extension://test${path}`,
     onMessage: messages,
@@ -121,6 +128,7 @@ export function installExtension(context: TestContext) {
   })) {
     replaceProperty(context, browser.runtime, key, value)
   }
+
   replaceProperty(context, browser.storage, 'local', local)
   replaceProperty(context, browser.storage, 'onChanged', changes)
   replaceProperty(context, browser, 'tabs', {
@@ -143,6 +151,7 @@ export function installExtension(context: TestContext) {
     search: async () => [],
     cancel: async () => {},
   })
+
   return {
     stored,
     local,

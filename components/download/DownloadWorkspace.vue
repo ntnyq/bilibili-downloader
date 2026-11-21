@@ -18,8 +18,11 @@ import DownloadBatchImport from './batch/DownloadBatchImport.vue'
 defineProps<{
   runnerError: string
 }>()
+
 const { jobs } = useDownloadQueue()
+
 const activeSection = shallowRef('queue')
+
 const sections = computed(
   () =>
     [
@@ -98,26 +101,28 @@ const currentSection = computed(
                 "
                 class="h-9 gap-2.5 text-xs"
               >
-                <component :is="section.icon" /><span>{{ section.label }}</span
-                ><span
+                <component :is="section.icon" />
+                <span>{{ section.label }}</span>
+                <span
                   v-if="section.id === 'queue'"
                   class="ml-auto tabular-nums"
-                  >{{ jobs.length }}</span
                 >
+                  {{ jobs.length }}
+                </span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem
-              ><SidebarMenuButton
+            <SidebarMenuItem>
+              <SidebarMenuButton
                 as="a"
                 href="/options.html"
                 target="_blank"
                 rel="noreferrer"
                 class="h-9 gap-2.5 text-xs"
-                ><Settings2Icon /><span>{{
-                  i18n.t('downloadWorkspace.settings')
-                }}</span></SidebarMenuButton
-              ></SidebarMenuItem
-            >
+              >
+                <Settings2Icon />
+                <span>{{ i18n.t('downloadWorkspace.settings') }}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
           </SidebarMenu>
         </nav>
       </SidebarContent>
@@ -125,10 +130,13 @@ const currentSection = computed(
         class="hidden pt-6 text-[11px] leading-5 text-muted-foreground md:flex"
       >
         <Separator class="mb-2" />
-        <div><FolderIcon class="mr-1 inline size-4" />Bilibili</div>
-        <span>{{
-          i18n.t('downloadWorkspace.browserDefaultDownloadFolder')
-        }}</span>
+        <div>
+          <FolderIcon class="mr-1 inline size-4" />
+          Bilibili
+        </div>
+        <span>
+          {{ i18n.t('downloadWorkspace.browserDefaultDownloadFolder') }}
+        </span>
       </SidebarFooter>
     </aside>
     <main class="flex min-w-0 bg-muted p-3 sm:p-5 lg:p-6">
@@ -145,10 +153,10 @@ const currentSection = computed(
           <Button
             @click="activeSection = 'batch'"
             v-if="activeSection === 'queue'"
-            ><PlusIcon class="size-4" />{{
-              i18n.t('downloadWorkspace.batchImport')
-            }}</Button
           >
+            <PlusIcon class="size-4" />
+            {{ i18n.t('downloadWorkspace.batchImport') }}
+          </Button>
         </header>
         <p
           v-if="activeSection !== 'batch' && activeSection !== 'library'"
@@ -157,7 +165,8 @@ const currentSection = computed(
           <InfoIcon
             class="size-4 shrink-0"
             aria-hidden="true"
-          />{{
+          />
+          {{
             i18n.t('downloadWorkspace.keepThisPageOpenWhileDownloadingYouCan')
           }}
         </p>
@@ -165,10 +174,11 @@ const currentSection = computed(
           v-if="runnerError"
           class="mb-4 text-sm text-destructive"
           variant="destructive"
-          ><AlertDescription>
-            {{ runnerError }}
-          </AlertDescription></Alert
         >
+          <AlertDescription>
+            {{ runnerError }}
+          </AlertDescription>
+        </Alert>
         <!-- Keep feature instances mounted: navigation must not stop imports or native tasks. -->
         <DownloadQueue v-show="activeSection === 'queue'" />
         <DownloadBundles v-show="activeSection === 'bundles'" />
@@ -186,16 +196,21 @@ const currentSection = computed(
           v-if="activeSection !== 'batch' && activeSection !== 'library'"
           class="mt-6 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs text-muted-foreground"
         >
-          <span>{{
-            i18n.t('downloadWorkspace.eachPartIsSavedSeparatelyDownloadsRunIn')
-          }}</span>
+          <span>
+            {{
+              i18n.t(
+                'downloadWorkspace.eachPartIsSavedSeparatelyDownloadsRunIn',
+              )
+            }}
+          </span>
           <Button
             @click="activeSection = 'local'"
             variant="ghost"
             size="sm"
             class="text-primary"
-            >{{ i18n.t('downloadWorkspace.manageDownloadCache') }}</Button
           >
+            {{ i18n.t('downloadWorkspace.manageDownloadCache') }}
+          </Button>
         </footer>
       </div>
     </main>

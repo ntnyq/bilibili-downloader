@@ -19,10 +19,13 @@ class SparseDisk implements DiskAccess {
 
   read(buffer: Uint8Array, { at }: { at: number }) {
     const length = Math.max(0, Math.min(buffer.byteLength, this.size - at))
+
     buffer.fill(0)
+
     for (const chunk of this.chunks) {
       const start = Math.max(at, chunk.at)
       const end = Math.min(at + length, chunk.at + chunk.data.byteLength)
+
       if (start < end) {
         buffer.set(
           chunk.data.subarray(start - chunk.at, end - chunk.at),
@@ -30,6 +33,7 @@ class SparseDisk implements DiskAccess {
         )
       }
     }
+
     return length
   }
 
@@ -37,9 +41,12 @@ class SparseDisk implements DiskAccess {
     if (this.failure) {
       throw this.failure
     }
+
     const length = Math.min(buffer.byteLength, this.maxWrite)
+
     this.chunks.push({ at, data: new Uint8Array(buffer.subarray(0, length)) })
     this.size = Math.max(this.size, at + length)
+
     return length
   }
 
@@ -59,13 +66,16 @@ class SparseDisk implements DiskAccess {
 
   blob() {
     const bytes = new Uint8Array(this.size)
+
     this.read(bytes, { at: 0 })
+
     return new Blob([bytes])
   }
 }
 
 async function createCore(context: TestContext) {
   const previous = Object.getOwnPropertyDescriptor(globalThis, 'self')
+
   Object.defineProperty(globalThis, 'self', {
     configurable: true,
     value: { location: { href: import.meta.resolve('@ffmpeg/core') } },
@@ -77,6 +87,7 @@ async function createCore(context: TestContext) {
       Reflect.deleteProperty(globalThis, 'self')
     }
   })
+
   return loadFFmpegCore(import.meta.resolve('@ffmpeg/core'), {
     wasmBinary: await readFile(
       new URL(import.meta.resolve('@ffmpeg/core/wasm')),
@@ -86,15 +97,19 @@ async function createCore(context: TestContext) {
 
 async function packetData(blob: Blob, kind: 'video' | 'audio') {
   const input = new Input({ formats: [MP4], source: new BlobSource(blob) })
+
   try {
     const track =
       kind === 'video'
         ? await input.getPrimaryVideoTrack()
         : await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const packets = []
+
     for await (const packet of new EncodedPacketSink(track).packets()) {
       const hash = createHash('sha256')
+
       if (kind === 'video') {
         // FFmpeg concat can repeat SPS/PPS at keyframes without changing any
         // encoded picture. Compare every other NAL, in original decode order.
@@ -103,20 +118,26 @@ async function packetData(blob: Blob, kind: 'video' | 'audio') {
           packet.data.byteOffset,
           packet.data.byteLength,
         )
+
         for (let offset = 0; offset + 4 <= packet.data.length;) {
           const length = view.getUint32(offset)
           const nal = packet.data.subarray(offset + 4, offset + 4 + length)
+
           assert.equal(nal.length, length)
+
           if (![7, 8].includes(nal[0]! & 0x1f)) {
             hash.update(nal)
           }
+
           offset += 4 + length
         }
       } else {
         hash.update(packet.data)
       }
+
       packets.push({ hash: hash.digest('hex'), timestamp: packet.timestamp })
     }
+
     return packets
   } finally {
     input.dispose()
@@ -126,6 +147,7 @@ async function packetData(blob: Blob, kind: 'video' | 'audio') {
 test('the real WASM filesystem can seek past 4 GiB, retry partial writes and truncate without media allocation', async context => {
   const core = await createCore(context)
   const disk = new SparseDisk()
+
   disk.maxWrite = 2
   const node = core.FS.create('/large.mp4')
   // Capture the actual attached node without exposing test-only runtime APIs.
@@ -133,6 +155,7 @@ test('the real WASM filesystem can seek past 4 GiB, retry partial writes and tru
   const file = createFFmpegDiskFile(fs, '/large.mp4', disk, () => {})
   const offset = 5 * 1024 ** 3
   const stream = { position: 0 }
+
   assert.equal(node.stream_ops.llseek(stream, offset, 0), offset)
   assert.equal(
     node.stream_ops.write(stream, new Uint8Array([1, 2, 3, 4]), 0, 4, offset),
@@ -143,6 +166,7 @@ test('the real WASM filesystem can seek past 4 GiB, retry partial writes and tru
   assert.equal(Reflect.get(node, 'usedBytes'), 0)
   assert.equal(node.node_ops.getattr(node).size, offset + 4)
   const bytes = new Uint8Array(4)
+
   assert.equal(node.stream_ops.read(stream, bytes, 0, 4, offset), 4)
   assert.deepEqual([...bytes], [1, 2, 3, 4])
   assert.equal(node.stream_ops.llseek(stream, -4, 2), offset)
@@ -155,6 +179,7 @@ test('the real WASM filesystem can seek past 4 GiB, retry partial writes and tru
 test('preserves disk quota errors instead of returning a truncated successful MP4', async context => {
   const core = await createCore(context)
   const disk = new SparseDisk()
+
   disk.failure = new DOMException('disk full', 'QuotaExceededError')
   const node = core.FS.create('/failed.mp4')
   const file = createFFmpegDiskFile(
@@ -163,6 +188,7 @@ test('preserves disk quota errors instead of returning a truncated successful MP
     disk,
     () => {},
   )
+
   assert.throws(
     () => node.stream_ops.write({ position: 0 }, new Uint8Array([1]), 0, 1, 0),
     { name: 'ErrnoError' },
@@ -181,11 +207,13 @@ for (const format of ['flv', 'mp4']) {
         new URL('../fixtures/downloads/progressive.mp4', import.meta.url),
       ),
     ])
+
     core.FS.mkdir('/inputs')
     core.FS.writeFile('/inputs/0.media', bytes)
     core.FS.writeFile('/inputs/1.media', bytes)
     const disk = new SparseDisk()
     const timeout = context.mock.method(core, 'setTimeout')
+
     runProgressiveFFmpeg(core, disk, 2, () => {})
     assert.deepEqual(
       timeout.mock.calls.map(call => call.arguments),
@@ -193,17 +221,21 @@ for (const format of ['flv', 'mp4']) {
     )
     const segmentOffsets: number[] = []
     const trackOffsets: number[] = []
+
     for (const kind of ['video', 'audio'] as const) {
       const actual = await packetData(disk.blob(), kind)
       const original = await packetData(reference, kind)
+
       assert.deepEqual(
         actual.map(packet => packet.hash),
         [...original, ...original].map(packet => packet.hash),
       )
       const starts = actual.filter((_, index) => index % original.length === 0)
+
       assert.ok(starts[1]!.timestamp > starts[0]!.timestamp + 1.7)
       segmentOffsets.push(starts[1]!.timestamp - starts[0]!.timestamp)
       trackOffsets.push(actual[0]!.timestamp - original[0]!.timestamp)
+
       for (const [index, packet] of actual.entries()) {
         const segmentOffset =
           index < original.length ? 0 : segmentOffsets.at(-1)!
@@ -211,9 +243,11 @@ for (const format of ['flv', 'mp4']) {
           original[index % original.length]!.timestamp
           + trackOffsets.at(-1)!
           + segmentOffset
+
         assert.ok(Math.abs(packet.timestamp - expected) < 0.002)
       }
     }
+
     assert.ok(Math.abs(segmentOffsets[0]! - segmentOffsets[1]!) < 0.002)
     assert.ok(
       Math.abs(trackOffsets[0]! - trackOffsets[1]!) < 0.002,
@@ -225,17 +259,20 @@ for (const format of ['flv', 'mp4']) {
 
 test('progressive video-only media remains valid without inventing an audio track', async context => {
   const core = await createCore(context)
+
   core.FS.mkdir('/inputs')
   core.FS.writeFile(
     '/inputs/0.media',
     await readFile(new URL('../fixtures/downloads/video.mp4', import.meta.url)),
   )
   const disk = new SparseDisk()
+
   runProgressiveFFmpeg(core, disk, 1, () => {})
   const input = new Input({
     formats: [MP4],
     source: new BlobSource(disk.blob()),
   })
+
   assert.ok(await input.getPrimaryVideoTrack())
   assert.equal(await input.getPrimaryAudioTrack(), null)
   input.dispose()
@@ -243,12 +280,14 @@ test('progressive video-only media remains valid without inventing an audio trac
 
 test('real WASM reports the original disk error instead of publishing a partial file', async context => {
   const core = await createCore(context)
+
   core.FS.mkdir('/inputs')
   core.FS.writeFile(
     '/inputs/0.media',
     await readFile(new URL('../fixtures/downloads/video.mp4', import.meta.url)),
   )
   const disk = new SparseDisk()
+
   disk.failure = new DOMException('disk full', 'QuotaExceededError')
   assert.throws(
     () => runProgressiveFFmpeg(core, disk, 1, () => {}),
@@ -258,6 +297,7 @@ test('real WASM reports the original disk error instead of publishing a partial 
 
 test('invalid progressive media fails instead of becoming a completed empty file', async context => {
   const core = await createCore(context)
+
   core.FS.mkdir('/inputs')
   core.FS.writeFile('/inputs/0.media', 'invalid media')
   assert.throws(

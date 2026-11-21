@@ -17,20 +17,22 @@ const {
 
 <template>
   <Card class="gap-4 py-5 shadow-none">
-    <CardHeader class="px-5"
-      ><CardTitle class="text-sm">{{
-        i18n.t('downloadCache.browserDownloadCache')
-      }}</CardTitle></CardHeader
-    >
+    <CardHeader class="px-5">
+      <CardTitle class="text-sm">
+        {{ i18n.t('downloadCache.browserDownloadCache') }}
+      </CardTitle>
+    </CardHeader>
     <CardContent class="px-5">
       <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
         <p class="text-muted-foreground">
-          <template v-if="stats">{{
-            i18n.t('downloadCache.mediaCacheEntries', [
-              formatBytes(stats.bytes),
-              stats.entries,
-            ])
-          }}</template>
+          <template v-if="stats">
+            {{
+              i18n.t('downloadCache.mediaCacheEntries', [
+                formatBytes(stats.bytes),
+                stats.entries,
+              ])
+            }}
+          </template>
           <template v-else>
             {{
               isRefreshing
@@ -47,8 +49,9 @@ const {
             size="sm"
             type="button"
             class="text-muted-foreground hover:text-primary disabled:opacity-50"
-            >{{ i18n.t('downloadCache.refreshUsage') }}</Button
           >
+            {{ i18n.t('downloadCache.refreshUsage') }}
+          </Button>
           <Button
             @click="clear"
             :disabled="isClearing"
@@ -66,12 +69,14 @@ const {
         </div>
       </div>
       <p class="mt-2.5 text-[12px] text-muted-foreground leading-5">
-        <template v-if="availableBytes !== null">{{
-          i18n.t('downloadCache.approximatelyOfBrowserQuotaRemaining', [
-            formatBytes(availableBytes),
-          ])
-        }}</template
-        >{{ i18n.t('downloadCache.thereIsNoFixedMediaInputSizeLimit') }}
+        <template v-if="availableBytes !== null">
+          {{
+            i18n.t('downloadCache.approximatelyOfBrowserQuotaRemaining', [
+              formatBytes(availableBytes),
+            ])
+          }}
+        </template>
+        {{ i18n.t('downloadCache.thereIsNoFixedMediaInputSizeLimit') }}
       </p>
       <p class="mt-2.5 text-[12px] text-muted-foreground leading-5">
         {{
@@ -82,10 +87,11 @@ const {
         v-if="cacheError"
         class="mt-2.5 text-destructive"
         variant="destructive"
-        ><AlertDescription>
-          {{ cacheError }}
-        </AlertDescription></Alert
       >
+        <AlertDescription>
+          {{ cacheError }}
+        </AlertDescription>
+      </Alert>
       <p
         v-if="notice"
         class="mt-2.5 text-primary"

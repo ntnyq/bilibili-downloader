@@ -18,14 +18,18 @@ export function sanitizeFilename(value: string, limit = 220): string {
     .replace(/\s+/g, ' ')
     .replace(/^[. ]+|[. ]+$/g, '')
   let result = ''
+
   for (const char of sanitized) {
     if (new TextEncoder().encode(result + char).length > limit) {
       break
     }
+
     result += char
   }
+
   result =
     result.replace(/[. ]+$/g, '') || i18n.t('downloadLibraryFilters.video')
+
   return /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(result)
     ? `_${result}`
     : result
@@ -51,6 +55,7 @@ export function createDownloadPath(
     | 'page'
     | 'part'
     | 'bvid'
+    | 'epId'
     | 'title'
     | 'owner'
     | 'quality'
@@ -65,9 +70,12 @@ export function createDownloadPath(
     bvid: job.bvid,
     page: job.kind === 'cover' ? '' : `P${String(job.page).padStart(2, '0')}`,
     part: job.kind === 'cover' ? '' : sanitizeFilename(job.part, 60),
-    partSuffix: isMultipart
-      ? `_P${String(job.page).padStart(2, '0')}_${sanitizeFilename(job.part, 60)}`
-      : '',
+    partSuffix:
+      job.epId === undefined
+        ? isMultipart
+          ? `_P${String(job.page).padStart(2, '0')}_${sanitizeFilename(job.part, 60)}`
+          : ''
+        : `_${sanitizeFilename(job.part, 60)}`,
     owner: sanitizeFilename(
       job.owner || i18n.t('createDownloadPath.unknownUploader'),
       60,
@@ -89,12 +97,15 @@ export function createDownloadPath(
     ),
   )
   const folders = ['Bilibili']
+
   if (['owner', 'owner-video'].includes(job.folderMode)) {
     folders.push(values.owner || i18n.t('createDownloadPath.unknownUploader'))
   }
+
   if (['video', 'owner-video'].includes(job.folderMode)) {
     folders.push(`${values.title}_${job.bvid}`)
   }
+
   const extensions = {
     video: 'mp4',
     audio: 'm4a',
@@ -103,8 +114,10 @@ export function createDownloadPath(
     danmaku: 'xml',
   }
   const suffix = extension || extensions[job.kind]
+
   if (!/^(?:mp4|m4a|jpg|png|webp|gif|srt|xml)$/.test(suffix)) {
     throw new Error(i18n.t('createDownloadPath.unsupportedFileFormat'))
   }
+
   return [...folders, `${name}.${suffix}`].join('/')
 }

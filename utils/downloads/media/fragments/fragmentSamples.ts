@@ -87,17 +87,21 @@ export function createDiskFragmentSamples(
         ),
       )
     }
+
     const result = queue.then(() => {
       if (failure) {
         throw failure.error
       }
+
       return operation()
     })
+
     queue = result
       .then(() => {})
       .catch(error => {
         failure ??= { error }
       })
+
     return result
   }
 
@@ -108,16 +112,19 @@ export function createDiskFragmentSamples(
     writing: boolean,
   ) {
     let consumed = 0
+
     while (consumed < bytes.length) {
       const remaining = bytes.subarray(consumed)
       const count = await (writing
         ? file.write(remaining, position + consumed)
         : file.read(remaining, position + consumed))
+
       if (!Number.isInteger(count) || count <= 0 || count > remaining.length) {
         throw new RangeError(
           i18n.t('fragmentSamples.sampleStorageFileReadOrWriteIncomplete'),
         )
       }
+
       consumed += count
     }
   }
@@ -126,16 +133,22 @@ export function createDiskFragmentSamples(
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 0xffff_ffff) {
       throw new RangeError(i18n.t('fragmentSamples.invalidSampleTrackId'))
     }
+
     let track = tracks.get(trackId)
+
     if (track) {
       return track
     }
+
     const opened: FragmentSampleFile[] = []
+
     try {
       const getFile = async (kind: FileKind) => {
         const file = await open(trackId, kind)
+
         opened.push(file)
         await file.truncate(0)
+
         return file
       }
       const files = {
@@ -144,6 +157,7 @@ export function createDiskFragmentSamples(
         'sort-a': await getFile('sort-a'),
         'sort-b': await getFile('sort-b'),
       }
+
       track = {
         files,
         pages: [],
@@ -162,6 +176,7 @@ export function createDiskFragmentSamples(
         sortedPage: undefined,
       }
       tracks.set(trackId, track)
+
       return track
     } catch (error) {
       for (const file of opened) {
@@ -169,6 +184,7 @@ export function createDiskFragmentSamples(
           .then(() => file.close())
           .catch(() => {})
       }
+
       throw error
     }
   }
@@ -177,10 +193,12 @@ export function createDiskFragmentSamples(
     if (!page.dirty) {
       return
     }
+
     const length = Math.min(
       PAGE_SIZE,
       (track.end - track.base) * RECORD_SIZE - page.index * PAGE_SIZE,
     )
+
     if (length > 0) {
       await transferFileBytes(
         track.files.records,
@@ -189,6 +207,7 @@ export function createDiskFragmentSamples(
         true,
       )
     }
+
     track.recordBytes = Math.max(
       track.recordBytes,
       page.index * PAGE_SIZE + length,
@@ -202,23 +221,30 @@ export function createDiskFragmentSamples(
         i18n.t('fragmentSamples.invalidSampleStorageReference'),
       )
     }
+
     const index = Math.floor((id - track.base) / RECORDS_PER_PAGE)
     let page = track.pages.find(page => page.index === index)
+
     if (page) {
       track.pages.splice(track.pages.indexOf(page), 1)
       track.pages.push(page)
+
       return page
     }
+
     if (track.pages.length === 2) {
       const oldest = track.pages.shift()!
+
       await flushPage(track, oldest)
     }
+
     page = { index, bytes: new Uint8Array(PAGE_SIZE), dirty: false }
     // The last record may be a just-appended slot not written yet.
     const written = Math.min(
       PAGE_SIZE,
       Math.max(0, track.recordBytes - index * PAGE_SIZE),
     )
+
     if (written > 0) {
       await transferFileBytes(
         track.files.records,
@@ -227,7 +253,9 @@ export function createDiskFragmentSamples(
         false,
       )
     }
+
     track.pages.push(page)
+
     return page
   }
 
@@ -263,9 +291,11 @@ export function createDiskFragmentSamples(
     const page = await getSamplePage(track, id)
     const view = getSampleView(track, page, id)
     const type = view.getUint8(48)
+
     if (type > 1) {
       throw new RangeError(i18n.t('fragmentSamples.invalidSampleStorageType'))
     }
+
     const sample: FragmentSample = {
       timestamp: view.getFloat64(0),
       decodeTimestamp: view.getFloat64(8),
@@ -275,7 +305,9 @@ export function createDiskFragmentSamples(
       mediaOffset: view.getFloat64(40),
       type: type ? 'key' : 'delta',
     }
+
     assertValidSample(sample)
+
     return sample
   }
 
@@ -285,9 +317,11 @@ export function createDiskFragmentSamples(
     if (id < track.base) {
       return
     }
+
     assertValidSample(sample)
     const page = await getSamplePage(track, id)
     const view = getSampleView(track, page, id)
+
     view.setFloat64(0, sample.timestamp)
     view.setFloat64(8, sample.decodeTimestamp)
     view.setFloat64(16, sample.duration)
@@ -302,6 +336,7 @@ export function createDiskFragmentSamples(
     if (!track.mediaUsed) {
       return
     }
+
     await transferFileBytes(
       track.files.media,
       track.mediaBuffer.subarray(0, track.mediaUsed),
@@ -318,11 +353,14 @@ export function createDiskFragmentSamples(
     total: number,
   ) {
     const buffer = new Uint8Array(IO_SIZE)
+
     for (let offset = consumed; offset < total; offset += IO_SIZE) {
       const bytes = buffer.subarray(0, Math.min(IO_SIZE, total - offset))
+
       await transferFileBytes(file, bytes, offset, false)
       await transferFileBytes(file, bytes, offset - consumed, true)
     }
+
     await file.truncate(total - consumed)
   }
 
@@ -335,7 +373,9 @@ export function createDiskFragmentSamples(
       return enqueueOperation(async () => {
         const track = await getTrack(trackId)
         const record = { ...sample, mediaOffset: track.mediaEnd }
+
         assertValidSample(record)
+
         if (
           data.length !== sample.size
           || !Number.isSafeInteger((track.end + 1) * RECORD_SIZE)
@@ -345,24 +385,30 @@ export function createDiskFragmentSamples(
             i18n.t('fragmentSamples.invalidSampleStorageSize'),
           )
         }
+
         for (let offset = 0; offset < data.length;) {
           const length = Math.min(
             data.length - offset,
             IO_SIZE - track.mediaUsed,
           )
+
           track.mediaBuffer.set(
             data.subarray(offset, offset + length),
             track.mediaUsed,
           )
           track.mediaUsed += length
           offset += length
+
           if (track.mediaUsed === IO_SIZE) {
             await flushMedia(track)
           }
         }
+
         track.mediaEnd += data.length
         const id = track.end++
+
         await set(track, id, record)
+
         return id
       })
     },
@@ -377,6 +423,7 @@ export function createDiskFragmentSamples(
     sort(trackId: number, start: number, count: number) {
       return enqueueOperation(async () => {
         const track = await getTrack(trackId)
+
         if (
           !Number.isSafeInteger(count)
           || count < 1
@@ -385,25 +432,34 @@ export function createDiskFragmentSamples(
         ) {
           throw new RangeError(i18n.t('fragmentSamples.invalidGopStorageRange'))
         }
+
         track.sortedPage = undefined
         track.sortedCount = count
+
         if (count <= SORT_RUN) {
           for (let at = 0; at < count; at++) {
             track.sortedMemory[at] = (await get(track, start + at)).timestamp
           }
+
           track.sortedMemory.subarray(0, count).sort()
+
           return
         }
+
         track.externalSort = true
         let source: 'sort-a' | 'sort-b' = 'sort-a'
         let destination: 'sort-a' | 'sort-b' = 'sort-b'
         const values = track.sortedMemory
+
         for (let offset = 0; offset < count; offset += SORT_RUN) {
           const length = Math.min(SORT_RUN, count - offset)
+
           for (let at = 0; at < length; at++) {
             values[at] = (await get(track, start + offset + at)).timestamp
           }
+
           const enqueueOperation = values.subarray(0, length)
+
           enqueueOperation.sort()
           await transferFileBytes(
             track.files[source],
@@ -416,7 +472,9 @@ export function createDiskFragmentSamples(
             true,
           )
         }
+
         await track.files[source].truncate(count * 8)
+
         for (let width = SORT_RUN; width < count; width *= 2) {
           await track.files[destination].truncate(0)
           const output = new Float64Array(IO_SIZE / 8)
@@ -424,6 +482,7 @@ export function createDiskFragmentSamples(
           let written = 0
           const emit = async (value: number) => {
             output[used++] = value
+
             if (used === output.length) {
               await transferFileBytes(
                 track.files[destination],
@@ -439,6 +498,7 @@ export function createDiskFragmentSamples(
               used = 0
             }
           }
+
           for (let offset = 0; offset < count; offset += width * 2) {
             const createSortCursor = (first: number, end: number) => {
               let at = first
@@ -450,6 +510,7 @@ export function createDiskFragmentSamples(
                 bytes.byteOffset,
                 bytes.byteLength / 8,
               )
+
               return {
                 has: () => at < end,
                 async peek() {
@@ -463,6 +524,7 @@ export function createDiskFragmentSamples(
                       false,
                     )
                   }
+
                   return view[index]!
                 },
                 next() {
@@ -479,6 +541,7 @@ export function createDiskFragmentSamples(
               Math.min(offset + width, count),
               Math.min(offset + width * 2, count),
             )
+
             while (left.has() || right.has()) {
               if (
                 !right.has()
@@ -492,6 +555,7 @@ export function createDiskFragmentSamples(
               }
             }
           }
+
           if (used) {
             await transferFileBytes(
               track.files[destination],
@@ -500,8 +564,10 @@ export function createDiskFragmentSamples(
               true,
             )
           }
+
           ;[source, destination] = [destination, source]
         }
+
         track.sortedFile = source
         track.sortedCount = count
       })
@@ -509,6 +575,7 @@ export function createDiskFragmentSamples(
     sorted(trackId: number, index: number) {
       return enqueueOperation(async () => {
         const track = await getTrack(trackId)
+
         if (
           !Number.isInteger(index)
           || index < 0
@@ -518,14 +585,18 @@ export function createDiskFragmentSamples(
             i18n.t('fragmentSamples.invalidSortedTimestampReference'),
           )
         }
+
         if (track.sortedCount <= SORT_RUN) {
           return track.sortedMemory[index]!
         }
+
         const offset = Math.floor((index * 8) / IO_SIZE) * IO_SIZE
+
         if (track.sortedPage?.offset !== offset) {
           const bytes = new Uint8Array(
             Math.min(IO_SIZE, track.sortedCount * 8 - offset),
           )
+
           await transferFileBytes(
             track.files[track.sortedFile],
             bytes,
@@ -534,6 +605,7 @@ export function createDiskFragmentSamples(
           )
           track.sortedPage = { offset, bytes }
         }
+
         return new Float64Array(
           track.sortedPage.bytes.buffer,
           track.sortedPage.bytes.byteOffset,
@@ -544,6 +616,7 @@ export function createDiskFragmentSamples(
     readMedia(trackId: number, offset: number, length: number) {
       return enqueueOperation(async () => {
         const track = await getTrack(trackId)
+
         if (
           !Number.isSafeInteger(offset)
           || offset < track.mediaBase
@@ -556,20 +629,24 @@ export function createDiskFragmentSamples(
             i18n.t('fragmentSamples.invalidSampleMediaReadRange'),
           )
         }
+
         await flushMedia(track)
         const bytes = new Uint8Array(length)
+
         await transferFileBytes(
           track.files.media,
           bytes,
           offset - track.mediaBase,
           false,
         )
+
         return bytes
       })
     },
     release(trackId: number, before: number) {
       return enqueueOperation(async () => {
         const track = await getTrack(trackId)
+
         if (
           !Number.isSafeInteger(before)
           || before < track.base
@@ -579,13 +656,17 @@ export function createDiskFragmentSamples(
             i18n.t('fragmentSamples.invalidSampleReleaseRange'),
           )
         }
+
         if (before === track.base) {
           return
         }
+
         const last = await get(track, before - 1)
+
         for (const page of track.pages) {
           await flushPage(track, page)
         }
+
         track.pages = []
         await flushMedia(track)
         await compactFile(
@@ -594,6 +675,7 @@ export function createDiskFragmentSamples(
           (track.end - track.base) * RECORD_SIZE,
         )
         const mediaBase = last.mediaOffset + last.size
+
         await compactFile(
           track.files.media,
           mediaBase - track.mediaBase,
@@ -605,6 +687,7 @@ export function createDiskFragmentSamples(
         track.mediaWritten = track.mediaEnd - mediaBase
         track.sortedCount = 0
         track.sortedPage = undefined
+
         if (track.externalSort) {
           await track.files['sort-a'].truncate(0)
           await track.files['sort-b'].truncate(0)
@@ -614,8 +697,10 @@ export function createDiskFragmentSamples(
     },
     dispose() {
       disposed = true
+
       return (disposal ??= queue.then(async () => {
         let closeFailure: { error: unknown } | undefined
+
         for (const track of tracks.values()) {
           for (const file of Object.values(track.files)) {
             try {
@@ -625,7 +710,9 @@ export function createDiskFragmentSamples(
             }
           }
         }
+
         tracks.clear()
+
         if (closeFailure) {
           throw closeFailure.error
         }
@@ -680,12 +767,15 @@ export function createOpfsFragmentSamples(
       `samples-${trackId}-${kind}.bin`,
       { create: true },
     )
+
     if (!isSyncAccessFileHandle(handle)) {
       throw new Error(
         i18n.t('fragmentSamples.thisBrowserDoesNotSupportWorkerSampleDisk'),
       )
     }
+
     const file = await handle.createSyncAccessHandle()
+
     return {
       read: (data, position) => file.read(data, { at: position }),
       write: (data, position) => file.write(data, { at: position }),

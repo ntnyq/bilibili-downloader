@@ -29,10 +29,13 @@ for (const options of [
   test(`lazily pages MP4 tables and seeks correctly: ${JSON.stringify(options)}`, async () => {
     const fixture = await indexedMp4(options)
     const input = new Input({ formats: [MP4], source: fixture.source })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
       assert.equal(await track.getCodec(), 'aac')
+
       // Header reads can overlap a few fields, but track discovery must not
       // materialize the sample-table payloads.
       for (const table of fixture.tableRanges) {
@@ -42,6 +45,7 @@ for (const options of [
           ),
         )
       }
+
       const sink = new EncodedPacketSink(track)
       const sizePageBoundary = options.fieldSize
         ? (16 * 1024 * 8) / options.fieldSize
@@ -73,14 +77,18 @@ for (const options of [
         fixture.samples - 2,
         fixture.samples - 1,
       ].filter(index => index < fixture.samples)
+
       for (const index of probes.reverse()) {
         const packet = await sink.getPacket(fixture.timestamp(index))
+
         assert.ok(packet)
         assert.equal(packet.timestamp, fixture.timestamp(index))
         assert.equal(packet.type, 'key')
         assert.deepEqual(packet.data, fixture.packet(index))
+
         if (index + 1 < fixture.samples) {
           const next = await sink.getNextPacket(packet)
+
           assert.ok(next)
           assert.equal(next.timestamp, fixture.timestamp(index + 1))
           assert.deepEqual(next.data, fixture.packet(index + 1))
@@ -88,7 +96,9 @@ for (const options of [
           assert.equal(await sink.getNextPacket(packet), null)
         }
       }
+
       const key = await sink.getKeyPacket(fixture.timestamp(16382) + 0.001)
+
       assert.ok(key)
       assert.equal(key.timestamp, fixture.timestamp(16382))
       assert.ok(
@@ -111,8 +121,10 @@ for (const options of [
 test('serializes simultaneous sample-table loads across tracks and shares same-track initialization', async () => {
   const fixture = await indexedMp4({ tracks: 2 })
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const tracks = await input.getAudioTracks()
+
     assert.equal(tracks.length, 2)
     const sinks = tracks.map(track => new EncodedPacketSink(track))
     const packets = await Promise.all(
@@ -120,16 +132,20 @@ test('serializes simultaneous sample-table loads across tracks and shares same-t
         sinks[at % 2]!.getPacket(fixture.timestamp(index)),
       ),
     )
+
     for (const [at, index] of [0, 16000, 8192, 2, 17000, 8191].entries()) {
       const packet = packets[at]
+
       assert.ok(packet)
       assert.equal(packet.timestamp, fixture.timestamp(index))
       assert.deepEqual(packet.data, fixture.packet(index))
     }
+
     for (const table of fixture.tableRanges) {
       if (table.name !== 'stts') {
         continue
       }
+
       assert.equal(
         fixture.requests.filter(
           read => read.start === table.start + 8 && read.end - read.start === 8,
@@ -150,11 +166,13 @@ test('rejects truncated or out-of-container sample tables before oversized reads
       fieldSize,
     })
     const original = new Uint8Array(await fixture.blob().arrayBuffer())
+
     for (const table of fixture.tableRanges) {
       for (const corruption of ['count', 'extent'] as const) {
         const data = original.slice()
         const countOffset =
           table.name === 'stsz' || table.name === 'stz2' ? 16 : 12
+
         new DataView(data.buffer).setUint32(
           table.start + (corruption === 'count' ? countOffset : 0),
           0xffff_ffff,
@@ -167,13 +185,16 @@ test('rejects truncated or out-of-container sample tables before oversized reads
             maxCacheSize: 0,
             read(start, end) {
               reads.push(end - start)
+
               return data.slice(start, end)
             },
           }),
         })
+
         try {
           await assert.rejects(async () => {
             const track = await input.getPrimaryAudioTrack()
+
             assert.ok(track)
             await new EncodedPacketSink(track).getFirstPacket()
           }, /Truncated .* sample table|beyond its container/u)
@@ -199,19 +220,25 @@ test('propagates input I/O failures and retries a failed sample-table initializa
       read(start, end) {
         if (shouldFail) {
           shouldFail = false
+
           throw diskError
         }
+
         return data.slice(start, end)
       },
     }),
   })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const sink = new EncodedPacketSink(track)
+
     shouldFail = true
     await assert.rejects(sink.getFirstPacket(), error => error === diskError)
     const packet = await sink.getFirstPacket()
+
     assert.ok(packet)
     assert.deepEqual(packet.data, fixture.packet(0))
   } finally {
@@ -232,14 +259,18 @@ test('propagates cancellation while awaiting an index page', async () => {
         if (shouldDispose) {
           input.dispose()
         }
+
         await Promise.resolve()
+
         return data.slice(start, end)
       },
     }),
   })
   const track = await input.getPrimaryAudioTrack()
+
   assert.ok(track)
   shouldDispose = true
+
   try {
     await assert.rejects(
       new EncodedPacketSink(track).getFirstPacket(),
@@ -254,14 +285,18 @@ test('uses bounded Blob reads when remuxing an MP4 with a large padded moov', as
   const fixture = await indexedMp4({ samples: 17003, padding: 8 * 1024 * 1024 })
   const original = fixture.blob()
   const reads: number[] = []
+
   class TrackedBlob extends Blob {
     override slice(start = 0, end = this.size, type?: string) {
       reads.push(Math.min(end, this.size) - start)
+
       return super.slice(start, end, type)
     }
   }
+
   const blob = new TrackedBlob([original])
   let writtenBytes = 0
+
   await remuxMedia(
     'audio',
     [blob],
@@ -291,24 +326,30 @@ for (const browser of [false, true]) {
     )
     const fixture = await indexedMp4({ padding: 8 * 1024 * 1024 })
     const reads: number[] = []
+
     class TrackedBlob extends Blob {
       override slice(start = 0, end = this.size, type?: string) {
         reads.push(Math.min(end, this.size) - start)
+
         return super.slice(start, end, type)
       }
     }
+
     const input = new library.Input({
       formats: [library.MP4],
       source: new library.BlobSource(new TrackedBlob([fixture.blob()]), {
         useStreamReader: false,
       }),
     })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
       const packet = await new library.EncodedPacketSink(track).getPacket(
         fixture.timestamp(16382),
       )
+
       assert.ok(packet)
       assert.deepEqual(packet.data, fixture.packet(16382))
       assert.ok(Math.max(...reads) <= 256 * 1024)
@@ -328,18 +369,23 @@ for (const fieldSize of [0, 4, 8, 16] as const) {
       keyInterval: 17,
     })
     const input = new Input({ formats: [MP4], source: fixture.source })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
       const sink = new EncodedPacketSink(track)
+
       for (const index of [20002, 3, 16383, 10, 32768, 16384, 1, 40002, 0]) {
         const packet = await sink.getPacket(fixture.timestamp(index))
+
         assert.ok(packet)
         assert.deepEqual(packet.data, fixture.packet(index))
         assert.equal(packet.timestamp, fixture.timestamp(index))
         assert.equal(packet.duration, fixture.delta(index))
         assert.equal(packet.type, index % 17 === 0 ? 'key' : 'delta')
         const key = await sink.getKeyPacket(fixture.timestamp(index))
+
         assert.equal(key?.timestamp, fixture.timestamp(index - (index % 17)))
       }
     } finally {
@@ -368,8 +414,10 @@ for (const options of [
       ...options,
     })
     const input = new Input({ formats: [MP4], source: fixture.source })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
       const sink = new EncodedPacketSink(track)
       const order = Array.from(
@@ -377,6 +425,7 @@ for (const options of [
         (_, index) => index,
       ).sort((a, b) => fixture.timestamp(a) - fixture.timestamp(b) || a - b)
       let packet = await sink.getFirstPacket()
+
       for (let index = 0; index < fixture.samples; index++) {
         assert.ok(packet)
         assert.equal(packet.timestamp, fixture.timestamp(index))
@@ -386,10 +435,13 @@ for (const options of [
           next === undefined
             ? fixture.delta(index)
             : fixture.timestamp(next) - fixture.timestamp(index)
+
         assert.ok(Math.abs(packet.duration - duration) < 1e-10)
         packet = await sink.getNextPacket(packet)
       }
+
       assert.equal(packet, null)
+
       for (const index of order) {
         for (const keyOnly of [false, true]) {
           const time = fixture.timestamp(index)
@@ -400,10 +452,12 @@ for (const options of [
           const found = keyOnly
             ? await sink.getKeyPacket(time)
             : await sink.getPacket(time)
+
           assert.equal(
             found?.timestamp ?? null,
             expected === undefined ? null : fixture.timestamp(expected),
           )
+
           if (expected !== undefined) {
             assert.deepEqual(found?.data, fixture.packet(expected))
           }
@@ -418,37 +472,49 @@ for (const options of [
 test('evicts index pages, rereads on demand and retries packet-page I/O failures', async () => {
   const fixture = await indexedMp4({ samples: 90003, compositionOffsets: [] })
   const read: unknown = Reflect.get(fixture.source, '_read')
+
   assert.equal(typeof read, 'function')
+
   if (typeof read !== 'function') {
     throw new TypeError('Missing source reader')
   }
+
   const diskError = new Error('sample page unavailable')
   let shouldFail = false
+
   Object.defineProperty(fixture.source, '_read', {
     configurable: true,
     value(...args: unknown[]) {
       if (shouldFail) {
         shouldFail = false
+
         throw diskError
       }
+
       return Reflect.apply(read, fixture.source, args)
     },
   })
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const sink = new EncodedPacketSink(track)
+
     assert.ok(await sink.getFirstPacket())
     const sizeTable = fixture.tableRanges.find(table => table.name === 'stsz')!
     const sizeReads = () =>
       fixture.requests.filter(request => request.start === sizeTable.start + 20)
         .length
     const before = sizeReads()
+
     for (let index = 4096; index < fixture.samples; index += 4096) {
       const packet = await sink.getPacket(fixture.timestamp(index))
+
       assert.deepEqual(packet?.data, fixture.packet(index))
     }
+
     shouldFail = true
     await assert.rejects(sink.getFirstPacket(), error => error === diskError)
     assert.deepEqual((await sink.getFirstPacket())?.data, fixture.packet(0))
@@ -466,6 +532,7 @@ test('bounds retained sample-table heap and buffers as sample count grows', asyn
     retainedHeapBytes: number
     retainedBufferBytes: number
   }[] = []
+
   for (const samples of [20000, 400000]) {
     const { stdout } = await promisify(execFile)(
       process.execPath,
@@ -481,16 +548,21 @@ test('bounds retained sample-table heap and buffers as sample count grows', asyn
       { timeout: 60000 },
     )
     const result: unknown = JSON.parse(stdout)
+
     assert.ok(result && typeof result === 'object')
     const heap: unknown = Reflect.get(result, 'retainedHeapBytes')
     const buffers: unknown = Reflect.get(result, 'retainedBufferBytes')
+
     assert.equal(typeof heap, 'number')
     assert.equal(typeof buffers, 'number')
+
     if (typeof heap !== 'number' || typeof buffers !== 'number') {
       throw new TypeError('Missing memory measurements')
     }
+
     measurements.push({ retainedHeapBytes: heap, retainedBufferBytes: buffers })
   }
+
   assert.ok(
     measurements[1]!.retainedHeapBytes - measurements[0]!.retainedHeapBytes
       < 2 * 1024 * 1024,
@@ -510,11 +582,14 @@ test('groups PCM frames into chunks without retaining per-chunk sample records',
     compositionOffsets: [],
   })
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     assert.equal(await track.getCodec(), 'pcm-s16')
     const sink = new EncodedPacketSink(track)
+
     for (const chunkIndex of [
       0,
       8191,
@@ -527,15 +602,19 @@ test('groups PCM frames into chunks without retaining per-chunk sample records',
       const packet = await sink.getPacket(
         fixture.timestamp(chunk.start + Math.min(1, chunk.count - 1)),
       )
+
       assert.ok(packet)
       assert.equal(packet.timestamp, fixture.timestamp(chunk.start))
       assert.equal(packet.duration, chunk.count / 48000)
       const expected = new Uint8Array(chunk.count * 4)
+
       for (let index = 0; index < chunk.count; index++) {
         expected.set(fixture.packet(chunk.start + index), index * 4)
       }
+
       assert.deepEqual(packet.data, expected)
       const next = await sink.getNextPacket(packet)
+
       assert.equal(
         next?.timestamp ?? null,
         chunkIndex + 1 < fixture.chunks.length
@@ -551,12 +630,16 @@ test('groups PCM frames into chunks without retaining per-chunk sample records',
 test('keeps size and chunk-offset tables lazy after the first packet', async () => {
   const fixture = await indexedMp4({ samples: 90003, compositionOffsets: [] })
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     assert.ok(await new EncodedPacketSink(track).getFirstPacket())
+
     for (const name of ['stsz', 'stco']) {
       const table = fixture.tableRanges.find(table => table.name === name)!
+
       assert.ok(
         !fixture.requests.some(
           request =>
@@ -575,6 +658,7 @@ test('clamps inconsistent sample counts to the shortest table', async () => {
   const fixture = await indexedMp4({ samples: 100 })
   const data = new Uint8Array(await fixture.blob().arrayBuffer())
   const sizes = fixture.tableRanges.find(table => table.name === 'stsz')!
+
   new DataView(data.buffer).setUint32(sizes.start + 16, 66)
   const input = new Input({
     formats: [MP4],
@@ -583,11 +667,14 @@ test('clamps inconsistent sample counts to the shortest table', async () => {
       read: (start, end) => data.slice(start, end),
     }),
   })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const sink = new EncodedPacketSink(track)
     const last = await sink.getPacket(Infinity)
+
     assert.ok(last)
     assert.deepEqual(last.data, fixture.packet(65))
     assert.equal(await sink.getNextPacket(last), null)
@@ -599,6 +686,7 @@ test('clamps inconsistent sample counts to the shortest table', async () => {
 test('rejects invalid table encodings, unsafe prefixes and unsafe offsets', async () => {
   const fixture = await indexedMp4({ samples: 100, fieldSize: 4, co64: true })
   const original = new Uint8Array(await fixture.blob().arrayBuffer())
+
   for (const [name, offset, value, error] of [
     ['stz2', 12, 3, /Invalid stz2 field size/u],
     ['ctts', 8, 0x0200_0000, /Invalid ctts version/u],
@@ -609,10 +697,13 @@ test('rejects invalid table encodings, unsafe prefixes and unsafe offsets', asyn
   ] as const) {
     const data = original.slice()
     const table = fixture.tableRanges.find(table => table.name === name)!
+
     new DataView(data.buffer).setUint32(table.start + offset, value)
+
     if (name === 'stts') {
       new DataView(data.buffer).setUint32(table.start + 20, 0xffff_ffff)
     }
+
     const input = new Input({
       formats: [MP4],
       source: new CustomSource({
@@ -620,9 +711,11 @@ test('rejects invalid table encodings, unsafe prefixes and unsafe offsets', asyn
         read: (start, end) => data.slice(start, end),
       }),
     })
+
     try {
       await assert.rejects(async () => {
         const track = await input.getPrimaryAudioTrack()
+
         assert.ok(track)
         await new EncodedPacketSink(track).getFirstPacket()
       }, error)
@@ -638,6 +731,7 @@ test('accepts large chunk runs and composition offsets without multiplying them 
   const view = new DataView(data.buffer)
   const chunks = fixture.tableRanges.find(table => table.name === 'stsc')!
   const composition = fixture.tableRanges.find(table => table.name === 'ctts')!
+
   view.setUint32(chunks.start + 20, 1_000_000_000)
   view.setUint32(composition.start + 16, 1_000_000_000)
   view.setUint32(composition.start + 20, 1_000_000_000)
@@ -648,14 +742,18 @@ test('accepts large chunk runs and composition offsets without multiplying them 
       read: (start, end) => data.slice(start, end),
     }),
   })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const sink = new EncodedPacketSink(track)
+
     for (const index of [0, 99, 1]) {
       const packet = await sink.getPacket(
         (index * 1024 + 1_000_000_000) / 48000,
       )
+
       assert.ok(packet)
       assert.deepEqual(packet.data, fixture.packet(index))
       assert.equal(packet.duration, 1024 / 48000)

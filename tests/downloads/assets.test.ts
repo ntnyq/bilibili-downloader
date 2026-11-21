@@ -36,6 +36,7 @@ test('each material gets an independent identity while covers deduplicate across
   const audioJobs = createDownloadJobs(video, 1, 'all', videoJobs, {
     kind: 'audio',
   })
+
   assert.equal(audioJobs.length, 2)
   assert.equal(
     createDownloadJobs(video, 1, 'all', [...videoJobs, ...audioJobs], {
@@ -46,6 +47,7 @@ test('each material gets an independent identity while covers deduplicate across
   const covers = createDownloadJobs(video, 2, 'all', videoJobs, {
     kind: 'cover',
   })
+
   assert.equal(covers.length, 1)
   assert.equal(
     createDownloadJobs(video, 2, 'current', covers, { kind: 'cover' }).length,
@@ -55,6 +57,7 @@ test('each material gets an independent identity while covers deduplicate across
     kind: 'subtitle',
     subtitleLanguage: 'zh',
   })
+
   assert.equal(
     createDownloadJobs(video, 1, 'all', subtitles, {
       kind: 'subtitle',
@@ -75,6 +78,7 @@ test('retry deduplicates by material, language and cover identity and retains su
     createDownloadJobs(video, 1, 'current', [], { kind, settings }),
   )
   const cover = jobs.find(job => job.kind === 'cover')
+
   assert.ok(cover)
   const history = [
     ...jobs,
@@ -85,6 +89,7 @@ test('retry deduplicates by material, language and cover identity and retains su
     filename: 'old-path',
   }))
   const retried = retryDownloadJobs(history)
+
   assert.equal(retried.filter(job => job.status === 'queued').length, 5)
   assert.equal(retried.at(-1)?.status, 'failed')
   assert.ok(
@@ -103,6 +108,7 @@ test('legacy persisted jobs acquire material and file defaults without resetting
   const legacy = createDownloadJobs(video, 1, 'current', [], {
     quality: '720',
   })[0]
+
   assert.ok(legacy)
   const job = downloadJobSchema.parse({
     ...legacy,
@@ -112,6 +118,7 @@ test('legacy persisted jobs acquire material and file defaults without resetting
     filenameTemplate: undefined,
     folderMode: undefined,
   })
+
   assert.equal(job.kind, 'video')
   assert.equal(job.qualityPreference, '720')
   assert.equal(job.filenameTemplate, DEFAULT_FILENAME_TEMPLATE)
@@ -132,6 +139,7 @@ test('filename templates are validated and substitution cannot inject paths or v
   ]) {
     assert.equal(filenameTemplateSchema.safeParse(template).success, false)
   }
+
   assert.equal(
     filenameTemplateSchema.safeParse('{title}_{page}_{type}').success,
     true,
@@ -155,8 +163,10 @@ test('filename templates are validated and substitution cannot inject paths or v
     [],
     { settings, kind: 'audio' },
   )[0]
+
   assert.ok(job)
   const filename = createDownloadPath(job)
+
   assert.equal(filename.split('/').length, 4)
   assert.ok(filename.endsWith('.m4a'))
   assert.ok(filename.includes('{owner}'))
@@ -184,8 +194,10 @@ test('material filenames use their output extension and cover omits the part suf
     ['cover', 'jpg'],
   ] as const) {
     const job = createDownloadJobs(video, 2, 'current', [], { kind })[0]
+
     assert.ok(job)
     const filename = createDownloadPath(job)
+
     assert.ok(filename.endsWith(`.${extension}`))
     assert.equal(filename.includes('_P'), kind !== 'cover')
   }
@@ -199,12 +211,16 @@ test('history exports only visible metadata and CSV neutralizes formulas, commas
     [],
   )
   const json = JSON.parse(serializeDownloadHistory(jobs, 'json'))
+
   assert.equal(json.records.length, 1)
   assert.equal(json.records[0].title, jobs[0]?.title)
+
   for (const key of ['cover', 'runId', 'downloadId', 'id']) {
     assert.ok(!(key in json.records[0]))
   }
+
   const csv = serializeDownloadHistory(jobs, 'csv')
+
   assert.ok(csv.startsWith('\u{FEFF}'))
   assert.ok(csv.includes('"\'=HYPERLINK(""evil"",""x"")"'))
   assert.ok(csv.includes('"\' +cmd"'))

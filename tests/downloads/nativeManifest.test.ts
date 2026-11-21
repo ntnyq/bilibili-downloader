@@ -46,6 +46,7 @@ test('native export preserves submitted filename settings and exports selected t
     { ...job, filenameTemplate: '{owner}_{title}', folderMode: 'video' },
     media,
   )
+
   assert.equal(
     result.filename,
     'Bilibili/测试标题_BV1xx411c7mD/UP_测试标题.mp4',
@@ -62,11 +63,13 @@ test('native export rejects nonmedia jobs, mismatched track count and untrusted 
   assert.throws(() => createNativeManifest({ ...job, kind: 'cover' }, media))
   assert.throws(() => createNativeManifest({ ...job, kind: 'audio' }, media))
   const manifest = createNativeManifest(job, media)
+
   assert.equal(
     nativeManifestSchema.safeParse({ ...manifest, inputs: [media.inputs[0]] })
       .success,
     false,
   )
+
   for (const url of [
     'http://cdn.bilivideo.com/a',
     'https://evil.test/a',
@@ -88,6 +91,7 @@ test('native export rejects nonmedia jobs, mismatched track count and untrusted 
 
 test('native manifest refuses traversal and output extension mismatches', () => {
   const manifest = createNativeManifest(job, media)
+
   for (const filename of [
     '/absolute.mp4',
     'Bilibili/../escape.mp4',
@@ -100,6 +104,7 @@ test('native manifest refuses traversal and output extension mismatches', () => 
       false,
     )
   }
+
   assert.equal(
     createNativeManifest(
       { ...job, kind: 'audio' },

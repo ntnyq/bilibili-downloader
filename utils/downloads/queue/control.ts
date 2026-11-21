@@ -49,9 +49,11 @@ export function canApplyJobUpdate(
  */
 function requireJob(jobs: DownloadJob[], id: string): DownloadJob {
   const job = jobs.find(item => item.id === id)
+
   if (!job) {
     throw new Error(i18n.t('control.thisTaskNoLongerExistsRefreshTheList'))
   }
+
   return job
 }
 
@@ -67,15 +69,19 @@ function requireJob(jobs: DownloadJob[], id: string): DownloadJob {
  */
 export function pauseJob(jobs: DownloadJob[], id: string): DownloadJob[] {
   const job = requireJob(jobs, id)
+
   if (job.status === 'paused') {
     return jobs
   }
+
   if (job.status === 'saving') {
     throw new Error(i18n.t('control.theFileIsBeingSavedAndCannotBe'))
   }
+
   if (!canPauseJob(job)) {
     throw new Error(i18n.t('control.thisTaskHasEndedAndCannotBePaused'))
   }
+
   return jobs.map(item =>
     item.id === id ? { ...item, status: 'paused', runId: undefined } : item,
   )
@@ -92,9 +98,11 @@ export function pauseJob(jobs: DownloadJob[], id: string): DownloadJob[] {
  */
 export function resumeJob(jobs: DownloadJob[], id: string): DownloadJob[] {
   const job = requireJob(jobs, id)
+
   if (job.status !== 'paused') {
     throw new Error(i18n.t('control.onlyPausedTasksCanBeResumed'))
   }
+
   return jobs.map(item =>
     item.id === id
       ? {
@@ -126,15 +134,19 @@ export function moveQueuedJob(
   direction: 'up' | 'down',
 ): DownloadJob[] {
   const job = requireJob(jobs, id)
+
   if (job.status !== 'queued') {
     throw new Error(i18n.t('control.onlyWaitingTasksCanBeReordered'))
   }
+
   const waiting = jobs.filter(item => item.status === 'queued')
   const position = waiting.findIndex(item => item.id === id)
   const neighbor = waiting[position + (direction === 'up' ? -1 : 1)]
+
   if (!neighbor) {
     return jobs
   }
+
   return jobs.map(item =>
     item.id === id ? neighbor : item.id === neighbor.id ? job : item,
   )
@@ -170,6 +182,7 @@ export function confirmJobUpdate(
       ),
     )
   }
+
   controller.signal.throwIfAborted()
 }
 

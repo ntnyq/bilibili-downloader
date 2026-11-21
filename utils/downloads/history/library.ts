@@ -70,11 +70,13 @@ export function pruneDownloadLibrary(
       (right.completedAt ?? right.createdAt)
       - (left.completedAt ?? left.createdAt),
   )
+
   for (const record of ordered) {
     if (!unique.has(record.identity)) {
       unique.set(record.identity, record)
     }
   }
+
   const retained: DownloadHistoryRecord[] = []
   // Reserve the maximum possible counter width so eviction accounting stays bounded.
   let bytes = encoder.encode(
@@ -84,23 +86,29 @@ export function pruneDownloadLibrary(
       evictedCount: Number.MAX_SAFE_INTEGER,
     }),
   ).byteLength
+
   for (const record of unique.values()) {
     const recordBytes = encoder.encode(JSON.stringify(record)).byteLength
+
     if (recordBytes + bytes > MAX_LIBRARY_BYTES && !retained.length) {
       throw new Error(
         i18n.t('library.thisDownloadRecordExceedsTheHistoryStorageLimit'),
       )
     }
+
     const separatorBytes = retained.length ? 1 : 0
+
     if (
       retained.length === MAX_LIBRARY_RECORDS
       || bytes + recordBytes + separatorBytes > MAX_LIBRARY_BYTES
     ) {
       break
     }
+
     retained.push(record)
     bytes += recordBytes + separatorBytes
   }
+
   return {
     version: 1,
     records: retained,
@@ -133,6 +141,7 @@ export function initializeDownloadLibrary(
 ): DownloadLibrary {
   if (stored !== undefined) {
     const result = downloadLibrarySchema.safeParse(stored)
+
     if (
       !result.success
       || result.data.records.some(
@@ -141,8 +150,10 @@ export function initializeDownloadLibrary(
     ) {
       throw new Error(i18n.t('library.downloadHistoryIsCorruptAndCannotBeRead'))
     }
+
     return pruneDownloadLibrary(result.data.records, result.data.evictedCount)
   }
+
   return pruneDownloadLibrary(
     jobs
       .filter(job => job.status === 'completed')
@@ -179,11 +190,14 @@ export function recordLibraryCompletions(
   const additions = nextJobs
     .filter(job => job.status === 'completed' && !completed.has(job.id))
     .map(job => createHistoryRecord(job, now))
+
   if (!additions.length) {
     return library
   }
+
   // New completions win when timestamp precision produces a tie.
   const identities = new Set(additions.map(record => record.identity))
+
   return pruneDownloadLibrary(
     [
       ...additions,
@@ -243,15 +257,19 @@ export function createJobFromHistory(
   existingJobs: DownloadJob[],
 ): DownloadJob {
   const active = existingJobs.filter(isJobActive)
+
   if (active.some(job => getJobIdentity(job) === record.identity)) {
     throw new Error(i18n.t('library.thisAssetIsAlreadyQueued'))
   }
+
   if (active.length >= MAX_PENDING_JOBS) {
     throw new Error(i18n.t('jobs.theDownloadQueueIsFullWaitForSome'))
   }
+
   return {
     id: crypto.randomUUID(),
     bvid: record.bvid,
+    ...(record.epId === undefined ? {} : { epId: record.epId }),
     cid: record.cid,
     title: record.title,
     cover: record.cover,
@@ -290,6 +308,7 @@ export function filterLibraryRecords(
   kind: DownloadKind | 'all',
 ): DownloadHistoryRecord[] {
   const query = search.trim().toLocaleLowerCase()
+
   return records.filter(
     record =>
       (kind === 'all' || record.kind === kind)

@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { i18n } from '~/utils/i18n'
 
 export const videoIdSchema = z.string().regex(/^(?:BV[\dA-Za-z]{10}|av\d+)$/)
+export const episodeIdSchema = z.number().int().positive()
 
 export const qualityPreferenceSchema = z.enum(['best', '1080', '720', '480'])
 export const downloadKindSchema = z.enum([
@@ -75,10 +76,19 @@ export const videoPageSchema = z.object({
 
 export const videoInfoSchema = z.object({
   bvid: videoIdSchema,
+  epId: episodeIdSchema.optional(),
   title: z.string(),
   cover: z.string(),
   owner: z.string(),
   pages: z.array(videoPageSchema).min(1),
+})
+
+export const episodeInfoSchema = videoInfoSchema.extend({
+  epId: episodeIdSchema,
+  pages: z.tuple([videoPageSchema]),
+  episodeLabel: z.string(),
+  episodeTitle: z.string(),
+  unavailableReason: z.string().optional(),
 })
 
 export const jobStatusSchema = z.enum([
@@ -108,6 +118,7 @@ export const jobUpdateSchema = z.object({
 export const downloadJobSchema = videoPageSchema.extend({
   id: z.string(),
   bvid: videoIdSchema,
+  epId: episodeIdSchema.optional(),
   title: z.string(),
   cover: z.string(),
   owner: z.string().default(''),
@@ -135,6 +146,7 @@ export const downloadJobsSchema = z.array(downloadJobSchema)
 
 export type VideoPage = z.infer<typeof videoPageSchema>
 export type VideoInfo = z.infer<typeof videoInfoSchema>
+export type EpisodeInfo = z.infer<typeof episodeInfoSchema>
 export type DownloadJob = z.infer<typeof downloadJobSchema>
 export type JobStatus = z.infer<typeof jobStatusSchema>
 export type JobUpdate = z.infer<typeof jobUpdateSchema>

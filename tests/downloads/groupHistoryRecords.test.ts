@@ -36,6 +36,7 @@ test('history groups use calendar days across year boundaries and preserve recor
   ]
   const snapshot = structuredClone(records)
   const groups = groupHistoryRecords(records, now)
+
   assert.deepEqual(
     groups.map(group => group.label),
     ['今天', '昨天', '2025年12月30日'],
@@ -56,6 +57,7 @@ test('legacy records never claim a completion day, and timestamp zero remains a 
     ],
     new Date(2026, 9, 13),
   )
+
   assert.equal(groups[0]?.label, '旧记录 · 完成时间未知')
   assert.equal(groups[0]?.records.length, 2)
   assert.notEqual(groups[1]?.key, 'legacy')

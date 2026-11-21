@@ -32,6 +32,7 @@ const sessions = new Map<string, ReturnType<typeof createNativeSession>>()
 export function useNativeBridge(getJob: () => DownloadJob) {
   const id = getJob().id
   const session = shallowRef(sessions.get(id))
+
   return {
     isRunning: computed(() => session.value?.isRunning.value ?? false),
     status: computed(() => session.value?.status.value ?? ''),
@@ -45,8 +46,10 @@ export function useNativeBridge(getJob: () => DownloadJob) {
             sessions.delete(id)
           }
         })
+
       sessions.set(id, current)
       session.value = current
+
       return current.start(getJob())
     },
   }
@@ -85,6 +88,7 @@ function createNativeSession(onSettled: () => void) {
 
   function handleDisconnect() {
     const detail = browser.runtime.lastError?.message
+
     if (!isFinishing) {
       finishFailure(
         detail
@@ -103,21 +107,29 @@ function createNativeSession(onSettled: () => void) {
     controller?.abort()
     browser.storage.onChanged.removeListener(handleQueueChange)
     const current = port
+
     port = undefined
+
     if (!current) {
       return
     }
+
     current.onMessage.removeListener(handleMessage)
     current.onDisconnect.removeListener(handleDisconnect)
+
     if (!shouldCancel) {
       current.disconnect()
+
       return
     }
+
     // Let the host flush its checkpoint and release its lock before disconnecting.
     const stoppedRequestId = requestId
     const timer = setTimeout(() => current.disconnect(), 35000)
+
     current.onMessage.addListener(value => {
       const event = nativeEventSchema.safeParse(value)
+
       if (
         event.success
         && event.data.requestId === stoppedRequestId
@@ -129,11 +141,14 @@ function createNativeSession(onSettled: () => void) {
     })
     current.onDisconnect.addListener(() => {
       const detail = browser.runtime.lastError?.message
+
       if (detail && !error.value) {
         error.value = detail
       }
+
       clearTimeout(timer)
     })
+
     try {
       current.postMessage({ version: 1, type: 'cancel', requestId })
     } catch {
@@ -145,20 +160,24 @@ function createNativeSession(onSettled: () => void) {
   function persist(update: NativeUpdate) {
     const job = claimedJob
     const runId = job?.runId
+
     if (!job || !runId) {
       return Promise.resolve()
     }
+
     writes = writes.then(async () => {
       const accepted = await sendDownloadMessage(
         { type: 'native.update', id: job.id, runId, update },
         z.boolean(),
       )
+
       if (!accepted) {
         throw new Error(
           i18n.t('useNativeBridge.theLocalTaskWasCancelledOrItsExecution'),
         )
       }
     })
+
     return writes
   }
 
@@ -166,9 +185,11 @@ function createNativeSession(onSettled: () => void) {
     if (isFinishing) {
       return
     }
+
     isFinishing = true
     error.value = reason
     releasePort(true)
+
     try {
       await writes.catch(() => {})
       writes = Promise.resolve()
@@ -183,11 +204,13 @@ function createNativeSession(onSettled: () => void) {
   async function resolveManifest() {
     const job = claimedJob
     const signal = controller?.signal
+
     if (!job || !signal) {
       throw new Error(
         i18n.t('useNativeBridge.theLocalTaskHasNotBeenInitialized'),
       )
     }
+
     const media = await getVideoMedia(
       job.bvid,
       job.cid,
@@ -195,7 +218,9 @@ function createNativeSession(onSettled: () => void) {
       job.kind === 'audio' ? 'best' : job.qualityPreference,
       job.kind === 'audio' ? 'audio' : 'video',
     )
+
     signal.throwIfAborted()
+
     return createNativeManifest(job, media, manifest?.filename)
   }
 
@@ -205,17 +230,22 @@ function createNativeSession(onSettled: () => void) {
         i18n.t('useNativeBridge.mediaUrlRefreshLimitReachedCheckYourSign'),
       )
     }
+
     isRefreshing = true
     const currentGeneration = generation
+
     refreshCount++
     status.value = i18n.t(
       'useNativeBridge.mediaUrlsExpiredFetchingStreamsAgainAndValidating',
     )
+
     try {
       const next = await resolveManifest()
+
       if (isFinishing || currentGeneration !== generation) {
         return
       }
+
       if (!isSameNativeTask(manifest, next)) {
         throw new Error(
           i18n.t(
@@ -223,6 +253,7 @@ function createNativeSession(onSettled: () => void) {
           ),
         )
       }
+
       manifest = next
       port?.postMessage(createNativeRequest('refresh', requestId, next))
     } finally {
@@ -236,15 +267,20 @@ function createNativeSession(onSettled: () => void) {
     if (isFinishing) {
       return
     }
+
     const currentGeneration = generation
+
     try {
       const event = nativeEventSchema.parse(value)
+
       if (event.requestId !== requestId) {
         throw new Error(
           i18n.t('useNativeBridge.theLocalHelperReturnedAMismatchedTaskId'),
         )
       }
+
       clearTimeout(startupTimer)
+
       switch (event.type) {
         case 'started':
           status.value = i18n.t('useNativeBridge.theLocalHelperReceivedTheTask')
@@ -276,6 +312,7 @@ function createNativeSession(onSettled: () => void) {
           outputPath.value = event.filename
           status.value = i18n.t('useNativeBridge.localDownloadCompleted')
           releasePort()
+
           try {
             await persist({
               status: 'completed',
@@ -290,6 +327,7 @@ function createNativeSession(onSettled: () => void) {
               [getErrorMessage(error_)],
             )
           }
+
           settle()
           break
         case 'failed':
@@ -307,9 +345,11 @@ function createNativeSession(onSettled: () => void) {
     if (isRunning.value) {
       return
     }
+
     isRunning.value = true
     window.addEventListener('pagehide', handlePageHide)
     const currentGeneration = ++generation
+
     isFinishing = false
     claimedJob = undefined
     error.value = ''
@@ -318,11 +358,13 @@ function createNativeSession(onSettled: () => void) {
     writes = Promise.resolve()
     refreshCount = 0
     isRefreshing = false
+
     try {
       // Request on the original click, before any asynchronous media lookup.
       const granted = await browser.permissions.request({
         permissions: ['nativeMessaging'],
       })
+
       if (!granted) {
         throw new Error(
           i18n.t(
@@ -330,13 +372,16 @@ function createNativeSession(onSettled: () => void) {
           ),
         )
       }
+
       if (isFinishing || currentGeneration !== generation) {
         return
       }
+
       const claimed = await sendDownloadMessage(
         { type: 'native.start', id: job.id },
         downloadJobSchema,
       )
+
       if (isFinishing || currentGeneration !== generation) {
         if (claimed.runId) {
           await sendDownloadMessage(
@@ -354,29 +399,36 @@ function createNativeSession(onSettled: () => void) {
             z.boolean(),
           )
         }
+
         return
       }
+
       claimedJob = claimed
       browser.storage.onChanged.addListener(handleQueueChange)
       controller = new AbortController()
       const selected = await resolveManifest()
+
       if (isFinishing || currentGeneration !== generation) {
         return
       }
+
       manifest = selected
       const jobs = await sendDownloadMessage(
         { type: 'queue.list' },
         downloadJobsSchema,
       )
       const current = jobs.find(item => item.id === claimedJob?.id)
+
       if (isFinishing || currentGeneration !== generation) {
         return
       }
+
       if (current?.status !== 'native' || current.runId !== claimedJob.runId) {
         throw new Error(
           i18n.t('useNativeBridge.theTaskWasCancelledOrItsExecutionIdentity'),
         )
       }
+
       controller.signal.throwIfAborted()
       requestId = crypto.randomUUID()
       port = browser.runtime.connectNative(NATIVE_HOST_NAME)
@@ -402,24 +454,30 @@ function createNativeSession(onSettled: () => void) {
     area: string,
   ) {
     const change = changes[JOBS_STORAGE_KEY]
+
     if (area !== 'local' || !change || !claimedJob || isFinishing) {
       return
     }
+
     const parsed = downloadJobsSchema.safeParse(change.newValue ?? [])
+
     if (!parsed.success) {
       return
     }
+
     const current = parsed.data.find(item => item.id === claimedJob?.id)
     const previousJobs = downloadJobsSchema.safeParse(change.oldValue ?? [])
     const previous = previousJobs.success
       ? previousJobs.data.find(item => item.id === claimedJob?.id)
       : undefined
+
     if (
       previous?.runId !== claimedJob.runId
       && current?.runId !== claimedJob.runId
     ) {
       return
     }
+
     if (current?.status !== 'native' || current.runId !== claimedJob.runId) {
       finishFailure(
         i18n.t('useNativeBridge.taskStoppedVerifiedLocalCacheWillBeReused'),

@@ -28,6 +28,7 @@ export function useDownloadFileSettings() {
     if (!validation.value.success) {
       return ''
     }
+
     return createDownloadPath({
       bvid: 'BV1xx411c7mD',
       title: i18n.t('useDownloadFileSettings.weekendAtTheBeach'),
@@ -41,15 +42,19 @@ export function useDownloadFileSettings() {
       folderMode: folderMode.value,
     })
   })
+
   async function save() {
     error.value = ''
     notice.value = ''
+
     if (!validation.value.success) {
       error.value =
         validation.value.error.issues[0]?.message
         || i18n.t('useDownloadFileSettings.invalidFilenameTemplate')
+
       return
     }
+
     if (
       await updateSettings({
         filenameTemplate: validation.value.data,
@@ -61,11 +66,13 @@ export function useDownloadFileSettings() {
       )
     }
   }
+
   function resetDefaults() {
     filenameTemplate.value = DEFAULT_FILENAME_TEMPLATE
     folderMode.value = 'flat'
     notice.value = ''
   }
+
   return {
     ...preferences,
     filenameTemplate,

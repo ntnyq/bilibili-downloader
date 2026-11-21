@@ -126,14 +126,17 @@ function appendChunkRun(
   size: number,
 ): CacheManifest['chunks'] {
   const last = runs.at(-1)
+
   if (last?.size === size) {
     return [...runs.slice(0, -1), { size, count: last.count + 1 }]
   }
+
   if (runs.length >= MAX_CHUNK_RUNS) {
     throw new MediaCacheError(
       i18n.t('mediaCache.tooManyDownloadCacheFragmentsClearThisTask'),
     )
   }
+
   return [...runs, { size, count: 1 }]
 }
 
@@ -149,6 +152,7 @@ function appendChunkRun(
  */
 function* iterateManifestChunks(manifest: CacheManifest) {
   let index = 0
+
   for (const { size, count } of manifest.chunks) {
     for (let entry = 0; entry < count; entry++) {
       yield { index: index++, size }
@@ -166,27 +170,35 @@ function* iterateManifestChunks(manifest: CacheManifest) {
  */
 function normalizeManifest(value: unknown): CacheManifest | undefined {
   const current = manifestSchema.safeParse(value)
+
   if (current.success) {
     return current.data
   }
+
   const legacy = legacyManifestSchema.safeParse(value)
+
   if (!legacy.success) {
     return
   }
+
   const chunks: CacheManifest['chunks'] = []
+
   for (const size of legacy.data.chunks) {
     const last = chunks.at(-1)
+
     if (last?.size === size) {
       last.count++
     } else {
       chunks.push({ size, count: 1 })
     }
   }
+
   const result = manifestSchema.safeParse({
     ...legacy.data,
     version: 2,
     chunks,
   })
+
   return result.success ? result.data : undefined
 }
 
@@ -240,6 +252,7 @@ function toMediaCacheError(error: unknown): MediaCacheError {
   if (error instanceof MediaCacheError) {
     return error
   }
+
   return new MediaCacheError(
     error instanceof Error && error.name === 'QuotaExceededError'
       ? i18n.t('mediaCache.insufficientBrowserCacheSpaceClearTheDownloadCache')
@@ -263,6 +276,7 @@ async function getStorageRoot(): Promise<MediaCacheDirectory> {
       i18n.t('mediaCache.thisBrowserDoesNotSupportLocalDownloadCaching'),
     )
   }
+
   return navigator.storage.getDirectory()
 }
 
@@ -280,6 +294,7 @@ async function hashCacheKey(value: string): Promise<string> {
     'SHA-256',
     new TextEncoder().encode(value),
   )
+
   return Array.from(new Uint8Array(hash), byte =>
     byte.toString(16).padStart(2, '0'),
   ).join('')
@@ -333,12 +348,14 @@ async function writeFile(
 ) {
   const handle = await directory.getFileHandle(name, { create: true })
   const writer = await handle.createWritable()
+
   try {
     await writer.write(data)
     await writer.close()
   } catch (error) {
     // Abort is best effort: close() may already have closed the stream.
     await writer.abort().catch(() => {})
+
     throw error
   }
 }
@@ -359,27 +376,35 @@ async function readManifest(
   try {
     const handle = await directory.getFileHandle(MANIFEST_FILE)
     const file = await handle.getFile()
+
     if (file.size > MAX_MANIFEST_BYTES) {
       return
     }
+
     let value: unknown
+
     try {
       value = JSON.parse(await file.text())
     } catch (error) {
       if (error instanceof SyntaxError) {
         return
       }
+
       throw error
     }
+
     const manifest = normalizeManifest(value)
+
     if (!manifest) {
       return
     }
+
     return manifest
   } catch (error) {
     if (isMissingEntryError(error)) {
       return
     }
+
     throw error
   }
 }
@@ -402,15 +427,18 @@ async function hasValidChunks(
   try {
     for (const { index, size } of iterateManifestChunks(manifest)) {
       const chunk = await directory.getFileHandle(getChunkFilename(index))
+
       if ((await chunk.getFile()).size !== size) {
         return false
       }
     }
+
     return true
   } catch (error) {
     if (isMissingEntryError(error)) {
       return false
     }
+
     throw error
   }
 }
@@ -468,32 +496,42 @@ export async function createMediaCache(
     >()
     const load = async (inputKey: string) => {
       const existing = entries.get(inputKey)
+
       if (existing) {
         return existing
       }
+
       const name = await hashCacheKey(inputKey)
       let directory: MediaCacheDirectory
+
       try {
         directory = await job.getDirectoryHandle(name)
       } catch (error) {
         if (isMissingEntryError(error)) {
           return
         }
+
         throw error
       }
+
       const manifest = await readManifest(directory)
+
       if (!manifest || !(await hasValidChunks(directory, manifest))) {
         await removeEntry(job, name)
+
         return
       }
+
       // A crash between writing a chunk and committing its manifest leaves an
       // unreferenced file. It must never become part of a subsequent download.
       const chunkCount = manifest.chunks.reduce(
         (sum, run) => sum + run.count,
         0,
       )
+
       for await (const filename of directory.keys()) {
         const index = Number(filename.slice('chunk-'.length))
+
         if (
           filename !== MANIFEST_FILE
           && (!Number.isSafeInteger(index)
@@ -504,17 +542,22 @@ export async function createMediaCache(
           await removeEntry(directory, filename)
         }
       }
+
       const entry = { directory, manifest }
+
       entries.set(inputKey, entry)
+
       return entry
     }
     const required = async (inputKey: string) => {
       const entry = await load(inputKey)
+
       if (!entry) {
         throw new MediaCacheError(
           i18n.t('fetchCachedMedia.downloadCacheWasLostDownloadAgain'),
         )
       }
+
       return entry
     }
     const commit = async (
@@ -531,10 +574,12 @@ export async function createMediaCache(
         throw toMediaCacheError(error)
       }
     }
+
     return {
       read(inputKey) {
         return guarded(async () => {
           const entry = await load(inputKey)
+
           return entry ? toCachedMediaState(entry.manifest) : undefined
         })
       },
@@ -551,9 +596,11 @@ export async function createMediaCache(
             chunks: [],
           })
           const name = await hashCacheKey(inputKey)
+
           entries.delete(inputKey)
           await removeEntry(job, name)
           const directory = await job.getDirectoryHandle(name, { create: true })
+
           await writeFile(directory, MANIFEST_FILE, JSON.stringify(manifest))
           entries.set(inputKey, { directory, manifest })
         })
@@ -565,9 +612,11 @@ export async function createMediaCache(
               i18n.t('mediaCache.invalidDownloadCacheBlockSize'),
             )
           }
+
           const entry = await required(inputKey)
           const previous = entry.manifest
           const received = previous.received + bytes.byteLength
+
           if (
             !Number.isSafeInteger(received)
             || previous.complete
@@ -577,11 +626,13 @@ export async function createMediaCache(
               i18n.t('mediaCache.downloadCacheSizeDoesNotMatchTheAsset'),
             )
           }
+
           const chunks = appendChunkRun(previous.chunks, bytes.byteLength)
           const chunkCount = previous.chunks.reduce(
             (sum, run) => sum + run.count,
             0,
           )
+
           await writeFile(entry.directory, getChunkFilename(chunkCount), bytes)
           await commit(entry, {
             ...previous,
@@ -595,6 +646,7 @@ export async function createMediaCache(
         return guarded(async () => {
           const entry = await required(inputKey)
           const previous = entry.manifest
+
           if (
             !previous.received
             || (previous.total !== null && previous.total !== previous.received)
@@ -603,6 +655,7 @@ export async function createMediaCache(
               i18n.t('mediaCache.theAssetCacheIsNotFullyDownloaded'),
             )
           }
+
           await commit(entry, {
             ...previous,
             complete: true,
@@ -615,6 +668,7 @@ export async function createMediaCache(
         return guarded(async () => {
           const entry = await required(inputKey)
           const previous = entry.manifest
+
           if (
             !Number.isSafeInteger(total)
             || total <= 0
@@ -625,30 +679,37 @@ export async function createMediaCache(
               i18n.t('mediaCache.downloadCacheSizeDoesNotMatchTheAsset'),
             )
           }
+
           await commit(entry, { ...previous, total, updatedAt: Date.now() })
         })
       },
       blob(inputKey) {
         return guarded(async () => {
           const { directory, manifest } = await required(inputKey)
+
           if (!manifest.complete) {
             throw new MediaCacheError(
               i18n.t('mediaCache.theAssetCacheIsNotFullyDownloaded'),
             )
           }
+
           const chunks: File[] = []
+
           for (const { index, size } of iterateManifestChunks(manifest)) {
             const handle = await directory.getFileHandle(
               getChunkFilename(index),
             )
             const file = await handle.getFile()
+
             if (file.size !== size) {
               throw new MediaCacheError(
                 i18n.t('mediaCache.theAssetCacheIsCorruptClearItAnd'),
               )
             }
+
             chunks.push(file)
           }
+
           return new Blob(chunks, { type: 'application/octet-stream' })
         })
       },
@@ -663,11 +724,13 @@ export async function createMediaCache(
           const retained = new Set(
             await Promise.all(inputKeys.map(hashCacheKey)),
           )
+
           for await (const name of job.keys()) {
             if (!retained.has(name)) {
               await removeEntry(job, name)
             }
           }
+
           for (const inputKey of entries.keys()) {
             if (!inputKeys.includes(inputKey)) {
               entries.delete(inputKey)
@@ -696,11 +759,13 @@ async function readCacheRoot(
 ): Promise<MediaCacheDirectory | undefined> {
   try {
     const storage = storageRoot ?? (await getStorageRoot())
+
     return await storage.getDirectoryHandle(MEDIA_CACHE_DIRECTORY)
   } catch (error) {
     if (isMissingEntryError(error)) {
       return
     }
+
     throw toMediaCacheError(error)
   }
 }
@@ -720,24 +785,31 @@ export async function getMediaCacheStats(
   storageRoot?: MediaCacheDirectory,
 ): Promise<MediaCacheStats> {
   const stats: MediaCacheStats = { bytes: 0, entries: 0 }
+
   try {
     const root = await readCacheRoot(storageRoot)
+
     if (!root) {
       return stats
     }
+
     for await (const jobKey of root.keys()) {
       if (!HASH_PATTERN.test(jobKey)) {
         continue
       }
+
       try {
         const job = await root.getDirectoryHandle(jobKey)
+
         for await (const inputKey of job.keys()) {
           if (!HASH_PATTERN.test(inputKey)) {
             continue
           }
+
           try {
             const directory = await job.getDirectoryHandle(inputKey)
             const manifest = await readManifest(directory)
+
             if (manifest) {
               stats.bytes += manifest.received
               stats.entries++
@@ -755,11 +827,13 @@ export async function getMediaCacheStats(
         }
       }
     }
+
     return stats
   } catch (error) {
     if (isMissingEntryError(error)) {
       return stats
     }
+
     throw toMediaCacheError(error)
   }
 }
@@ -782,11 +856,15 @@ export async function clearMediaCache(
 ) {
   try {
     const storage = storageRoot ?? (await getStorageRoot())
+
     if (jobId === undefined) {
       await removeEntry(storage, MEDIA_CACHE_DIRECTORY)
+
       return
     }
+
     const root = await readCacheRoot(storage)
+
     if (root) {
       await removeEntry(root, await hashCacheKey(jobId))
     }
@@ -814,12 +892,15 @@ export async function pruneMediaCache(
 ) {
   try {
     const root = await readCacheRoot(storageRoot)
+
     if (!root) {
       return
     }
+
     const retained = new Set(
       await Promise.all(retainedJobIds.map(hashCacheKey)),
     )
+
     for await (const jobKey of root.keys()) {
       if (!retained.has(jobKey)) {
         await removeEntry(root, jobKey)

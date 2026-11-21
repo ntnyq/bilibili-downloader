@@ -17,11 +17,14 @@ interface Props {
    */
   autoSave?: boolean
 }
+
 defineProps<Props>()
+
 defineSlots<{
   icon: () => VNode[]
   default: () => VNode[]
 }>()
+
 const titleId = useId()
 </script>
 
@@ -35,8 +38,9 @@ const titleId = useId()
         <span
           class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-primary"
           aria-hidden="true"
-          ><slot name="icon"
-        /></span>
+        >
+          <slot name="icon" />
+        </span>
         <h2
           :id="titleId"
           class="text-[15px] font-semibold"
@@ -54,7 +58,8 @@ const titleId = useId()
         <CheckIcon
           class="size-3"
           aria-hidden="true"
-        />{{ i18n.t('downloadSettingsSection.savedAutomatically') }}
+        />
+        {{ i18n.t('downloadSettingsSection.savedAutomatically') }}
       </p>
     </div>
     <div class="min-w-0"><slot /></div>

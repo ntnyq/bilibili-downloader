@@ -42,6 +42,7 @@ export async function mergeBrowserMedia(
 ): Promise<BrowserMediaOutput> {
   signal.throwIfAborted()
   const bytes = inputs.reduce((sum, input) => sum + input.size, 0)
+
   await assertMediaOutputSpace(bytes)
   const storage = await navigator.storage.getDirectory()
   const cache = await storage.getDirectoryHandle(MEDIA_CACHE_DIRECTORY, {
@@ -56,11 +57,13 @@ export async function mergeBrowserMedia(
     for (let attempt = 0; ; attempt++) {
       try {
         await directory.removeEntry(jobId, { recursive: true })
+
         return
       } catch (error) {
         if (error instanceof DOMException && error.name === 'NotFoundError') {
           return
         }
+
         // Termination can briefly leave native OPFS streams locked.
         if (
           attempt >= 4
@@ -72,11 +75,13 @@ export async function mergeBrowserMedia(
         ) {
           throw error
         }
+
         await new Promise(resolve => setTimeout(resolve, 25 * (attempt + 1)))
       }
     }
   }
   let worker: Worker | undefined
+
   try {
     const jobDirectory = await directory.getDirectoryHandle(jobId, {
       create: true,
@@ -85,6 +90,7 @@ export async function mergeBrowserMedia(
       `output.${kind === 'audio' ? 'm4a' : 'mp4'}`,
       { create: true },
     )
+
     signal.throwIfAborted()
     const remuxWorker = new Worker(
       new URL('./remux.worker.ts', import.meta.url),
@@ -92,6 +98,7 @@ export async function mergeBrowserMedia(
         type: 'module',
       },
     )
+
     worker = remuxWorker
     await new Promise<void>((resolve, reject) => {
       let timeout: ReturnType<typeof setTimeout>
@@ -104,6 +111,7 @@ export async function mergeBrowserMedia(
         clearTimeout(timeout)
         signal.removeEventListener('abort', abort)
       }
+
       // Startup is bounded, but an acknowledged job may spend arbitrarily long
       // in index parsing/finalization or synchronous WASM. Byte progress cannot
       // distinguish that work from a hang. Explicit cancellation stays available.
@@ -131,14 +139,19 @@ export async function mergeBrowserMedia(
         'message',
         ({ data }: MessageEvent<RemuxResponse>) => {
           clearTimeout(timeout)
+
           if (data.type === 'ready') {
             return
           }
+
           if (data.type === 'progress') {
             onProgress(data.bytes)
+
             return
           }
+
           cleanup()
+
           if (data.type === 'complete') {
             resolve()
           } else {
@@ -164,6 +177,7 @@ export async function mergeBrowserMedia(
           ),
         )
       })
+
       try {
         remuxWorker.postMessage({
           messages: getRemuxMessages(),
@@ -179,9 +193,11 @@ export async function mergeBrowserMedia(
     })
     signal.throwIfAborted()
     const blob = await handle.getFile()
+
     if (!blob.size) {
       throw new Error(i18n.t('mergeBrowserMedia.theBrowserRemuxOutputIsEmpty'))
     }
+
     return {
       // Set the media MIME without reading/copying the disk-backed file. A
       // generic OPFS MIME can make Chromium replace the requested extension.
@@ -195,6 +211,7 @@ export async function mergeBrowserMedia(
   } catch (error) {
     worker?.terminate()
     await dispose().catch(console.warn)
+
     throw error
   } finally {
     worker?.terminate()

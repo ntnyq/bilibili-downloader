@@ -16,17 +16,20 @@ import ts from 'typescript'
 import { z } from 'zod'
 
 const [sourceArgument, outputArgument, ...extra] = process.argv.slice(2)
+
 if (!sourceArgument || !outputArgument || extra.length) {
   throw new Error(
     'Usage: tsx scripts/buildMediabunnyPatch.ts <package> <new-output-directory>',
   )
 }
+
 const source = await realpath(sourceArgument)
 const output = join(
   await realpath(dirname(resolve(outputArgument))),
   basename(outputArgument),
 )
 const withinSource = relative(source, output)
+
 if (
   !isAbsolute(withinSource)
   && withinSource !== '..'
@@ -34,6 +37,7 @@ if (
 ) {
   throw new Error('Output must be outside the source package')
 }
+
 z.object({ name: z.literal('mediabunny'), version: z.literal('1.62.1') }).parse(
   JSON.parse(await readFile(join(source, 'package.json'), 'utf8')),
 )
@@ -70,6 +74,7 @@ const options: ts.CompilerOptions = {
   ],
 }
 const host = ts.createCompilerHost(options)
+
 // The npm package omits shared TS sources and its root tsconfig. Resolve only
 // missing shared imports through published declarations; check all src imports.
 host.resolveModuleNames = (names, containingFile) =>
@@ -80,9 +85,11 @@ host.resolveModuleNames = (names, containingFile) =>
       options,
       host,
     ).resolvedModule
+
     if (!resolved && name.startsWith('.')) {
       const path = resolve(dirname(containingFile), name)
       const declaration = `${join(source, 'dist/modules', relative(source, path))}.d.ts`
+
       if (ts.sys.fileExists(declaration)) {
         return {
           resolvedFileName: declaration,
@@ -90,6 +97,7 @@ host.resolveModuleNames = (names, containingFile) =>
         }
       }
     }
+
     return resolved
   })
 const program = ts.createProgram(roots, options, host)
@@ -104,6 +112,7 @@ const diagnostics = [
     program.getSemanticDiagnostics(program.getSourceFile(path)),
   ),
 ]
+
 if (diagnostics.length) {
   throw new Error(
     ts.formatDiagnosticsWithColorAndContext(diagnostics, {
@@ -113,12 +122,14 @@ if (diagnostics.length) {
     }),
   )
 }
+
 const artifacts = new Set(
   roots.flatMap(root => {
     const base = join(output, 'dist/modules', relative(source, root)).slice(
       0,
       -3,
     )
+
     return [`${base}.js`, `${base}.d.ts`]
   }),
 )
@@ -126,6 +137,7 @@ const result = program.emit(undefined, (path, text) => {
   if (!artifacts.has(path)) {
     return
   }
+
   // Match the published ESM specifiers in both runtime and declaration files.
   text = text.replace(
     /(from\s+|import\()(['"])(\.[^'"]+)\2/g,
@@ -136,6 +148,7 @@ const result = program.emit(undefined, (path, text) => {
   )
   ts.sys.writeFile(path, text)
 })
+
 if (result.emitSkipped || result.diagnostics.length) {
   throw new Error(
     ts.formatDiagnostics(result.diagnostics, host)
@@ -151,9 +164,11 @@ const exec = promisify(execFile)
 const license = (await readFile(join(source, 'src/index.ts'), 'utf8')).match(
   /^\/\*![\s\S]*?\*\//,
 )?.[0]
+
 if (!license) {
   throw new Error('Missing upstream license banner')
 }
+
 for (const platform of ['browser', 'node']) {
   await exec(
     esbuild,
@@ -172,7 +187,9 @@ for (const platform of ['browser', 'node']) {
     { cwd: output },
   )
 }
+
 const version = await exec(esbuild, ['--version'])
+
 console.info(
   `Rebuilt mediabunny@1.62.1 with TypeScript ${ts.version} and esbuild ${version.stdout.trim()} in ${output}`,
 )

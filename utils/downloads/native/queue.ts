@@ -19,6 +19,11 @@ import type { DownloadJob, JobUpdate } from '~/types/download'
  */
 export function startNativeJob(jobs: DownloadJob[], id: string): DownloadJob {
   const job = jobs.find(item => item.id === id)
+
+  if (job?.epId !== undefined) {
+    throw new Error(i18n.t('episode.browserQueueOnly'))
+  }
+
   if (
     !job
     || !['video', 'audio'].includes(job.kind)
@@ -26,13 +31,17 @@ export function startNativeJob(jobs: DownloadJob[], id: string): DownloadJob {
   ) {
     throw new Error(i18n.t('queue.pauseTheVideoOrAudioTaskBeforeSending'))
   }
+
   const active = jobs.filter(item => item.id !== id && isJobActive(item))
+
   if (active.some(item => getJobIdentity(item) === getJobIdentity(job))) {
     throw new Error(i18n.t('queue.anotherDownloadTaskExistsForThisAssetCancel'))
   }
+
   if (active.length >= MAX_PENDING_JOBS) {
     throw new Error(i18n.t('queue.theDownloadQueueIsFullWaitForSome'))
   }
+
   return {
     ...job,
     status: 'native',
@@ -68,6 +77,7 @@ export function applyNativeJobUpdate(
   if (job.status !== 'native' || job.runId !== runId) {
     return false
   }
+
   // Structured-clone messaging preserves explicit undefined properties.
   // Missing progress fields must not erase required values in the stored job.
   const patch = jobUpdateSchema.parse(
@@ -75,14 +85,18 @@ export function applyNativeJobUpdate(
       Object.entries(update).filter(([, value]) => value !== undefined),
     ),
   )
+
   if (patch.status === 'completed' && !patch.filename) {
     throw new Error(i18n.t('queue.theLocalHelperReturnedNoSavePathCompletion'))
   }
+
   const next = downloadJobSchema.parse({
     ...job,
     ...patch,
     ...(patch.status === 'completed' ? { progress: 100 } : {}),
   })
+
   Object.assign(job, next)
+
   return true
 }

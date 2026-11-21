@@ -8,10 +8,12 @@ const props = defineProps<{
   records: DownloadHistoryRecord[]
   isBusy: boolean
 }>()
+
 const emit = defineEmits<{
   requeue: [identity: string]
   remove: [identity: string]
 }>()
+
 const groups = computed(() => groupHistoryRecords(props.records))
 </script>
 
@@ -24,9 +26,14 @@ const groups = computed(() => groupHistoryRecords(props.records))
     >
       <div class="mb-2 flex items-center justify-between text-sm">
         <h2 class="font-medium">{{ group.label }}</h2>
-        <span class="text-xs text-muted-foreground">{{
-          i18n.t('downloadLibraryList.recordsOnThisPage', group.records.length)
-        }}</span>
+        <span class="text-xs text-muted-foreground">
+          {{
+            i18n.t(
+              'downloadLibraryList.recordsOnThisPage',
+              group.records.length,
+            )
+          }}
+        </span>
       </div>
       <ul class="divide-y overflow-hidden rounded-xl border bg-background">
         <DownloadLibraryItem

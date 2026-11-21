@@ -11,6 +11,7 @@ import {
   RotateCcwIcon,
 } from '@lucide/vue'
 import { formatBytes } from '~/utils/downloads/format'
+import { getDownloadPageUrl } from '~/utils/downloads/getDownloadPageUrl'
 import {
   DOWNLOAD_KIND_LABELS,
   getJobStatusLabel,
@@ -37,7 +38,9 @@ interface Props {
    */
   waitingCount: number
 }
+
 const props = defineProps<Props>()
+
 const emit = defineEmits<{
   cancel: [id: string]
   retry: [id: string]
@@ -46,12 +49,24 @@ const emit = defineEmits<{
   move: [id: string, direction: 'up' | 'down']
   showFile: [id?: number]
 }>()
+
 const isDetailsOpen = shallowRef(false)
 const isNativeOptionsOpen = shallowRef(false)
+
+const sourceUrl = computed(() => getDownloadPageUrl(props.job))
+const moreActionsLabel = computed(() => {
+  const { epId, title, page, part } = props.job
+
+  return epId === undefined
+    ? i18n.t('downloadQueueItem.moreActionsPart', [title, page])
+    : i18n.t('episode.moreActions', [title, part])
+})
+
 const isActive = computed(() => isJobActive(props.job))
 const canUseNative = computed(
   () =>
-    (props.job.kind === 'video' || props.job.kind === 'audio')
+    props.job.epId === undefined
+    && (props.job.kind === 'video' || props.job.kind === 'audio')
     && ['paused', 'failed', 'cancelled', 'completed', 'native'].includes(
       props.job.status,
     ),
@@ -69,12 +84,15 @@ const statusClass = computed(() => {
   if (props.job.status === 'completed') {
     return 'bg-success/10 text-success'
   }
+
   if (props.job.status === 'failed') {
     return 'bg-destructive/10 text-destructive'
   }
+
   if (['paused', 'queued', 'cancelled'].includes(props.job.status)) {
     return 'bg-muted text-muted-foreground'
   }
+
   return 'bg-accent text-primary'
 })
 
@@ -102,40 +120,51 @@ const detailsId = useId()
     <div class="min-w-0 flex-1">
       <div class="flex items-start justify-between gap-3">
         <a
-          :href="`https://www.bilibili.com/video/${job.bvid}/?p=${job.page}`"
+          :href="sourceUrl"
           target="_blank"
           rel="noreferrer"
           class="line-clamp-2 text-sm font-medium hover:text-primary"
-          >{{ job.title }}</a
         >
+          {{ job.title }}
+        </a>
         <span
           :class="statusClass"
           class="shrink-0 rounded-full px-2 py-0.5 text-[11px]"
-          >{{ getJobStatusLabel(job) || STATUS_LABELS[job.status] }}</span
         >
+          {{ getJobStatusLabel(job) || STATUS_LABELS[job.status] }}
+        </span>
       </div>
       <div
         class="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px] text-muted-foreground"
       >
-        <span class="rounded bg-muted px-1.5 py-0.5">{{
-          DOWNLOAD_KIND_LABELS[job.kind]
-        }}</span>
+        <span class="rounded bg-muted px-1.5 py-0.5">
+          {{ DOWNLOAD_KIND_LABELS[job.kind] }}
+        </span>
         <span
-          v-if="job.pageCount > 1 && job.kind !== 'cover'"
+          v-if="job.epId !== undefined"
           class="min-w-0 wrap-break-word"
-          >P{{ job.page }} · {{ job.part }}</span
         >
-        <span v-else>{{
-          job.kind === 'cover'
-            ? i18n.t('downloadQueueItem.videoCover')
-            : i18n.t('downloadQueueItem.singleVideo')
-        }}</span>
-        <span v-if="job.kind === 'video'">{{
-          job.quality || QUALITY_LABELS[job.qualityPreference]
-        }}</span>
-        <span v-else-if="job.kind === 'subtitle'">{{
-          SUBTITLE_LANGUAGE_LABELS[job.subtitleLanguage]
-        }}</span>
+          {{ job.part }}
+        </span>
+        <span
+          v-else-if="job.pageCount > 1 && job.kind !== 'cover'"
+          class="min-w-0 wrap-break-word"
+        >
+          P{{ job.page }} · {{ job.part }}
+        </span>
+        <span v-else>
+          {{
+            job.kind === 'cover'
+              ? i18n.t('downloadQueueItem.videoCover')
+              : i18n.t('downloadQueueItem.singleVideo')
+          }}
+        </span>
+        <span v-if="job.kind === 'video'">
+          {{ job.quality || QUALITY_LABELS[job.qualityPreference] }}
+        </span>
+        <span v-else-if="job.kind === 'subtitle'">
+          {{ SUBTITLE_LANGUAGE_LABELS[job.subtitleLanguage] }}
+        </span>
       </div>
       <div
         v-if="hasProgress"
@@ -144,25 +173,29 @@ const detailsId = useId()
         <div
           class="flex items-center justify-between gap-3 text-[11px] text-muted-foreground"
         >
-          <span v-if="['downloading', 'paused', 'native'].includes(job.status)"
-            >{{
+          <span v-if="['downloading', 'paused', 'native'].includes(job.status)">
+            {{
               i18n.t('downloadProgress.downloaded', [
                 formatBytes(job.receivedBytes),
               ])
-            }}<template v-if="job.totalBytes">{{
-              i18n.t('downloadProgress.approximately', [
-                formatBytes(job.totalBytes),
-              ])
-            }}</template></span
-          >
-          <span v-else>{{
-            getJobStatusLabel(job) || STATUS_LABELS[job.status]
-          }}</span>
+            }}
+            <template v-if="job.totalBytes">
+              {{
+                i18n.t('downloadProgress.approximately', [
+                  formatBytes(job.totalBytes),
+                ])
+              }}
+            </template>
+          </span>
+          <span v-else>
+            {{ getJobStatusLabel(job) || STATUS_LABELS[job.status] }}
+          </span>
           <span
             v-if="job.status !== 'native'"
             class="font-medium text-primary tabular-nums"
-            >{{ progress }}%</span
           >
+            {{ progress }}%
+          </span>
         </div>
         <Progress
           :model-value="job.status === 'native' ? null : progress"
@@ -177,7 +210,8 @@ const detailsId = useId()
         <ClockIcon
           class="size-3.5"
           aria-hidden="true"
-        />{{
+        />
+        {{
           i18n.t('downloadQueueItem.queuePosition', [
             waitingPosition ?? 0,
             waitingCount,
@@ -203,7 +237,8 @@ const detailsId = useId()
         <FolderIcon
           class="size-3.5"
           aria-hidden="true"
-        />{{
+        />
+        {{
           job.downloadId === undefined
             ? i18n.t('downloadQueueItem.fileSavedSeeDetailsForThePath')
             : i18n.t('downloadQueueItem.savedToBilibiliFolder')
@@ -229,37 +264,44 @@ const detailsId = useId()
           size="sm"
           class="mr-auto text-xs text-muted-foreground sm:mr-0"
           type="button"
-          >{{
+        >
+          {{
             isDetailsOpen
               ? i18n.t('downloadLibraryItem.hideDetails')
               : i18n.t('downloadLibraryItem.viewDetails')
-          }}<ChevronDownIcon
+          }}
+          <ChevronDownIcon
             :class="isDetailsOpen && 'rotate-180'"
             class="size-3"
             aria-hidden="true"
-        /></Button>
+          />
+        </Button>
         <Button
           @click="emit('pause', job.id)"
           v-if="canPauseJob(job)"
           variant="outline"
           size="sm"
           type="button"
-          ><PauseIcon
+        >
+          <PauseIcon
             class="size-3.5"
             aria-hidden="true"
-          />{{ i18n.t('downloadProgress.pause') }}</Button
-        >
+          />
+          {{ i18n.t('downloadProgress.pause') }}
+        </Button>
         <Button
           @click="emit('resume', job.id)"
           v-else-if="job.status === 'paused'"
           variant="outline"
           size="sm"
           type="button"
-          ><PlayIcon
+        >
+          <PlayIcon
             class="size-3.5"
             aria-hidden="true"
-          />{{ i18n.t('downloadProgress.resume') }}</Button
-        >
+          />
+          {{ i18n.t('downloadProgress.resume') }}
+        </Button>
         <Button
           @click="emit('retry', job.id)"
           v-else-if="canRetry"
@@ -267,65 +309,72 @@ const detailsId = useId()
           size="sm"
           type="button"
           class="text-destructive"
-          ><RotateCcwIcon
+        >
+          <RotateCcwIcon
             class="size-3.5"
             aria-hidden="true"
-          />{{ i18n.t('downloadProgress.retry') }}</Button
-        >
+          />
+          {{ i18n.t('downloadProgress.retry') }}
+        </Button>
         <Button
           @click="emit('showFile', job.downloadId)"
           v-else-if="job.status === 'completed' && job.downloadId !== undefined"
           variant="outline"
           size="sm"
           type="button"
-          ><FolderIcon
+        >
+          <FolderIcon
             class="size-3.5"
             aria-hidden="true"
-          />{{ i18n.t('downloadQueueItem.openFolder') }}</Button
-        >
+          />
+          {{ i18n.t('downloadQueueItem.openFolder') }}
+        </Button>
         <DropdownMenu>
-          <DropdownMenuTrigger as-child
-            ><Button
-              :aria-label="
-                i18n.t('downloadQueueItem.moreActionsPart', [
-                  job.title,
-                  job.page,
-                ])
-              "
+          <DropdownMenuTrigger as-child>
+            <Button
+              :aria-label="moreActionsLabel"
               variant="outline"
               size="icon-sm"
-              ><EllipsisIcon
+            >
+              <EllipsisIcon
                 class="size-4"
-                aria-hidden="true" /></Button
-          ></DropdownMenuTrigger>
+                aria-hidden="true"
+              />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem as-child
-              ><a
-                :href="`https://www.bilibili.com/video/${job.bvid}/?p=${job.page}`"
+            <DropdownMenuItem as-child>
+              <a
+                :href="sourceUrl"
                 target="_blank"
                 rel="noreferrer"
-                >{{ i18n.t('downloadQueueItem.viewOriginalVideo') }}</a
-              ></DropdownMenuItem
-            >
+              >
+                {{ i18n.t('downloadQueueItem.viewOriginalVideo') }}
+              </a>
+            </DropdownMenuItem>
             <template v-if="job.status === 'queued'">
               <DropdownMenuItem
                 @select="emit('move', job.id, 'up')"
                 :disabled="waitingPosition === 1"
-                >{{ i18n.t('downloadQueueItem.moveEarlier') }}</DropdownMenuItem
               >
+                {{ i18n.t('downloadQueueItem.moveEarlier') }}
+              </DropdownMenuItem>
               <DropdownMenuItem
                 @select="emit('move', job.id, 'down')"
                 :disabled="waitingPosition === waitingCount"
-                >{{ i18n.t('downloadQueueItem.moveLater') }}</DropdownMenuItem
               >
+                {{ i18n.t('downloadQueueItem.moveLater') }}
+              </DropdownMenuItem>
             </template>
-            <template v-if="isActive"
-              ><DropdownMenuSeparator /><DropdownMenuItem
+            <template v-if="isActive">
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
                 @select="emit('cancel', job.id)"
                 class="text-destructive"
-                >{{ i18n.t('downloadQueueItem.cancelTask') }}</DropdownMenuItem
-              ></template
-            >
+              >
+                {{ i18n.t('downloadQueueItem.cancelTask') }}
+              </DropdownMenuItem>
+            </template>
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
@@ -336,22 +385,23 @@ const detailsId = useId()
       >
         <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 gap-y-2">
           <dt>{{ i18n.t('downloadQueueItem.videoId') }}</dt>
-          <dd>{{ job.bvid }}</dd>
-          <template v-if="job.owner"
-            ><dt>{{ i18n.t('downloadQueueItem.uploader') }}</dt>
-            <dd>{{ job.owner }}</dd></template
-          >
-          <template v-if="job.kind === 'video'"
-            ><dt>{{ i18n.t('downloadQueueItem.requestedPreference') }}</dt>
-            <dd>{{ QUALITY_LABELS[job.qualityPreference] }}</dd></template
-          >
-          <template v-if="job.filename"
-            ><dt>{{ i18n.t('downloadLibraryItem.savePath') }}</dt>
-            <dd class="break-all">{{ job.filename }}</dd></template
-          >
+          <dd>{{ job.epId === undefined ? job.bvid : `ep${job.epId}` }}</dd>
+          <template v-if="job.owner">
+            <dt>{{ i18n.t('downloadQueueItem.uploader') }}</dt>
+            <dd>{{ job.owner }}</dd>
+          </template>
+          <template v-if="job.kind === 'video'">
+            <dt>{{ i18n.t('downloadQueueItem.requestedPreference') }}</dt>
+            <dd>{{ QUALITY_LABELS[job.qualityPreference] }}</dd>
+          </template>
+          <template v-if="job.filename">
+            <dt>{{ i18n.t('downloadLibraryItem.savePath') }}</dt>
+            <dd class="break-all">{{ job.filename }}</dd>
+          </template>
         </dl>
         <Collapsible
           v-model:open="isNativeOptionsOpen"
+          v-if="job.epId === undefined"
           v-show="canUseNative"
           class="mt-3 border-t pt-2"
         >
@@ -361,8 +411,9 @@ const detailsId = useId()
               size="sm"
               type="button"
               class="text-xs text-muted-foreground"
-              >{{ i18n.t('downloadNativeHelp.advancedLocalHelper')
-              }}<ChevronDownIcon
+            >
+              {{ i18n.t('downloadNativeHelp.advancedLocalHelper') }}
+              <ChevronDownIcon
                 :class="isNativeOptionsOpen && 'rotate-180'"
                 class="size-3"
                 aria-hidden="true"

@@ -31,15 +31,19 @@ function memoryTarget() {
   let bytes = new Uint8Array(0)
   let closed = false
   const writes: number[] = []
+
   return {
     writable: new WritableStream<StreamTargetChunk>({
       write({ data, position }) {
         writes.push(data.byteLength)
+
         if (position + data.byteLength > bytes.byteLength) {
           const next = new Uint8Array(position + data.byteLength)
+
           next.set(bytes)
           bytes = next
         }
+
         bytes.set(data, position)
       },
       close() {
@@ -54,13 +58,16 @@ function memoryTarget() {
 
 async function packets(blob: Blob, kind: 'video' | 'audio') {
   const input = new Input({ formats: [MP4], source: new BlobSource(blob) })
+
   try {
     const track =
       kind === 'video'
         ? await input.getPrimaryVideoTrack()
         : await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const result = []
+
     for await (const packet of new EncodedPacketSink(track).packets()) {
       result.push({
         data: packet.data,
@@ -69,6 +76,7 @@ async function packets(blob: Blob, kind: 'video' | 'audio') {
         duration: Math.round(packet.duration * 1e6),
       })
     }
+
     return result
   } finally {
     input.dispose()
@@ -80,6 +88,7 @@ test('remuxes DASH without reencoding or reordering B frames and preserves track
   const audio = await fixture('audio.m4a')
   const target = memoryTarget()
   const progress: number[] = []
+
   await remuxMedia(
     'dash',
     [video, audio],
@@ -90,6 +99,7 @@ test('remuxes DASH without reencoding or reordering B frames and preserves track
     bytes => progress.push(bytes),
   )
   const before = await packets(video, 'video')
+
   assert.ok(
     before.some(
       (packet, index) =>
@@ -112,6 +122,7 @@ test('remuxes DASH without reencoding or reordering B frames and preserves track
 test('exports AAC alone into a seekable M4A with no video track', async context => {
   const audio = await fixture('audio.m4a')
   const target = memoryTarget()
+
   await remuxMedia(
     'audio',
     [audio],
@@ -128,6 +139,7 @@ test('exports AAC alone into a seekable M4A with no video track', async context 
     formats: [MP4],
     source: new BlobSource(target.blob()),
   })
+
   assert.equal(await input.getPrimaryVideoTrack(), null)
   input.dispose()
 })
@@ -138,13 +150,17 @@ test('preserves keyframes and random access across fragments after the audio tra
     source: new BlobSource(await fixture('video.mp4')),
   })
   const track = await input.getPrimaryVideoTrack()
+
   assert.ok(track)
   const config = await track.getDecoderConfig()
+
   assert.ok(config)
   const original: EncodedPacket[] = []
+
   for await (const packet of new EncodedPacketSink(track).packets()) {
     original.push(packet)
   }
+
   input.dispose()
   const generated = memoryTarget()
   const output = createRemuxOutput(
@@ -153,8 +169,10 @@ test('preserves keyframes and random access across fragments after the audio tra
     await testFragmentSamples(context),
   )
   const source = new EncodedVideoPacketSource('avc')
+
   output.addVideoTrack(source, { decoderConfig: config })
   await output.start()
+
   for (let repeat = 0; repeat < 6; repeat++) {
     for (const packet of original) {
       await source.add(
@@ -168,9 +186,11 @@ test('preserves keyframes and random access across fragments after the audio tra
       )
     }
   }
+
   source.close()
   await output.finalize()
   const target = memoryTarget()
+
   await remuxMedia(
     'dash',
     [generated.blob(), await fixture('audio.m4a')],
@@ -191,18 +211,23 @@ test('preserves keyframes and random access across fragments after the audio tra
     formats: [MP4],
     source: new BlobSource(target.blob()),
   })
+
   try {
     const video = await result.getPrimaryVideoTrack()
+
     assert.ok(video)
     const sink = new EncodedPacketSink(video)
+
     for (const second of [10, 1, 7, 3, 11, 0, 5]) {
       const packet = await sink.getKeyPacket(second + 0.2)
+
       assert.ok(packet)
       assert.equal(packet.type, 'key')
       assert.equal(packet.timestamp, second)
       const reference = original.find(
         packet => packet.type === 'key' && packet.timestamp === second % 2,
       )
+
       assert.ok(reference)
       assert.deepEqual(packet.data, reference.data)
     }
@@ -213,6 +238,7 @@ test('preserves keyframes and random access across fragments after the audio tra
 
 test('does not publish an empty or missing track as a successful output', async context => {
   const audio = await fixture('audio.m4a')
+
   await assert.rejects(
     remuxMedia(
       'dash',
@@ -240,6 +266,7 @@ test('does not publish an empty or missing track as a successful output', async 
 test('propagates disk failures and honors cancellation while copying packets', async context => {
   const audio = await fixture('audio.m4a')
   const diskError = new DOMException('disk full', 'QuotaExceededError')
+
   await assert.rejects(
     remuxMedia(
       'audio',
@@ -256,6 +283,7 @@ test('propagates disk failures and honors cancellation while copying packets', a
     error => error === diskError,
   )
   const controller = new AbortController()
+
   await assert.rejects(
     remuxMedia(
       'audio',
@@ -283,5 +311,6 @@ test('retains a small seek index instead of every sample during long audio expor
     ],
     { timeout: 60000 },
   )
+
   assert.match(stdout, /"samples":500000/u)
 })

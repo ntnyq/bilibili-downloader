@@ -8,16 +8,19 @@ export function useNativeDownload() {
   const error = shallowRef('')
   const notice = shallowRef('')
   let controller: AbortController | undefined
+
   onScopeDispose(() => controller?.abort())
 
   async function downloadNativeTask(job: DownloadJob) {
     if (isExporting.value) {
       return
     }
+
     isExporting.value = true
     error.value = ''
     notice.value = ''
     controller = new AbortController()
+
     try {
       await exportNativeTask(job, controller.signal)
       notice.value = i18n.t(

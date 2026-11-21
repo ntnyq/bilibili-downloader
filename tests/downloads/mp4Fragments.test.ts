@@ -36,9 +36,12 @@ for (const options of [
   test(`pages fMP4 TFRA and preserves packet/seek results: ${JSON.stringify(options)}`, async () => {
     const fixture = await fragmentedMp4({ fragments: 7003, ...options })
     const input = new Input({ formats: [MP4], source: fixture.source })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
+
       for (const table of fixture.indexes) {
         assert.ok(
           !fixture.requests.some(
@@ -47,8 +50,10 @@ for (const options of [
           'Track discovery must not read TFRA entries',
         )
       }
+
       const sink = new EncodedPacketSink(track)
       const boundary = Math.floor((16 * 1024) / fixture.entrySize)
+
       for (const fragment of [
         0,
         boundary - 1,
@@ -63,6 +68,7 @@ for (const options of [
         for (let at = 0; at < 3; at++) {
           const index = fragment * 3 + at
           const packet = await sink.getPacket(fixture.timestamp(index))
+
           assert.ok(packet)
           assert.equal(packet.timestamp, fixture.timestamp(index))
           assert.deepEqual(packet.data, fixture.packet(1, index))
@@ -82,29 +88,36 @@ for (const options of [
             .sort((a, b) => fixture.timestamp(a) - fixture.timestamp(b))
           const expectedKey = candidates.at(-1)
           const key = await sink.getKeyPacket(packet.timestamp)
+
           assert.equal(
             key?.timestamp ?? null,
             expectedKey === undefined ? null : fixture.timestamp(expectedKey),
           )
+
           if (key && expectedKey !== undefined) {
             assert.deepEqual(key.data, fixture.packet(1, expectedKey))
             const nextIndex = expectedKey + (expectedKey % 3 === 0 ? 2 : 1)
             const nextKey = await sink.getNextKeyPacket(key)
+
             assert.equal(
               nextKey?.timestamp ?? null,
               nextIndex < 7003 * 3 ? fixture.timestamp(nextIndex) : null,
             )
           }
+
           const next = await sink.getNextPacket(packet)
+
           assert.equal(
             next?.timestamp ?? null,
             index + 1 < 7003 * 3 ? fixture.timestamp(index + 1) : null,
           )
         }
       }
+
       assert.ok(
         fixture.requests.every(read => read.end - read.start <= 64 * 1024),
       )
+
       if (options.padding) {
         assert.ok(
           fixture.reads.every(
@@ -130,27 +143,36 @@ for (const tfdt of [false, true]) {
       shorterTrackFragments: 357,
     })
     const input = new Input({ formats: [MP4], source: fixture.source })
+
     try {
       const tracks = await input.getAudioTracks()
+
       assert.equal(tracks.length, 2)
       const sinks = tracks.map(track => new EncodedPacketSink(track))
       const held = await sinks[0]!.getPacket(fixture.timestamp(17))
+
       assert.ok(held)
+
       for (const index of [2097, 2, 1200, 500, 1700, 1, 1000, 20]) {
         const packet = await sinks[0]!.getPacket(fixture.timestamp(index))
+
         assert.deepEqual(packet?.data, fixture.packet(1, index))
         assert.equal(packet?.timestamp, fixture.timestamp(index))
       }
+
       const next = await sinks[0]!.getNextPacket(held)
+
       assert.equal(next?.timestamp, fixture.timestamp(18))
       const samples = [3, 1070, 600, 7, 1068, 200]
       const packets = await Promise.all(
         samples.map(index => sinks[1]!.getPacket(fixture.timestamp(index))),
       )
+
       for (const [at, index] of samples.entries()) {
         assert.equal(packets[at]?.timestamp, fixture.timestamp(index))
         assert.deepEqual(packets[at]?.data, fixture.packet(2, index))
       }
+
       assert.equal(await sinks[1]!.getNextPacket(packets[1]!), null)
     } finally {
       input.dispose()
@@ -170,12 +192,15 @@ for (const browser of [false, true]) {
       indexPadding: 8 * 1024 * 1024,
     })
     const reads: number[] = []
+
     class TrackedBlob extends Blob {
       override slice(start = 0, end = this.size, type?: string) {
         reads.push(Math.min(end, this.size) - start)
+
         return super.slice(start, end, type)
       }
     }
+
     const input = new library.Input({
       formats: [library.MP4],
       source: new library.BlobSource(new TrackedBlob([fixture.blob()]), {
@@ -183,14 +208,19 @@ for (const browser of [false, true]) {
         maxCacheSize: 128 * 1024,
       }),
     })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
       const sink = new library.EncodedPacketSink(track)
+
       for (const index of [9000, 1, 5000]) {
         const packet = await sink.getPacket(fixture.timestamp(index))
+
         assert.deepEqual(packet?.data, fixture.packet(1, index))
       }
+
       assert.ok(Math.max(...reads) <= 256 * 1024)
     } finally {
       input.dispose()
@@ -201,6 +231,7 @@ for (const browser of [false, true]) {
 for (const mode of ['indexed', 'unindexed']) {
   test(`bounds retained fMP4 index heap and buffers (${mode})`, async () => {
     const measurements: { heap: number; buffers: number }[] = []
+
     for (const fragments of [2000, 40000]) {
       const { stdout } = await promisify(execFile)(
         process.execPath,
@@ -220,16 +251,21 @@ for (const mode of ['indexed', 'unindexed']) {
         { timeout: 60000 },
       )
       const result: unknown = JSON.parse(stdout)
+
       assert.ok(result && typeof result === 'object')
       const heap: unknown = Reflect.get(result, 'retainedHeapBytes')
       const buffers: unknown = Reflect.get(result, 'retainedBufferBytes')
+
       assert.equal(typeof heap, 'number')
       assert.equal(typeof buffers, 'number')
+
       if (typeof heap !== 'number' || typeof buffers !== 'number') {
         throw new TypeError('Missing memory measurements')
       }
+
       measurements.push({ heap, buffers })
     }
+
     assert.ok(measurements[1]!.heap - measurements[0]!.heap < 2 * 1024 * 1024)
     assert.ok(measurements[1]!.buffers - measurements[0]!.buffers < 512 * 1024)
   })
@@ -237,7 +273,9 @@ for (const mode of ['indexed', 'unindexed']) {
 
 function uint32(value: number) {
   const data = new Uint8Array(4)
+
   new DataView(data.buffer).setUint32(0, value)
+
   return data
 }
 
@@ -250,6 +288,7 @@ test('preserves unordered TFRA lookup and falls back from unusable sample refere
   })
   const bytes = new Uint8Array(await fixture.blob().arrayBuffer())
   const table = fixture.indexes[0]!
+
   for (const [from, to] of [
     [0, 180],
     [180, 0],
@@ -262,18 +301,23 @@ test('preserves unordered TFRA lookup and falls back from unusable sample refere
       ),
     )
   }
+
   // A nonzero reference outside this fragment must rebuild cumulative decode time.
   fixture.patches.set(
     table.entries + 100 * fixture.entrySize + 17,
     Uint8Array.of(99),
   )
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const sink = new EncodedPacketSink(track)
+
     for (const index of [603, 1, 300, 541, 630, 2]) {
       const packet = await sink.getPacket(fixture.timestamp(index))
+
       assert.equal(packet?.timestamp, fixture.timestamp(index))
       assert.deepEqual(packet?.data, fixture.packet(1, index))
     }
@@ -285,16 +329,20 @@ test('preserves unordered TFRA lookup and falls back from unusable sample refere
 test('deduplicates equal TFRA timestamps and skips zero sample references', async () => {
   const fixture = await fragmentedMp4({ fragments: 200 })
   const table = fixture.indexes[0]!
+
   fixture.patches.set(table.entries + fixture.entrySize, new Uint8Array(8))
   fixture.patches.set(
     table.entries + 150 * fixture.entrySize + 18,
     Uint8Array.of(0),
   )
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const sink = new EncodedPacketSink(track)
+
     for (const index of [0, 3, 450, 451, 599]) {
       assert.deepEqual(
         (await sink.getPacket(fixture.timestamp(index)))?.data,
@@ -316,8 +364,10 @@ test('serializes concurrent fragmented parsing across tracks and survives cache 
     indexReference: 2,
   })
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const tracks = await input.getAudioTracks()
+
     assert.deepEqual(
       tracks.map(track => track.id),
       [1, 2],
@@ -332,12 +382,15 @@ test('serializes concurrent fragmented parsing across tracks and survives cache 
         sinks[track]!.getPacket(fixture.timestamp(index)),
       ),
     )
+
     for (const [at, { track, index }] of requests.entries()) {
       const packet = packets[at]
+
       assert.ok(packet)
       assert.equal(packet.timestamp, fixture.timestamp(index))
       assert.deepEqual(packet.data, fixture.packet(track + 1, index))
       const next = await sinks[track]!.getNextPacket(packet)
+
       assert.equal(
         next?.timestamp ?? null,
         index + 1 < fixture.trackCounts[track]! * 3
@@ -361,31 +414,39 @@ test('rejects truncated, unsupported and unsafe fragment indexes with bounded re
   ] as const) {
     const fixture = await fragmentedMp4({ fragments: 99 })
     const table = fixture.indexes[0]!
+
     if (fault === 'count') {
       fixture.patches.set(table.start + 20, uint32(0xffff_ffff))
     }
+
     if (fault === 'extent') {
       fixture.patches.set(table.start, uint32(0xffff_ffff))
     }
+
     if (fault === 'version') {
       fixture.patches.set(table.start + 8, uint32(0x0200_0000))
     }
+
     if (fault === 'mfra') {
       fixture.patches.set(
         fixture.mfraStart,
         uint32(fixture.size - fixture.mfraStart + 1),
       )
     }
+
     if (fault === 'timestamp' || fault === 'offset') {
       fixture.patches.set(
         table.entries + (fault === 'offset' ? 8 : 0),
         uint32(0x0020_0000),
       )
     }
+
     const input = new Input({ formats: [MP4], source: fixture.source })
+
     try {
       await assert.rejects(async () => {
         const track = await input.getPrimaryAudioTrack()
+
         assert.ok(track)
         await new EncodedPacketSink(track).getPacket(1)
       }, /Truncated tfra|container|Unsupported tfra|Invalid mfra|Unsafe tfra/u)
@@ -402,41 +463,54 @@ for (const cancel of [false, true]) {
   test(`${cancel ? 'propagates cancellation' : 'retries I/O failure'} while awaiting a TFRA page`, async () => {
     const fixture = await fragmentedMp4({ fragments: 5003 })
     const read: unknown = Reflect.get(fixture.source, '_read')
+
     assert.equal(typeof read, 'function')
+
     if (typeof read !== 'function') {
       throw new TypeError('Missing source reader')
     }
+
     const diskError = new Error('fragment index unavailable')
     let shouldFail = false
     const input = new Input({ formats: [MP4], source: fixture.source })
+
     Object.defineProperty(fixture.source, '_read', {
       value(start: number, end: number, ...args: unknown[]) {
         if (shouldFail && start >= fixture.indexes[0]!.entries) {
           shouldFail = false
+
           if (!cancel) {
             throw diskError
           }
+
           return Promise.resolve(
             Reflect.apply(read, fixture.source, [start, end, ...args]),
           ).then(data => {
             input.dispose()
+
             return data
           })
         }
+
         return Reflect.apply(read, fixture.source, [start, end, ...args])
       },
     })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
       const sink = new EncodedPacketSink(track)
+
       shouldFail = true
       await assert.rejects(
         sink.getPacket(fixture.timestamp(14000)),
         cancel ? /disposed/iu : error => error === diskError,
       )
+
       if (!cancel) {
         const packet = await sink.getPacket(fixture.timestamp(14000))
+
         assert.deepEqual(packet?.data, fixture.packet(1, 14000))
       }
     } finally {
@@ -448,10 +522,13 @@ for (const cancel of [false, true]) {
 test('evicts TFRA pages and rereads them after distant seeks', async () => {
   const fixture = await fragmentedMp4({ fragments: 14003 })
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const sink = new EncodedPacketSink(track)
+
     assert.ok(await sink.getFirstPacket())
     assert.ok(await sink.getPacket(0))
     const firstPageReads = () =>
@@ -459,9 +536,11 @@ test('evicts TFRA pages and rereads them after distant seeks', async () => {
         read => read.start === fixture.indexes[0]!.entries,
       ).length
     const before = firstPageReads()
+
     for (const fragment of [12000, 5000, 10000, 3000, 8000]) {
       assert.ok(await sink.getPacket(fixture.timestamp(fragment * 3)))
     }
+
     assert.deepEqual((await sink.getPacket(0))?.data, fixture.packet(1, 0))
     assert.ok(firstPageReads() > before)
   } finally {
@@ -486,12 +565,16 @@ for (const tfdt of [true, false]) {
       initInput,
       source: new BlobSource(fixture.segmentBlob()),
     })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
       const sink = new EncodedPacketSink(track)
+
       for (const index of [768, 0, 500, 1, 770]) {
         const packet = await sink.getPacket(fixture.timestamp(index))
+
         assert.equal(packet?.timestamp, fixture.timestamp(index))
         assert.deepEqual(packet?.data, fixture.packet(1, index))
       }
@@ -506,23 +589,29 @@ test('backs off faulty TFRA hints without losing the earlier matching fragment',
   const fixture = await fragmentedMp4({ fragments: 301 })
   const table = fixture.indexes[0]!
   const badOffset = new Uint8Array(8)
+
   new DataView(badOffset.buffer).setBigUint64(
     0,
     BigInt(fixture.fragmentOffset(1, 220)),
   )
+
   for (let index = 8; index <= 128; index++) {
     fixture.patches.set(
       table.entries + index * fixture.entrySize + 8,
       badOffset,
     )
   }
+
   const input = new Input({ formats: [MP4], source: fixture.source })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const packet = await new EncodedPacketSink(track).getPacket(
       fixture.timestamp(385),
     )
+
     assert.deepEqual(packet?.data, fixture.packet(1, 385))
     assert.equal(packet?.timestamp, fixture.timestamp(385))
   } finally {
@@ -538,32 +627,42 @@ test('retries failed fragment parsing without publishing an incomplete timeline'
     compositionShift: 512,
   })
   const read: unknown = Reflect.get(fixture.source, '_read')
+
   assert.equal(typeof read, 'function')
+
   if (typeof read !== 'function') {
     throw new TypeError('Missing source reader')
   }
+
   const input = new Input({ formats: [MP4], source: fixture.source })
   const diskError = new Error('fragment read failed')
   let shouldFail = true
   const target = fixture.fragmentOffset(1, 300)
+
   Object.defineProperty(fixture.source, '_read', {
     value(start: number, end: number, ...args: unknown[]) {
       if (shouldFail && start === target) {
         shouldFail = false
+
         throw diskError
       }
+
       return Reflect.apply(read, fixture.source, [start, end, ...args])
     },
   })
+
   try {
     const track = await input.getPrimaryAudioTrack()
+
     assert.ok(track)
     const sink = new EncodedPacketSink(track)
+
     await assert.rejects(
       sink.getPacket(fixture.timestamp(901)),
       error => error === diskError,
     )
     const packet = await sink.getPacket(fixture.timestamp(901))
+
     assert.equal(packet?.timestamp, fixture.timestamp(901))
     assert.deepEqual(packet?.data, fixture.packet(1, 901))
   } finally {
@@ -587,6 +686,7 @@ test('copies TFRA pages from Buffer-backed source windows', async () => {
     ],
     { timeout: 60000 },
   )
+
   assert.match(stdout, /"retainedBufferBytes":/u)
 })
 
@@ -598,14 +698,18 @@ for (const tfdt of [true, false]) {
       tfdt,
     })
     const input = new Input({ formats: [MP4], source: fixture.source })
+
     try {
       const track = await input.getPrimaryAudioTrack()
+
       assert.ok(track)
       const sink = new EncodedPacketSink(track)
+
       assert.ok(await sink.getPacket(fixture.timestamp(2000)))
       assert.ok(await sink.getPacket(fixture.timestamp(300)))
       const before = fixture.requests.length
       const packet = await sink.getPacket(fixture.timestamp(303))
+
       assert.deepEqual(packet?.data, fixture.packet(1, 303))
       assert.ok(
         !fixture.requests

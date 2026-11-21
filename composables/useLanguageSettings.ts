@@ -23,8 +23,10 @@ export function useLanguageSettings() {
     if (!isReady.value || isSaving.value) {
       return
     }
+
     isSaving.value = true
     error.value = ''
+
     try {
       await setLanguagePreference(parseLanguagePreference(value))
     } catch (error_) {

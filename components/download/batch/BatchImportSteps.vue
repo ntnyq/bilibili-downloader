@@ -5,6 +5,7 @@ import { i18n } from '~/utils/i18n'
 const props = defineProps<{
   step: number
 }>()
+
 const steps = computed(() => [
   i18n.t('batchImportSteps.chooseSource'),
   i18n.t('batchImportSteps.reviewVideos'),
@@ -15,6 +16,7 @@ function getStepClasses(index: number) {
   if (props.step === index + 1) {
     return 'bg-primary text-primary-foreground'
   }
+
   return props.step > index + 1
     ? 'bg-success/10 text-success'
     : 'bg-secondary text-muted-foreground'

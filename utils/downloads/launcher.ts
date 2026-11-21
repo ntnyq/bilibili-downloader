@@ -26,6 +26,7 @@ export function createDownloadClickHandler(actions: {
 
   function click(detail: number) {
     cancel()
+
     if (detail === 0) {
       actions.open()
     } else if (detail === 1) {

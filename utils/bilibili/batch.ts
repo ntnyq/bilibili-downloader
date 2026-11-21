@@ -71,6 +71,7 @@ const uploadsPageSchema = z.object({
  */
 function parseBilibiliUrl(input: string): URL {
   const url = new URL(input)
+
   if (
     url.protocol !== 'https:'
     || url.username
@@ -82,6 +83,7 @@ function parseBilibiliUrl(input: string): URL {
   ) {
     throw new Error(i18n.t('batch.useAFullBilibiliHttpsUrl'))
   }
+
   return url
 }
 
@@ -103,12 +105,15 @@ export function parseBatchSource(
   value: string,
 ): BatchSource {
   const input = value.trim()
+
   if (SOURCE_ID_PATTERN.test(input) && kind !== 'collection') {
     return batchSourceSchema.parse(
       kind === 'favorites' ? { kind, id: input } : { kind, mid: input },
     )
   }
+
   let url: URL
+
   try {
     url = parseBilibiliUrl(input)
   } catch (error) {
@@ -119,8 +124,10 @@ export function parseBatchSource(
       { cause: error },
     )
   }
+
   const path = url.pathname.replace(/\/$/, '')
   const isSpace = url.hostname === 'space.bilibili.com'
+
   if (kind === 'favorites') {
     const favoriteId =
       isSpace && /^\/\d+\/favlist$/.test(path)
@@ -131,17 +138,21 @@ export function parseBatchSource(
               path,
             )?.[1]
     const parsed = batchSourceSchema.safeParse({ kind, id: favoriteId })
+
     if (parsed.success) {
       return parsed.data
     }
   }
+
   if (kind === 'uploads' && isSpace) {
     const mid = /^\/(\d+)(?:\/(?:upload\/)?video)?$/.exec(path)?.[1]
     const parsed = batchSourceSchema.safeParse({ kind, mid })
+
     if (parsed.success) {
       return parsed.data
     }
   }
+
   if (kind === 'collection' && isSpace) {
     const modern = /^\/(\d+)\/lists\/(\d+)$/.exec(path)
     const legacy = /^\/(\d+)\/channel\/(collectiondetail|seriesdetail)$/.exec(
@@ -158,10 +169,12 @@ export function parseBatchSource(
       id: modern?.[2] || url.searchParams.get('sid'),
       collectionType,
     })
+
     if (parsed.success) {
       return parsed.data
     }
   }
+
   throw new Error(i18n.t('batch.theUrlDoesNotMatchTheSelectedSource'))
 }
 
@@ -182,14 +195,18 @@ function parseBatchLink(input: string): BatchCandidate {
   if (VIDEO_ID_PATTERN.test(input)) {
     return batchCandidateSchema.parse({ videoId: input, title: input, page: 1 })
   }
+
   const url = parseBilibiliUrl(input)
+
   if (url.hostname === 'space.bilibili.com') {
     throw new Error(i18n.t('batch.enterASingleVideoUrl'))
   }
+
   const videoId = /^\/(?:s\/)?video\/(BV[\dA-Za-z]{10}|av[1-9]\d*)\/?$/.exec(
     url.pathname,
   )?.[1]
   const pageValue = url.searchParams.get('p')
+
   if (
     !videoId
     || (pageValue !== null && !/^[1-9]\d{0,3}$/.test(pageValue))
@@ -197,14 +214,17 @@ function parseBatchLink(input: string): BatchCandidate {
   ) {
     throw new Error(i18n.t('batch.enterAValidVideoUrlWithAPart'))
   }
+
   const parsed = batchCandidateSchema.safeParse({
     videoId,
     title: videoId,
     page: pageValue ? Number(pageValue) : 1,
   })
+
   if (!parsed.success) {
     throw new Error(i18n.t('batch.partNumbersMustBeBetween1And1000'))
   }
+
   return parsed.data
 }
 
@@ -223,20 +243,27 @@ export function parseBatchLinks(text: string): BatchLinksResult {
   if (text.length > 1024 * 1024) {
     throw new Error(i18n.t('batch.theLinkListCannotExceed1Mb'))
   }
+
   const lines = text.split(/\r?\n/)
+
   if (lines.filter(line => line.trim()).length > MAX_BATCH_ITEMS) {
     throw new Error(i18n.t('batch.importUpToLinesAtATime', MAX_BATCH_ITEMS))
   }
+
   const result: BatchLinksResult = { items: [], errors: [], duplicateCount: 0 }
   const seen = new Set<string>()
+
   for (const [index, line] of lines.entries()) {
     const input = line.trim()
+
     if (!input) {
       continue
     }
+
     try {
       const candidate = parseBatchLink(input)
       const key = `${candidate.videoId}:${candidate.page}`
+
       if (seen.has(key)) {
         result.duplicateCount++
       } else {
@@ -254,6 +281,7 @@ export function parseBatchLinks(text: string): BatchLinksResult {
       })
     }
   }
+
   return result
 }
 
@@ -269,8 +297,10 @@ export function parseBatchLinks(text: string): BatchLinksResult {
 function normalizeSourceRows(rows: unknown[], kind: BatchSource['kind']) {
   const items: BatchCandidate[] = []
   let unavailable = 0
+
   for (const row of rows) {
     const parsed = sourceRowSchema.safeParse(row)
+
     if (
       !parsed.success
       || (kind === 'favorites' && parsed.data.type !== 2)
@@ -282,17 +312,21 @@ function normalizeSourceRows(rows: unknown[], kind: BatchSource['kind']) {
       unavailable++
       continue
     }
+
     const candidate = batchCandidateSchema.safeParse({
       videoId: parsed.data.bvid,
       title: parsed.data.title,
       page: 1,
     })
+
     if (!candidate.success) {
       unavailable++
       continue
     }
+
     items.push(candidate.data)
   }
+
   return {
     items,
     unavailable,
@@ -327,6 +361,7 @@ function createBatchPage(
       i18n.t('batch.bilibiliReturnedAnEmptyPageLoadingStoppedPreview'),
     )
   }
+
   return batchPageSchema.parse({
     title,
     ...normalizeSourceRows(rows, source.kind),
@@ -379,6 +414,7 @@ export async function getBatchPage(
 ): Promise<BatchPage> {
   batchSourceSchema.parse(source)
   pageNumberSchema.max(MAX_BATCH_ITEMS).parse(page)
+
   if (source.kind === 'favorites') {
     const data = favoritesPageSchema.parse(
       await requestApi(
@@ -386,6 +422,7 @@ export async function getBatchPage(
         signal,
       ),
     )
+
     return createBatchPage(
       source,
       data.info.title,
@@ -395,6 +432,7 @@ export async function getBatchPage(
       data.has_more,
     )
   }
+
   if (source.kind === 'collection' && source.collectionType === 'season') {
     const data = collectionPageSchema.parse(
       await requestApi(
@@ -402,7 +440,9 @@ export async function getBatchPage(
         signal,
       ),
     )
+
     validatePageNumber(data.page.page_num, page)
+
     return createBatchPage(
       source,
       data.meta?.name || i18n.t('batch.collection', [source.id]),
@@ -412,6 +452,7 @@ export async function getBatchPage(
       page * data.page.page_size < data.page.total,
     )
   }
+
   if (source.kind === 'collection') {
     const data = seriesPageSchema.parse(
       await requestApi(
@@ -419,7 +460,9 @@ export async function getBatchPage(
         signal,
       ),
     )
+
     validatePageNumber(data.page.num, page)
+
     return createBatchPage(
       source,
       i18n.t('batch.series', [source.id]),
@@ -429,6 +472,7 @@ export async function getBatchPage(
       page * data.page.size < data.page.total,
     )
   }
+
   const query = signWbi(
     {
       mid: source.mid,
@@ -446,7 +490,9 @@ export async function getBatchPage(
   const data = uploadsPageSchema.parse(
     await requestApi(`/x/space/wbi/arc/search?${query}`, signal),
   )
+
   validatePageNumber(data.page.pn, page)
+
   return createBatchPage(
     source,
     i18n.t('batch.uploadsBy', [source.mid]),

@@ -94,6 +94,7 @@ export function createBundleJobs(
     : []
   const settings = options.settings || downloadSettingsSchema.parse({})
   const jobs: DownloadJob[] = []
+
   for (const kind of kinds) {
     jobs.push(
       ...createDownloadJobs(video, page, mode, [...existing, ...jobs], {
@@ -106,20 +107,25 @@ export function createBundleJobs(
       }),
     )
   }
+
   const skipped = getBundleTaskCount(kinds, pages.length) - jobs.length
+
   if (!jobs.length) {
     return {
       jobs,
       skipped,
     }
   }
+
   const bundleId = crypto.randomUUID()
   const bundledJobs = jobs.map(job => ({
     ...job,
     bundleId,
     bundleSize: jobs.length,
   }))
+
   assertDownloadQueueCapacity(existing, [...existing, ...bundledJobs])
+
   return {
     jobs: bundledJobs,
     skipped,
@@ -139,20 +145,27 @@ export function summarizeDownloadBundles(
   jobs: DownloadJob[],
 ): DownloadBundleSummary[] {
   const groups = new Map<string, DownloadJob[]>()
+
   for (const job of jobs) {
     if (!job.bundleId) {
       continue
     }
+
     const group = groups.get(job.bundleId) || []
+
     group.push(job)
     groups.set(job.bundleId, group)
   }
+
   const summaries: DownloadBundleSummary[] = []
+
   for (const [id, group] of groups) {
     const first = group[0]
+
     if (!first) {
       continue
     }
+
     const total = Math.max(
       group.length,
       ...group.map(job => job.bundleSize || group.length),
@@ -179,6 +192,7 @@ export function summarizeDownloadBundles(
         ))
         / total,
     )
+
     summaries.push({
       id,
       bvid: first.bvid,
@@ -195,5 +209,6 @@ export function summarizeDownloadBundles(
       jobs: group,
     })
   }
+
   return summaries.sort((left, right) => right.createdAt - left.createdAt)
 }

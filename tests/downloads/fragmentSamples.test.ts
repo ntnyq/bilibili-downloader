@@ -21,6 +21,7 @@ function sample(
 test('updates paged records after eviction and compacts released prefixes with queued tails', async () => {
   const temporary = await temporaryFragmentSamples()
   const { store } = temporary
+
   try {
     for (let at = 0; at < 5003; at++) {
       assert.equal(
@@ -28,8 +29,10 @@ test('updates paged records after eviction and compacts released prefixes with q
         at,
       )
     }
+
     for (const id of [5002, 0, 4096, 1023, 1024, 3000]) {
       const row = await store.get(1, id)
+
       assert.equal(row.timestamp, id)
       await store.set(1, id, {
         ...row,
@@ -37,6 +40,7 @@ test('updates paged records after eviction and compacts released prefixes with q
         timescaleUnitsToNextSample: 17,
       })
     }
+
     assert.equal((await store.get(1, 5002)).timescaleUnitsToNextSample, 17)
     await store.release(1, 4001)
     await store.set(1, 0, { ...sample(0), mediaOffset: 0 })
@@ -63,21 +67,28 @@ for (const count of [1, 4096, 4097, 10003]) {
   test(`sorts ${count} GOP timestamps using bounded runs with ties and fractional times`, async () => {
     const temporary = await temporaryFragmentSamples()
     const { store } = temporary
+
     try {
       for (let at = 0; at < 13; at++) {
         await store.append(1, sample(9999), Uint8Array.of(1))
       }
+
       const expected = []
+
       for (let at = 0; at < count; at++) {
         const timestamp = (Math.floor((count - at) / 7) - 500) / 24
+
         expected.push(timestamp)
         await store.append(1, sample(timestamp), Uint8Array.of(2))
       }
+
       await store.sort(1, 13, count)
       expected.sort((left, right) => left - right)
+
       for (let at = 0; at < count; at++) {
         assert.equal(await store.sorted(1, at), expected[at])
       }
+
       // Sorting must not reorder the descriptors in decode order.
       assert.equal(
         (await store.get(1, 13)).timestamp,
@@ -101,47 +112,61 @@ function memoryFiles() {
   const failure = new DOMException('disk unavailable', 'QuotaExceededError')
   const store = createDiskFragmentSamples(async (_track, kind) => {
     const file = { kind, bytes: new Uint8Array(0), closed: 0 }
+
     files.push(file)
+
     return {
       async read(data, position) {
         if (fail === 'read') {
           throw failure
         }
+
         const count = Math.min(197, data.length, file.bytes.length - position)
+
         if (count > 0) {
           data.set(file.bytes.subarray(position, position + count))
         }
+
         return count
       },
       async write(data, position) {
         if (fail === 'write') {
           throw failure
         }
+
         const count = Math.min(211, data.length)
+
         if (position + count > file.bytes.length) {
           const bytes = new Uint8Array(position + count)
+
           bytes.set(file.bytes)
           file.bytes = bytes
         }
+
         file.bytes.set(data.subarray(0, count), position)
+
         return count
       },
       async truncate(length) {
         if (fail === 'truncate') {
           throw failure
         }
+
         const bytes = new Uint8Array(length)
+
         bytes.set(file.bytes.subarray(0, length))
         file.bytes = bytes
       },
       async close() {
         file.closed++
+
         if (fail === 'close') {
           throw failure
         }
       },
     }
   })
+
   return {
     store,
     files,
@@ -154,8 +179,10 @@ function memoryFiles() {
 
 test('retries partial positional I/O across media pages and sorts independent tracks', async () => {
   const { store, files } = memoryFiles()
+
   try {
     const bytes = Uint8Array.from({ length: 65539 }, (_, at) => at % 251)
+
     await store.append(1, sample(7, bytes.length), bytes)
     await store.append(2, sample(3), Uint8Array.of(4))
     await store.sort(1, 0, 1)
@@ -172,6 +199,7 @@ test('retries partial positional I/O across media pages and sorts independent tr
   } finally {
     await store.dispose()
   }
+
   assert.equal(files.length, 8)
   assert.ok(files.every(file => file.closed === 1))
 })
@@ -179,6 +207,7 @@ test('retries partial positional I/O across media pages and sorts independent tr
 for (const operation of ['read', 'write', 'truncate'] as const) {
   test(`preserves positional ${operation} failures and closes all files`, async () => {
     const backing = memoryFiles()
+
     await backing.store.append(1, sample(0), Uint8Array.of(1))
     await backing.store.readMedia(1, 0, 1)
     backing.fail(operation)
@@ -188,6 +217,7 @@ for (const operation of ['read', 'write', 'truncate'] as const) {
         : operation === 'write'
           ? backing.store.append(1, sample(1, 65536), new Uint8Array(65536))
           : backing.store.release(1, 1)
+
     await assert.rejects(pending, error => error === backing.failure)
     await assert.rejects(
       backing.store.get(1, 0),
@@ -200,6 +230,7 @@ for (const operation of ['read', 'write', 'truncate'] as const) {
 
 test('reports close failure after attempting all files and remains disposed', async () => {
   const backing = memoryFiles()
+
   await backing.store.append(1, sample(0), Uint8Array.of(1))
   backing.fail('close')
   await assert.rejects(
@@ -213,17 +244,21 @@ test('reports close failure after attempting all files and remains disposed', as
 test('rejects oversized media reads and invalid record fields', async () => {
   for (const operation of ['read', 'field', 'reference'] as const) {
     const backing = memoryFiles()
+
     await backing.store.append(1, sample(0), Uint8Array.of(1))
+
     try {
       if (operation === 'read') {
         await assert.rejects(backing.store.readMedia(1, 0, 65537), RangeError)
       }
+
       if (operation === 'field') {
         await assert.rejects(
           backing.store.append(1, sample(Number.NaN), Uint8Array.of(1)),
           RangeError,
         )
       }
+
       if (operation === 'reference') {
         await assert.rejects(backing.store.get(1, 1), RangeError)
       }
@@ -241,6 +276,7 @@ test('closes partially opened tracks without masking the original open error', a
     if (++opened === 3) {
       throw failure
     }
+
     return {
       async read(data) {
         return data.length
@@ -254,6 +290,7 @@ test('closes partially opened tracks without masking the original open error', a
       },
     }
   })
+
   await assert.rejects(
     store.append(1, sample(0), Uint8Array.of(1)),
     error => error === failure,
@@ -275,6 +312,7 @@ test('rejects non-progressing writes and truncated sample-media reads', async ()
       async truncate() {},
       async close() {},
     }))
+
     try {
       if (writing) {
         await assert.rejects(

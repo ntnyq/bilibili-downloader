@@ -10,6 +10,7 @@ import {
 
 test('tries a backup CDN after HTTP failure and reports complete bytes', async context => {
   let attempts = 0
+
   context.mock.method(globalThis, 'fetch', async () =>
     ++attempts === 1
       ? new Response('', { status: 403 })
@@ -22,6 +23,7 @@ test('tries a backup CDN after HTTP failure and reports complete bytes', async c
     10,
     size => progress.push(size),
   )
+
   assert.deepEqual([...bytes], [1, 2, 3])
   assert.equal(attempts, 2)
   assert.equal(progress.at(-1), 3)
@@ -29,8 +31,10 @@ test('tries a backup CDN after HTTP failure and reports complete bytes', async c
 
 test('enforces byte budget without Content-Length and does not retry oversized files', async context => {
   let attempts = 0
+
   context.mock.method(globalThis, 'fetch', async () => {
     attempts++
+
     return new Response(new Uint8Array(4))
   })
   await assert.rejects(
@@ -53,6 +57,7 @@ test('cancellation stops before network access and truncated responses fail', as
       new Response(new Uint8Array(2), { headers: { 'content-length': '3' } }),
   )
   const controller = new AbortController()
+
   controller.abort()
   await assert.rejects(
     fetchMediaBytes(['https://one.test'], controller.signal, 10, () => {}),
@@ -77,12 +82,14 @@ test('gzip assets use decoded byte budgets instead of compressed Content-Length'
   const small = Buffer.from('abc')
   const server = createServer((request, response) => {
     const body = gzipSync(request.url === '/small' ? small : xml)
+
     response.writeHead(200, {
       'Content-Encoding': 'gzip',
       'Content-Length': body.length,
     })
     response.end(body)
   })
+
   context.after(async () => {
     server.closeAllConnections()
     await new Promise<void>((resolve, reject) =>
@@ -91,10 +98,12 @@ test('gzip assets use decoded byte budgets instead of compressed Content-Length'
   })
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   const address = server.address()
+
   assert.ok(address && typeof address !== 'string')
   const url = `http://127.0.0.1:${address.port}`
   const signal = new AbortController().signal
   const result = await fetchMediaBytes([url], signal, xml.length, () => {})
+
   assert.deepEqual(Buffer.from(result), xml)
   // A tiny decoded response may be smaller than its compressed wire payload.
   assert.deepEqual(

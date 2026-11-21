@@ -34,13 +34,16 @@ const {
   notice: exportNotice,
   downloadHistory,
 } = useDownloadHistory()
+
 const isClearPending = shallowRef(false)
+
 const emptyTitle = computed(() => {
   if (!isReady.value) {
     return isRefreshing.value
       ? i18n.t('downloadLibrary.loadingDownloadHistory')
       : i18n.t('downloadLibrary.downloadHistoryUnavailable')
   }
+
   return records.value.length
     ? i18n.t('downloadLibrary.noMatchingDownloadRecords')
     : i18n.t('downloadLibrary.yourSavedCollectionStartsHere')
@@ -49,6 +52,7 @@ const emptyDescription = computed(() => {
   if (!isReady.value) {
     return i18n.t('downloadLibrary.pleaseTryAgainLater')
   }
+
   return records.value.length
     ? i18n.t('downloadLibrary.tryDifferentKeywordsOrViewAllAssets')
     : i18n.t(
@@ -76,59 +80,63 @@ function clearHistory() {
     >
       <template #actions>
         <DropdownMenu>
-          <DropdownMenuTrigger as-child
-            ><Button
+          <DropdownMenuTrigger as-child>
+            <Button
               :disabled="isExporting || !filteredRecords.length"
               variant="outline"
-              ><DownloadIcon class="size-4" />{{
-                i18n.t('downloadLibrary.exportRecords')
-              }}</Button
-            ></DropdownMenuTrigger
-          >
+            >
+              <DownloadIcon class="size-4" />
+              {{ i18n.t('downloadLibrary.exportRecords') }}
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>{{
-              i18n.t(
-                'downloadLibrary.exportFilteredRecords',
-                filteredRecords.length,
-              )
-            }}</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {{
+                i18n.t(
+                  'downloadLibrary.exportFilteredRecords',
+                  filteredRecords.length,
+                )
+              }}
+            </DropdownMenuLabel>
             <DropdownMenuItem
               @select="downloadHistory(filteredRecords, 'json')"
-              >{{ i18n.t('downloadLibrary.exportJson') }}</DropdownMenuItem
             >
-            <DropdownMenuItem
-              @select="downloadHistory(filteredRecords, 'csv')"
-              >{{ i18n.t('downloadLibrary.exportCsv') }}</DropdownMenuItem
-            >
+              {{ i18n.t('downloadLibrary.exportJson') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem @select="downloadHistory(filteredRecords, 'csv')">
+              {{ i18n.t('downloadLibrary.exportCsv') }}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <DropdownMenu>
-          <DropdownMenuTrigger as-child
-            ><Button
+          <DropdownMenuTrigger as-child>
+            <Button
               :aria-label="i18n.t('downloadLibrary.moreHistoryActions')"
               variant="outline"
               size="icon"
-              ><EllipsisIcon class="size-4" /></Button
-          ></DropdownMenuTrigger>
+            >
+              <EllipsisIcon class="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem
               @select="refresh"
               :disabled="isRefreshing || isBusy"
-              >{{
+            >
+              {{
                 isRefreshing
                   ? i18n.t('downloadLibrary.refreshing')
                   : i18n.t('downloadLibrary.refreshRecords')
-              }}</DropdownMenuItem
-            >
+              }}
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               @select="isClearPending = true"
               :disabled="isBusy || (!records.length && !libraryError)"
               class="text-destructive"
-              >{{
-                i18n.t('downloadLibrary.clearDownloadHistory')
-              }}</DropdownMenuItem
             >
+              {{ i18n.t('downloadLibrary.clearDownloadHistory') }}
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </template>
@@ -152,41 +160,45 @@ function clearHistory() {
     </p>
     <AlertDialog v-model:open="isClearPending">
       <AlertDialogContent>
-        <AlertDialogHeader
-          ><AlertDialogTitle>{{
-            i18n.t('downloadLibrary.clearDownloadHistory2')
-          }}</AlertDialogTitle
-          ><AlertDialogDescription>{{
-            i18n.t(
-              'downloadLibrary.afterClearingBatchImportsWillNoLongerSkip',
-              [
-                isReady
-                  ? i18n.t('downloadLibrary.allRecords', records.length)
-                  : i18n.t('downloadLibrary.theUnreadableDownloadHistory'),
-              ],
-            )
-          }}</AlertDialogDescription></AlertDialogHeader
-        >
-        <AlertDialogFooter
-          ><AlertDialogCancel>{{
-            i18n.t('downloadLibrary.keepRecords')
-          }}</AlertDialogCancel
-          ><AlertDialogAction
+        <AlertDialogHeader>
+          <AlertDialogTitle>
+            {{ i18n.t('downloadLibrary.clearDownloadHistory2') }}
+          </AlertDialogTitle>
+          <AlertDialogDescription>
+            {{
+              i18n.t(
+                'downloadLibrary.afterClearingBatchImportsWillNoLongerSkip',
+                [
+                  isReady
+                    ? i18n.t('downloadLibrary.allRecords', records.length)
+                    : i18n.t('downloadLibrary.theUnreadableDownloadHistory'),
+                ],
+              )
+            }}
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>
+            {{ i18n.t('downloadLibrary.keepRecords') }}
+          </AlertDialogCancel>
+          <AlertDialogAction
             @click="clearHistory"
             :disabled="isBusy"
-            >{{ i18n.t('downloadLibrary.confirmClear') }}</AlertDialogAction
-          ></AlertDialogFooter
-        >
+          >
+            {{ i18n.t('downloadLibrary.confirmClear') }}
+          </AlertDialogAction>
+        </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
     <Alert
       v-if="libraryError || exportError"
       variant="destructive"
       class="mb-4 text-sm text-destructive"
-      ><AlertDescription>
-        {{ libraryError || exportError }}
-      </AlertDescription></Alert
     >
+      <AlertDescription>
+        {{ libraryError || exportError }}
+      </AlertDescription>
+    </Alert>
     <p
       v-if="notice || exportNotice"
       role="status"
@@ -222,16 +234,18 @@ function clearHistory() {
         variant="outline"
         size="sm"
         class="mt-4"
-        >{{ i18n.t('downloadLibrary.clearFilters') }}</Button
       >
+        {{ i18n.t('downloadLibrary.clearFilters') }}
+      </Button>
       <Button
         @click="refresh"
         v-if="!isReady && !isRefreshing"
         variant="outline"
         size="sm"
         class="mt-4"
-        >{{ i18n.t('downloadPanel.reload') }}</Button
       >
+        {{ i18n.t('downloadPanel.reload') }}
+      </Button>
     </div>
     <Collapsible
       class="mt-6 rounded-lg bg-secondary px-4 py-3 text-xs text-muted-foreground"
@@ -252,8 +266,9 @@ function clearHistory() {
           <Button
             variant="ghost"
             size="xs"
-            >{{ i18n.t('downloadLibrary.learnMore') }}</Button
           >
+            {{ i18n.t('downloadLibrary.learnMore') }}
+          </Button>
         </CollapsibleTrigger>
       </div>
       <CollapsibleContent class="mt-3 space-y-2 leading-6">
@@ -279,12 +294,12 @@ function clearHistory() {
       :aria-label="i18n.t('downloadLibrary.downloadHistoryPagination')"
       class="mt-5 flex flex-wrap items-center justify-end gap-3 text-xs"
     >
-      <span class="mr-auto text-muted-foreground">{{
-        i18n.t('downloadLibrary.matchingRecords', filteredRecords.length)
-      }}</span>
-      <span class="text-muted-foreground">{{
-        i18n.t('downloadLibrary.page20PerPage', [page, pageCount])
-      }}</span>
+      <span class="mr-auto text-muted-foreground">
+        {{ i18n.t('downloadLibrary.matchingRecords', filteredRecords.length) }}
+      </span>
+      <span class="text-muted-foreground">
+        {{ i18n.t('downloadLibrary.page20PerPage', [page, pageCount]) }}
+      </span>
       <Button
         @click="previousPage"
         :disabled="page <= 1"
@@ -292,8 +307,9 @@ function clearHistory() {
         size="sm"
         type="button"
         class="text-muted-foreground hover:text-primary disabled:opacity-50"
-        >{{ i18n.t('downloadLibrary.previous') }}</Button
       >
+        {{ i18n.t('downloadLibrary.previous') }}
+      </Button>
       <Button
         @click="nextPage"
         :disabled="page >= pageCount"
@@ -301,8 +317,9 @@ function clearHistory() {
         size="sm"
         type="button"
         class="text-muted-foreground hover:text-primary disabled:opacity-50"
-        >{{ i18n.t('downloadLibrary.next') }}</Button
       >
+        {{ i18n.t('downloadLibrary.next') }}
+      </Button>
     </nav>
   </section>
 </template>

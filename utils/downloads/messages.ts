@@ -5,6 +5,7 @@ import { batchSessionDataSchema } from '../../types/batchSession'
 import {
   downloadKindSchema,
   downloadSettingsPatchSchema,
+  episodeIdSchema,
   filenameTemplateSchema,
   folderModeSchema,
   jobUpdateSchema,
@@ -17,9 +18,11 @@ import { bundleKindsSchema } from '../../types/downloadBundle'
 
 export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('video.get'), videoId: videoIdSchema }),
+  z.object({ type: z.literal('episode.get'), epId: episodeIdSchema }),
   z.object({
     type: z.literal('video.estimate'),
     bvid: videoIdSchema,
+    epId: episodeIdSchema.optional(),
     cid: videoPageSchema.shape.cid,
     duration: videoPageSchema.shape.duration,
     quality: qualityPreferenceSchema,
@@ -55,6 +58,11 @@ export const requestSchema = z.discriminatedUnion('type', [
     skipCompleted: z.boolean(),
     filenameTemplate: filenameTemplateSchema,
     folderMode: folderModeSchema,
+  }),
+  z.object({
+    type: z.literal('queue.episode.add'),
+    epId: episodeIdSchema,
+    quality: qualityPreferenceSchema,
   }),
   z.object({
     type: z.literal('queue.add'),
@@ -156,8 +164,10 @@ export async function sendDownloadMessage<T>(
       ...message,
     }),
   )
+
   if (!reply.ok) {
     throw new Error(reply.error)
   }
+
   return schema.parse(reply.data)
 }

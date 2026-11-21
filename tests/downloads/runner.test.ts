@@ -27,13 +27,17 @@ for (const failure of [
     { timeout: 10000 },
     async context => {
       const extension = installExtension(context)
+
       registerDownloads()
+
       if (failure === 'history') {
         extension.stored.downloadLibrary = { version: 999, records: [] }
       }
+
       if (failure === 'historyStorage') {
         extension.stored.downloadLibrary = { version: 1, records: [] }
         const set = extension.local.set.bind(extension.local)
+
         context.mock.method(
           extension.local,
           'set',
@@ -41,10 +45,12 @@ for (const failure of [
             if ('downloadLibrary' in values) {
               throw new Error('History quota exceeded')
             }
+
             await set(values)
           },
         )
       }
+
       extension.stored.downloadJobs = [
         downloadJobSchema.parse({
           id: 'cover',
@@ -65,6 +71,7 @@ for (const failure of [
         }),
       ]
       const stop = new AbortController()
+
       context.after(() => stop.abort())
       replaceProperty(context, globalThis, 'navigator', {
         locks: {
@@ -74,6 +81,7 @@ for (const failure of [
             action: (lock: { name: string }) => unknown,
           ) {
             assert.ok(!options.ifAvailable || !options.signal)
+
             return action({ name })
           },
         },
@@ -96,9 +104,11 @@ for (const failure of [
           ),
       )
       let saves = 0
+
       replaceProperty(context, browser, 'downloads', {
         async download() {
           saves++
+
           return 1
         },
         search: async () => [{ state: 'complete' }],
@@ -107,6 +117,7 @@ for (const failure of [
       const send = browser.runtime.sendMessage.bind(browser.runtime)
       let failed = false
       const errors: string[] = []
+
       context.mock.method(
         browser.runtime,
         'sendMessage',
@@ -115,13 +126,16 @@ for (const failure of [
           const jobs = downloadJobSchema
             .array()
             .parse(extension.stored.downloadJobs)
+
           if (
             request.type === 'runner.claim'
             && jobs[0]?.status === 'completed'
           ) {
             stop.abort()
+
             throw stop.signal.reason
           }
+
           const reply = await send(message)
           const loseReply =
             request.type === 'runner.update'
@@ -131,8 +145,10 @@ for (const failure of [
                 || (failure === 'downloadId'
                   && request.update.downloadId !== undefined)
               : request.type === failure
+
           if (!failed && loseReply) {
             failed = true
+
             if (failure === 'runner.ready') {
               await extension.local.set({
                 downloadJobs: [
@@ -147,8 +163,10 @@ for (const failure of [
                 ],
               })
             }
+
             throw new Error('Reply lost')
           }
+
           return reply
         },
       )
@@ -159,16 +177,21 @@ for (const failure of [
       const jobs = downloadJobSchema
         .array()
         .parse(extension.stored.downloadJobs)
+
       assert.equal(jobs[0]?.status, 'completed')
       assert.equal(saves, 1)
       assert.equal(failed, failure !== 'history')
+
       if (failure === 'history' || failure === 'historyStorage') {
         assert.match(jobs[0]?.error ?? '', /已保存.*历史/)
       }
+
       if (failure !== 'history') {
         assert.ok(errors.includes('Reply lost'))
       }
+
       assert.equal(errors.at(-1), '')
+
       if (failure === 'runner.ready') {
         assert.equal(jobs[1]?.status, 'native')
       }

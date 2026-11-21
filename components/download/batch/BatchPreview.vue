@@ -7,10 +7,12 @@ const props = defineProps<{
   rows: BatchImportRow[]
   disabled: boolean
 }>()
+
 const emit = defineEmits<{
   toggle: [key: string]
   toggleAll: []
 }>()
+
 const available = computed(() =>
   props.rows.filter(
     row =>
@@ -38,9 +40,11 @@ function getRowBadgeClasses(row: BatchImportRow) {
   if (row.status === 'failed' || row.status === 'partial') {
     return 'bg-destructive/10 text-destructive'
   }
+
   if (row.status === 'done') {
     return 'bg-success/10 text-success'
   }
+
   return row.selected
     ? 'bg-accent text-primary'
     : 'bg-muted text-muted-foreground'
@@ -76,13 +80,14 @@ function getRowStatusLabel(row: BatchImportRow) {
         "
         :disabled="disabled || !available.length"
         class="h-3.75 w-3.75 shrink-0 accent-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      />{{ i18n.t('batchPreview.selectAllPendingVideos')
-      }}<span class="ml-auto text-muted-foreground">{{
-        i18n.t('batchPreview.selected2', [selectedCount, rows.length])
-      }}</span>
+      />
+      {{ i18n.t('batchPreview.selectAllPendingVideos') }}
+      <span class="ml-auto text-muted-foreground">
+        {{ i18n.t('batchPreview.selected2', [selectedCount, rows.length]) }}
+      </span>
     </Label>
-    <ScrollArea :style="{ height: `${Math.min(rows.length * 84, 384)}px` }"
-      ><ul
+    <ScrollArea :style="{ height: `${Math.min(rows.length * 84, 384)}px` }">
+      <ul
         :aria-label="i18n.t('batchPreview.videoPreviewList')"
         class="divide-y divide-border"
       >
@@ -107,8 +112,9 @@ function getRowStatusLabel(row: BatchImportRow) {
               target="_blank"
               rel="noreferrer"
               class="line-clamp-2 break-all text-[13px] font-medium leading-5 outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 hover:text-primary"
-              >{{ row.item.title }}</a
             >
+              {{ row.item.title }}
+            </a>
             <p class="mt-0.75 break-all text-[11px] text-muted-foreground">
               {{ row.item.videoId }} · P{{ row.item.page }}
             </p>
@@ -142,7 +148,7 @@ function getRowStatusLabel(row: BatchImportRow) {
             {{ getRowStatusLabel(row) }}
           </Badge>
         </li>
-      </ul></ScrollArea
-    >
+      </ul>
+    </ScrollArea>
   </div>
 </template>

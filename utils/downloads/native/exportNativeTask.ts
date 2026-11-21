@@ -27,6 +27,7 @@ export async function exportNativeTask(job: DownloadJob, signal: AbortSignal) {
       i18n.t('exportNativeTask.onlyVideoAndAudioTasksSupportLocalDownloading'),
     )
   }
+
   const media = await getVideoMedia(
     job.bvid,
     job.cid,
@@ -38,9 +39,11 @@ export async function exportNativeTask(job: DownloadJob, signal: AbortSignal) {
   const blob = new Blob([JSON.stringify(manifest, null, 2)], {
     type: 'application/json',
   })
+
   if (blob.size > 1024 * 1024) {
     throw new Error(i18n.t('exportNativeTask.theLocalTaskFileExceeds1MbChoose'))
   }
+
   await saveFile(
     blob,
     `Bilibili/${job.bvid}_P${job.page}_${job.kind}.bili.json`,

@@ -66,17 +66,21 @@ export function createDiskFragmentStore(
         ),
       )
     }
+
     const result = queue.then(() => {
       if (failure) {
         throw failure.error
       }
+
       return operation()
     })
+
     queue = result
       .then(() => {})
       .catch(error => {
         failure ??= { error }
       })
+
     return result
   }
 
@@ -84,9 +88,12 @@ export function createDiskFragmentStore(
     if (!Number.isInteger(trackId) || trackId < 1 || trackId > 0xffff_ffff) {
       throw new RangeError(i18n.t('fragmentStore.invalidFragmentTrackId'))
     }
+
     let track = tracks.get(trackId)
+
     if (!track) {
       const file = await open(trackId)
+
       track = {
         file,
         buffer: new Uint8Array(FRAGMENT_PAGE_SIZE),
@@ -96,22 +103,27 @@ export function createDiskFragmentStore(
       }
       tracks.set(trackId, track)
     }
+
     return track
   }
 
   async function flushTrack(track: TrackFile) {
     let offset = 0
+
     while (offset < track.used) {
       const data = track.buffer.subarray(offset, track.used)
       const written = await track.file.write(data, track.written)
+
       if (!Number.isInteger(written) || written <= 0 || written > data.length) {
         throw new Error(
           i18n.t('fragmentStore.fragmentStorageFileWriteMadeNoProgress'),
         )
       }
+
       offset += written
       track.written += written
     }
+
     track.used = 0
   }
 
@@ -119,26 +131,32 @@ export function createDiskFragmentStore(
     append(trackId: number, data: Uint8Array) {
       return enqueueOperation(async () => {
         const track = await getTrack(trackId)
+
         if (track.sealed) {
           throw new DOMException(
             i18n.t('fragmentStore.fragmentStorageHasEnteredTheReadPhase'),
             'InvalidStateError',
           )
         }
+
         if (!Number.isSafeInteger(track.written + track.used + data.length)) {
           throw new RangeError(
             i18n.t('fragmentStore.fragmentStorageFileIsTooLarge'),
           )
         }
+
         let offset = 0
+
         while (offset < data.length) {
           const length = Math.min(
             data.length - offset,
             FRAGMENT_PAGE_SIZE - track.used,
           )
+
           track.buffer.set(data.subarray(offset, offset + length), track.used)
           track.used += length
           offset += length
+
           if (track.used === FRAGMENT_PAGE_SIZE) {
             await flushTrack(track)
           }
@@ -158,22 +176,28 @@ export function createDiskFragmentStore(
             i18n.t('fragmentStore.invalidFragmentStorageReadRange'),
           )
         }
+
         const track = await getTrack(trackId)
+
         if (offset + length > track.written + track.used) {
           throw new RangeError(
             i18n.t('fragmentStore.fragmentStorageFileIsIncomplete'),
           )
         }
+
         if (!track.sealed) {
           await flushTrack(track)
           await track.file.seal()
           track.sealed = true
         }
+
         const data = new Uint8Array(length)
         let consumed = 0
+
         while (consumed < length) {
           const remaining = data.subarray(consumed)
           const count = await track.file.read(remaining, offset + consumed)
+
           if (
             !Number.isInteger(count)
             || count <= 0
@@ -183,14 +207,17 @@ export function createDiskFragmentStore(
               i18n.t('fragmentStore.fragmentStorageFileReadIncomplete'),
             )
           }
+
           consumed += count
         }
+
         return data
       })
     },
     reset(trackId: number) {
       return enqueueOperation(async () => {
         const track = tracks.get(trackId)
+
         if (track) {
           await track.file.close()
           tracks.delete(trackId)
@@ -199,8 +226,10 @@ export function createDiskFragmentStore(
     },
     dispose() {
       disposed = true
+
       return (disposal ??= queue.then(async () => {
         let closeFailure: { error: unknown } | undefined
+
         for (const track of tracks.values()) {
           try {
             await track.file.close()
@@ -208,7 +237,9 @@ export function createDiskFragmentStore(
             closeFailure ??= { error }
           }
         }
+
         tracks.clear()
+
         if (closeFailure) {
           throw closeFailure.error
         }
@@ -242,6 +273,7 @@ export function createOpfsFragmentStore(
     let writer: FileSystemWritableFileStream | undefined =
       await handle.createWritable({ keepExistingData: false })
     let snapshot: File | undefined
+
     return {
       async write(data, position) {
         if (!writer) {
@@ -250,7 +282,9 @@ export function createOpfsFragmentStore(
             'InvalidStateError',
           )
         }
+
         await writer.write({ type: 'write', position, data })
+
         return data.length
       },
       async seal() {
@@ -265,10 +299,13 @@ export function createOpfsFragmentStore(
             'InvalidStateError',
           )
         }
+
         const bytes = await snapshot
           .slice(position, position + data.length)
           .arrayBuffer()
+
         data.set(new Uint8Array(bytes))
+
         return bytes.byteLength
       },
       async close() {

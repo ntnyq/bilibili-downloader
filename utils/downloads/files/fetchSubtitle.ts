@@ -22,8 +22,10 @@ export async function fetchSubtitle(
     MAX_ASSET_BYTES,
     onProgress,
   )
+
   signal.throwIfAborted()
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+
   return {
     data: JSON.parse(text),
     label,

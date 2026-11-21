@@ -20,6 +20,7 @@ const responseSchema = z.object({
   code: z.number(),
   message: z.string().optional(),
   data: z.unknown().optional(),
+  result: z.unknown().optional(),
 })
 const viewSchema = z.object({
   bvid: z.string(),
@@ -75,12 +76,28 @@ export async function requestApi(
   signal?: AbortSignal,
   allowGuest = false,
 ): Promise<unknown> {
+  return (await requestApiEnvelope(path, signal, allowGuest)).data
+}
+
+export async function requestApiResult(
+  path: string,
+  signal?: AbortSignal,
+): Promise<unknown> {
+  return (await requestApiEnvelope(path, signal)).result
+}
+
+async function requestApiEnvelope(
+  path: string,
+  signal?: AbortSignal,
+  allowGuest = false,
+) {
   const response = await fetch(`https://api.bilibili.com${path}`, {
     credentials: 'include',
     signal: signal
       ? AbortSignal.any([signal, AbortSignal.timeout(15000)])
       : AbortSignal.timeout(15000),
   })
+
   if (!response.ok) {
     throw new BilibiliApiError(
       i18n.t('api.bilibiliApiRequestFailedHttpPleaseTryAgain', [
@@ -89,7 +106,9 @@ export async function requestApi(
       { code: response.status, shouldStopBatch: response.status !== 404 },
     )
   }
+
   let payload: unknown
+
   try {
     payload = await response.json()
   } catch (error) {
@@ -102,7 +121,9 @@ export async function requestApi(
       },
     )
   }
+
   const result = responseSchema.parse(payload)
+
   if (result.code !== 0 && (!allowGuest || result.code !== -101)) {
     if ([-352, -412, -401].includes(result.code)) {
       throw new BilibiliApiError(
@@ -110,6 +131,7 @@ export async function requestApi(
         { code: result.code, shouldStopBatch: true },
       )
     }
+
     throw new BilibiliApiError(
       i18n.t('api.bilibili', [
         result.message || i18n.t('api.requestFailed'),
@@ -124,7 +146,8 @@ export async function requestApi(
       },
     )
   }
-  return result.data
+
+  return result
 }
 
 /**
@@ -149,11 +172,13 @@ export async function getVideoInfo(
   const data = viewSchema.parse(
     await requestApi(`/x/web-interface/view?${param}`, signal),
   )
+
   if (data.rights?.is_stein_gate) {
     throw new Error(
       i18n.t('api.interactiveVideosAreNotSupportedChooseARegular'),
     )
   }
+
   return videoInfoSchema.parse({
     bvid: data.bvid,
     title: data.title,
@@ -178,11 +203,14 @@ export async function getWbiKey(signal?: AbortSignal): Promise<string> {
   if (cachedKey && cachedKey.expires > Date.now()) {
     return cachedKey.value
   }
+
   const data = navSchema.parse(
     await requestApi('/x/web-interface/nav', signal, true),
   )
   const value = createMixinKey(data.wbi_img.img_url, data.wbi_img.sub_url)
+
   cachedKey = { value, expires: Date.now() + 30000 }
+
   return value
 }
 
@@ -225,6 +253,7 @@ export async function getVideoMedia(
   const data = playDataSchema.parse(
     await requestApi(`/x/player/wbi/playurl?${query}`, signal),
   )
+
   return kind === 'audio' ? selectAudio(data) : selectMedia(data, preference)
 }
 
@@ -255,5 +284,6 @@ export async function getSubtitle(
   const data = subtitleInfoSchema.parse(
     await requestApi(`/x/player/wbi/v2?${query}`, signal),
   )
+
   return selectSubtitle(data, language)
 }

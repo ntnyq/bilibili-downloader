@@ -27,10 +27,11 @@ const { bundles } = useDownloadBundle(jobs)
       v-if="queueError"
       class="mt-2.5 text-[12px] text-destructive"
       variant="destructive"
-      ><AlertDescription>
-        {{ queueError }}
-      </AlertDescription></Alert
     >
+      <AlertDescription>
+        {{ queueError }}
+      </AlertDescription>
+    </Alert>
     <p
       v-if="!bundles.length"
       class="rounded-lg border border-dashed p-12 text-center text-sm text-muted-foreground"

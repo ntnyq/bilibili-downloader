@@ -69,13 +69,15 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
         <TabsTrigger
           :disabled
           value="single"
-          >{{ i18n.t('downloadBundlePicker.singleAsset') }}</TabsTrigger
         >
+          {{ i18n.t('downloadBundlePicker.singleAsset') }}
+        </TabsTrigger>
         <TabsTrigger
           :disabled
           value="bundle"
-          >{{ i18n.t('downloadWorkspace.assetBundles') }}</TabsTrigger
         >
+          {{ i18n.t('downloadWorkspace.assetBundles') }}
+        </TabsTrigger>
       </TabsList>
       <TabsContent value="single"><slot name="single" /></TabsContent>
       <TabsContent
@@ -109,18 +111,22 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
           <Label
             as="span"
             class="shrink-0 text-muted-foreground"
-            >{{ i18n.t('batchImportOptions.subtitleLanguage') }}</Label
           >
+            {{ i18n.t('batchImportOptions.subtitleLanguage') }}
+          </Label>
           <Select
             v-model="subtitleLanguage"
             :disabled
-            ><SelectTrigger
+          >
+            <SelectTrigger
               :aria-label="i18n.t('batchImportOptions.subtitleLanguage')"
               class="w-47.5 max-w-full"
-              ><SelectValue>{{
-                SUBTITLE_LANGUAGE_LABELS[subtitleLanguage]
-              }}</SelectValue></SelectTrigger
-            ><SelectContent>
+            >
+              <SelectValue>
+                {{ SUBTITLE_LANGUAGE_LABELS[subtitleLanguage] }}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent>
               <SelectItem
                 v-for="(label, value) in SUBTITLE_LANGUAGE_LABELS"
                 :key="value"
@@ -128,8 +134,8 @@ function toggleKind(kind: DownloadKind, checked: boolean | 'indeterminate') {
               >
                 {{ label }}
               </SelectItem>
-            </SelectContent></Select
-          >
+            </SelectContent>
+          </Select>
         </div>
         <p class="text-[11px] text-muted-foreground leading-4.5">
           {{

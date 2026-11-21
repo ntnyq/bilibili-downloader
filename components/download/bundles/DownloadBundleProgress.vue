@@ -6,6 +6,7 @@ import type { DownloadBundleSummary } from '~/types/downloadBundle'
 const props = defineProps<{
   bundle: DownloadBundleSummary
 }>()
+
 const emit = defineEmits<{
   retry: [id: string]
   cancel: [id: string]
@@ -57,8 +58,8 @@ const statusLabels: Record<DownloadBundleSummary['status'], string> = {
           {{ i18n.t('downloadBundleProgress.created', [createdAtLabel]) }}
         </p>
       </div>
-      <span class="shrink-0 text-primary"
-        >{{
+      <span class="shrink-0 text-primary">
+        {{
           i18n.t('downloadBundleProgress.saved', [
             bundle.completed,
             bundle.total,
@@ -81,30 +82,32 @@ const statusLabels: Record<DownloadBundleSummary['status'], string> = {
       class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground"
       role="status"
     >
-      <span v-if="bundle.active">{{
-        i18n.t('downloadBundleProgress.unfinished', [bundle.active])
-      }}</span>
+      <span v-if="bundle.active">
+        {{ i18n.t('downloadBundleProgress.unfinished', [bundle.active]) }}
+      </span>
       <span
         v-if="bundle.failed"
         class="text-destructive"
-        >{{ i18n.t('downloadBundleProgress.failed', [bundle.failed]) }}</span
       >
-      <span v-if="bundle.cancelled">{{
-        i18n.t('downloadBundleProgress.cancelled', [bundle.cancelled])
-      }}</span>
+        {{ i18n.t('downloadBundleProgress.failed', [bundle.failed]) }}
+      </span>
+      <span v-if="bundle.cancelled">
+        {{ i18n.t('downloadBundleProgress.cancelled', [bundle.cancelled]) }}
+      </span>
       <span
         v-if="bundle.missing"
         class="text-destructive"
-        >{{
+      >
+        {{
           i18n.t(
             'downloadBundleProgress.recordsForAssetsWereRemovedTheFullResult',
             bundle.missing,
           )
-        }}</span
-      >
-      <span v-if="bundle.status === 'completed'">{{
-        i18n.t('downloadBundleProgress.allAssetsSavedInTheVideoFolder')
-      }}</span>
+        }}
+      </span>
+      <span v-if="bundle.status === 'completed'">
+        {{ i18n.t('downloadBundleProgress.allAssetsSavedInTheVideoFolder') }}
+      </span>
     </p>
     <Collapsible
       v-if="unfinished.length"
@@ -112,13 +115,14 @@ const statusLabels: Record<DownloadBundleSummary['status'], string> = {
     >
       <CollapsibleTrigger
         class="cursor-pointer text-primary outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-        >{{
+      >
+        {{
           i18n.t(
             'downloadBundleProgress.viewUnfinishedAssets',
             unfinished.length,
           )
-        }}</CollapsibleTrigger
-      >
+        }}
+      </CollapsibleTrigger>
       <CollapsibleContent>
         <ul class="mt-2 max-h-45 overflow-y-auto space-y-2">
           <li
@@ -129,8 +133,8 @@ const statusLabels: Record<DownloadBundleSummary['status'], string> = {
             <p class="mb-1.5 truncate text-muted-foreground">
               {{ DOWNLOAD_KIND_LABELS[job.kind] }}
               <template v-if="job.kind !== 'cover'">
-                · P{{ job.page }}</template
-              >
+                {{ ` · P${job.page}` }}
+              </template>
             </p>
             <DownloadProgress
               @cancel="emit('cancel', $event)"

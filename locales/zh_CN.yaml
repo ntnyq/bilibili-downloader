@@ -471,6 +471,17 @@ downloads:
   unsupportedBatchSessionAction: 不支持的批量会话操作。
   unsupportedDownloadAction: 不支持的下载操作。
   useBatchImportInTheDownloadCenter: 请在下载中心使用批量导入。
+episode:
+  browserQueueOnly: 番剧仅支持通过浏览器下载队列下载。
+  downloadCurrentEpisode: 下载当前集
+  drmProtected: 当前集受 DRM 保护，无法下载。
+  episodeNotFound: B 站未找到当前集，请刷新播放页后重试。
+  fullPlaybackUnavailable: B 站未提供当前集的完整正片，无法下载。
+  moreActions: 更多操作：$1，$2
+  number: 第 $1 集
+  previewOnly: B 站仅提供当前集的试看，无法下载。
+  regionRestricted: 当前集在你所在的地区不可播放。
+  trailerOnly: B 站仅提供当前集的预告，无法下载。
 exportNativeTask:
   onlyVideoAndAudioTasksSupportLocalDownloading: 仅视频和音频任务支持本地下载。
   theLocalTaskFileExceeds1MbChoose: 本地任务文件超过 1 MB，请选择分 P 较少的视频。

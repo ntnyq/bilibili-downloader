@@ -10,12 +10,14 @@ import type { DownloadJob } from '~/types/download'
 const props = defineProps<{
   job: DownloadJob
 }>()
+
 const emit = defineEmits<{
   cancel: [id: string]
   retry: [id: string]
   pause: [id: string]
   resume: [id: string]
 }>()
+
 const isActive = computed(() => isJobActive(props.job))
 const canRetry = computed(() =>
   ['failed', 'cancelled'].includes(props.job.status),
@@ -40,8 +42,9 @@ const canRetry = computed(() =>
         <span
           v-if="job.quality"
           class="text-muted-foreground font-normal"
-          >{{ job.quality }}</span
         >
+          {{ job.quality }}
+        </span>
       </span>
       <div class="flex shrink-0 items-center gap-3">
         <Button
@@ -51,8 +54,9 @@ const canRetry = computed(() =>
           size="sm"
           class="text-muted-foreground hover:text-primary"
           type="button"
-          >{{ i18n.t('downloadProgress.pause') }}</Button
         >
+          {{ i18n.t('downloadProgress.pause') }}
+        </Button>
         <Button
           @click="emit('resume', job.id)"
           v-else-if="job.status === 'paused'"
@@ -60,8 +64,9 @@ const canRetry = computed(() =>
           size="sm"
           class="text-muted-foreground hover:text-primary"
           type="button"
-          >{{ i18n.t('downloadProgress.resume') }}</Button
         >
+          {{ i18n.t('downloadProgress.resume') }}
+        </Button>
         <Button
           @click="emit('cancel', job.id)"
           v-if="isActive"
@@ -69,8 +74,9 @@ const canRetry = computed(() =>
           size="sm"
           class="text-muted-foreground hover:text-primary"
           type="button"
-          >{{ i18n.t('downloadProgress.cancel') }}</Button
         >
+          {{ i18n.t('downloadProgress.cancel') }}
+        </Button>
         <Button
           @click="emit('retry', job.id)"
           v-else-if="canRetry"
@@ -78,8 +84,9 @@ const canRetry = computed(() =>
           size="sm"
           class="text-muted-foreground hover:text-primary"
           type="button"
-          >{{ i18n.t('downloadProgress.retry') }}</Button
         >
+          {{ i18n.t('downloadProgress.retry') }}
+        </Button>
       </div>
     </div>
     <Progress
@@ -94,9 +101,14 @@ const canRetry = computed(() =>
     >
       {{
         i18n.t('downloadProgress.downloaded', [formatBytes(job.receivedBytes)])
-      }}<span v-if="job.totalBytes">{{
-        i18n.t('downloadProgress.approximately', [formatBytes(job.totalBytes)])
-      }}</span>
+      }}
+      <span v-if="job.totalBytes">
+        {{
+          i18n.t('downloadProgress.approximately', [
+            formatBytes(job.totalBytes),
+          ])
+        }}
+      </span>
     </p>
     <p
       v-if="job.status === 'paused'"
@@ -114,9 +126,10 @@ const canRetry = computed(() =>
       v-if="job.error && job.status === 'failed'"
       class="mt-2 wrap-break-word text-destructive leading-relaxed"
       variant="destructive"
-      ><AlertDescription>
-        {{ job.error }}
-      </AlertDescription></Alert
     >
+      <AlertDescription>
+        {{ job.error }}
+      </AlertDescription>
+    </Alert>
   </div>
 </template>

@@ -1,7 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createDownloadPath } from '../../utils/downloads/files/createDownloadPath'
-import { parseVideoLocation } from '../../utils/downloads/parseVideoLocation'
+import {
+  parseEpisodeLocation,
+  parseVideoLocation,
+} from '../../utils/downloads/parseVideoLocation'
 import { createDownloadJobs } from '../../utils/downloads/queue/jobs'
 import type { VideoInfo } from '../../types/download'
 
@@ -37,6 +40,7 @@ test('recognizes BV/av URLs and rejects invalid pages or misleading hosts', () =
       page: 1,
     },
   )
+
   for (const url of [
     'https://www.bilibili.com/video/BV1xx411c7mD/?p=0',
     'https://www.bilibili.com/video/BV1xx411c7mD/?p=1.5',
@@ -47,8 +51,28 @@ test('recognizes BV/av URLs and rejects invalid pages or misleading hosts', () =
   }
 })
 
+test('recognizes a single episode play URL and rejects season URLs', () => {
+  assert.deepEqual(
+    parseEpisodeLocation(
+      'https://www.bilibili.com/bangumi/play/ep21495/?spm_id_from=example#t=30',
+    ),
+    { epId: 21495 },
+  )
+
+  for (const url of [
+    'https://www.bilibili.com/bangumi/play/ss774',
+    'https://www.bilibili.com/bangumi/play/ep0',
+    'https://www.bilibili.com/bangumi/play/ep9007199254740992',
+    'https://www.bilibili.com/bangumi/play/ep21495/extra',
+    'https://www.bilibili.com.example/bangumi/play/ep21495',
+  ]) {
+    assert.equal(parseEpisodeLocation(url), undefined)
+  }
+})
+
 test('single/current downloads target the right CID; all mode deduplicates pending work', () => {
   const current = createDownloadJobs(video, 2, 'current', [])
+
   assert.equal(current.length, 1)
   assert.equal(current[0]?.cid, 20)
   assert.deepEqual(
@@ -75,18 +99,21 @@ test('single/current downloads target the right CID; all mode deduplicates pendi
     'current',
     [],
   )
+
   assert.equal(single.length, 1)
   assert.equal(single[0]?.pageCount, 1)
 })
 
 test('filenames are safe, include BV and part, and fit a filesystem component', () => {
   const [job] = createDownloadJobs(video, 2, 'current', [])
+
   assert.ok(job)
   const filename = createDownloadPath({
     ...job,
     title: '../非法:标题\\文件\u{0}',
     quality: '1080P 高清',
   })
+
   assert.ok(filename.startsWith('Bilibili/'))
   assert.ok(filename.endsWith('.mp4'))
   assert.ok(filename.includes('BV1xx411c7mD_P02'))
@@ -100,5 +127,6 @@ test('filenames are safe, include BV and part, and fit a filesystem component', 
     })
       .split('/')
       .at(-1) || ''
+
   assert.ok(new TextEncoder().encode(longName).length <= 255)
 })

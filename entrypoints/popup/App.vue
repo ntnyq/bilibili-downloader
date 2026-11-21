@@ -11,6 +11,7 @@ onMounted(async () => {
       active: true,
       currentWindow: true,
     })
+
     url.value = tab?.url || ''
   } catch {
     pageError.value = i18n.t('app.cannotReadTheCurrentTabRefreshThePage')

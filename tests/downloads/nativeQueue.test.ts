@@ -18,7 +18,9 @@ const video: VideoInfo = {
 
 function createPausedJob(): DownloadJob {
   const [job] = createDownloadJobs(video, 1, 'current', [])
+
   assert.ok(job)
+
   return {
     ...job,
     status: 'paused',
@@ -30,6 +32,7 @@ function createPausedJob(): DownloadJob {
 test('native transfer acquires an exclusive lease without changing the snapshot', () => {
   const source = createPausedJob()
   const claimed = startNativeJob([source], source.id)
+
   assert.equal(claimed.status, 'native')
   assert.ok(claimed.runId)
   assert.equal(claimed.qualityPreference, source.qualityPreference)
@@ -46,6 +49,7 @@ test('native transfer acquires an exclusive lease without changing the snapshot'
 
 test('native transfer rejects another active task for the same asset', () => {
   const source = createPausedJob()
+
   assert.throws(
     () => startNativeJob([source, { ...source, id: 'another' }], source.id),
     /其他下载任务/,
@@ -59,6 +63,7 @@ test('native transfer rejects another active task for the same asset', () => {
 test('native completion requires a path and cannot overwrite a revoked lease', () => {
   const source = createPausedJob()
   const job = startNativeJob([source], source.id)
+
   assert.ok(job.runId)
   assert.equal(
     applyNativeJobUpdate(job, 'stale', { status: 'completed' }),
@@ -94,8 +99,10 @@ test('native completion requires a path and cannot overwrite a revoked lease', (
 test('structured-clone progress updates preserve required queue fields through completion', () => {
   const source = createPausedJob()
   const job = startNativeJob([source], source.id)
+
   assert.ok(job.runId)
   const runId = job.runId
+
   applyNativeJobUpdate(job, runId, { receivedBytes: 4096, quality: 'AAC' })
   // Native merging/saving events carry no byte count; Firefox keeps undefined.
   const update = jobUpdateSchema.parse(
@@ -107,6 +114,7 @@ test('structured-clone progress updates preserve required queue fields through c
       quality: undefined,
     }),
   )
+
   assert.ok(Object.hasOwn(update, 'receivedBytes'))
   assert.ok(applyNativeJobUpdate(job, runId, update))
   assert.equal(job.receivedBytes, 4096)
@@ -123,14 +131,17 @@ test('structured-clone progress updates preserve required queue fields through c
     }),
   )
   const stored = JSON.stringify([job])
+
   assert.ok(downloadJobsSchema.safeParse(JSON.parse(stored)).success)
 })
 
 test('invalid native patches leave the original job intact', () => {
   const source = createPausedJob()
   const job = startNativeJob([source], source.id)
+
   assert.ok(job.runId)
   const previous = structuredClone(job)
+
   assert.throws(() =>
     applyNativeJobUpdate(job, job.runId!, {
       status: 'completed',

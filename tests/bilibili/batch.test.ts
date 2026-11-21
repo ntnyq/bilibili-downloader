@@ -61,6 +61,7 @@ test('source parsing accepts current and legacy source URLs without mixing kinds
     kind: 'uploads',
     mid: '84912',
   })
+
   for (const input of [
     '123',
     'https://space.bilibili.com/1/video?sid=2',
@@ -83,6 +84,7 @@ test('source and video URLs reject foreign hosts, credentials, protocols and mal
   ]) {
     assert.throws(() => parseBatchSource('uploads', input))
   }
+
   assert.equal(
     batchSourceSchema.safeParse({ kind: 'uploads', mid: '../1' }).success,
     false,
@@ -99,6 +101,7 @@ test('source and video URLs reject foreign hosts, credentials, protocols and mal
     'av0',
   ]
   const parsed = parseBatchLinks(invalid.join('\n'))
+
   assert.equal(parsed.items.length, 0)
   assert.equal(parsed.errors.length, invalid.length)
 })
@@ -107,6 +110,7 @@ test('links preserve order and page selection, report original lines and collaps
   const result = parseBatchLinks(
     `\n${BVID}\n\nhttps://www.bilibili.com/s/video/${BVID}?p=1\nhttps://www.bilibili.com/s/video/${BVID}?p=2\nav123\nnot a video\n`,
   )
+
   assert.deepEqual(result.items, [
     { videoId: BVID, title: BVID, page: 1 },
     { videoId: BVID, title: BVID, page: 2 },
@@ -126,6 +130,7 @@ test('links preserve order and page selection, report original lines and collaps
 
 test('favorites paging counts unavailable and non-video entries and handles a real empty-list shape', async context => {
   const requests: string[] = []
+
   context.mock.method(
     globalThis,
     'fetch',
@@ -134,6 +139,7 @@ test('favorites paging counts unavailable and non-video entries and handles a re
       assert.equal(init?.credentials, 'include')
       assert.ok(init?.signal)
       const page = new URL(String(input)).searchParams.get('pn')
+
       return Response.json({
         code: 0,
         data:
@@ -158,6 +164,7 @@ test('favorites paging counts unavailable and non-video entries and handles a re
   )
   const source = { kind: 'favorites', id: '123' } as const
   const first = await getBatchPage(source, 1)
+
   assert.deepEqual(first, {
     title: '收藏夹',
     items: [{ videoId: BVID, title: '可用视频', page: 1 }],
@@ -178,10 +185,12 @@ test('season and series use their distinct pagination contracts', async context 
   context.mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
     const isSeason = url.pathname.endsWith('seasons_archives_list')
+
     assert.equal(
       url.searchParams.get(isSeason ? 'season_id' : 'series_id'),
       '456',
     )
+
     return Response.json({
       code: 0,
       data: {
@@ -193,11 +202,13 @@ test('season and series use their distinct pagination contracts', async context 
       },
     })
   })
+
   for (const collectionType of ['season', 'series'] as const) {
     const page = await getBatchPage(
       { kind: 'collection', mid: '123', id: '456', collectionType },
       2,
     )
+
     assert.equal(
       page.title,
       collectionType === 'season' ? '合集名称' : '系列 456',
@@ -210,9 +221,12 @@ test('season and series use their distinct pagination contracts', async context 
 
 test('uploads sign WBI requests and skip hidden collection pseudo-videos', async context => {
   const requests: URL[] = []
+
   context.mock.method(globalThis, 'fetch', async (input: RequestInfo | URL) => {
     const url = new URL(String(input))
+
     requests.push(url)
+
     if (url.pathname.endsWith('/nav')) {
       return Response.json({
         code: -101,
@@ -226,11 +240,13 @@ test('uploads sign WBI requests and skip hidden collection pseudo-videos', async
         },
       })
     }
+
     assert.equal(url.pathname, '/x/space/wbi/arc/search')
     assert.equal(url.searchParams.get('mid'), '123')
     assert.equal(url.searchParams.get('pn'), '1')
     assert.equal(url.searchParams.get('ps'), '30')
     assert.match(url.searchParams.get('w_rid') || '', /^[\da-f]{32}$/)
+
     return Response.json({
       code: 0,
       data: {
@@ -245,6 +261,7 @@ test('uploads sign WBI requests and skip hidden collection pseudo-videos', async
     })
   })
   const page = await getBatchPage({ kind: 'uploads', mid: '123' }, 1)
+
   assert.equal(page.items.length, 1)
   assert.equal(page.unavailable, 1)
   assert.equal(page.nextPage, 2)
@@ -265,6 +282,7 @@ test('pagination rejects empty continuing pages, repeated page numbers and malfo
     { archives: [], page: { num: 1, size: 0, total: 0 } },
     { archives: [] },
   ]
+
   context.mock.method(globalThis, 'fetch', async () =>
     Response.json({ code: 0, data: responses.shift() }),
   )
@@ -278,6 +296,7 @@ test('pagination rejects empty continuing pages, repeated page numbers and malfo
     id: '456',
     collectionType: 'series',
   } as const
+
   await assert.rejects(getBatchPage(source, 2), /页码不一致/)
   await assert.rejects(getBatchPage(source, 1))
   await assert.rejects(getBatchPage(source, 1))
@@ -287,8 +306,10 @@ test('pagination rejects empty continuing pages, repeated page numbers and malfo
 test('permission and rate-limit responses propagate without additional requests', async context => {
   let requests = 0
   const codes = [-403, -352]
+
   context.mock.method(globalThis, 'fetch', async () => {
     requests++
+
     return Response.json({ code: codes.shift(), message: 'restricted' })
   })
   await assert.rejects(getBatchPage({ kind: 'favorites', id: '123' }, 1))

@@ -8,24 +8,51 @@
  * URL, video path, or unsafe/nonpositive part number.
  */
 export function parseVideoLocation(value: string) {
+  const url = parseBilibiliUrl(value)
+
+  if (!url) {
+    return
+  }
+
+  const videoId = /^\/(?:s\/)?video\/(BV[\dA-Za-z]{10}|av\d+)(?:\/|$)/.exec(
+    url.pathname,
+  )?.[1]
+
+  if (!videoId) {
+    return
+  }
+
+  const page = Number(url.searchParams.get('p') || 1)
+
+  if (!Number.isSafeInteger(page) || page < 1) {
+    return
+  }
+
+  return {
+    videoId,
+    page,
+  }
+}
+
+export function parseEpisodeLocation(value: string) {
+  const url = parseBilibiliUrl(value)
+  const epId = Number(
+    /^\/bangumi\/play\/ep([1-9]\d*)\/?$/.exec(url?.pathname || '')?.[1],
+  )
+
+  if (Number.isSafeInteger(epId)) {
+    return {
+      epId,
+    }
+  }
+}
+
+function parseBilibiliUrl(value: string) {
   try {
     const url = new URL(value)
-    if (url.hostname !== 'www.bilibili.com' || url.protocol !== 'https:') {
-      return
-    }
-    const videoId = /^\/(?:s\/)?video\/(BV[\dA-Za-z]{10}|av\d+)(?:\/|$)/.exec(
-      url.pathname,
-    )?.[1]
-    if (!videoId) {
-      return
-    }
-    const page = Number(url.searchParams.get('p') || 1)
-    if (!Number.isSafeInteger(page) || page < 1) {
-      return
-    }
-    return {
-      videoId,
-      page,
+
+    if (url.hostname === 'www.bilibili.com' && url.protocol === 'https:') {
+      return url
     }
   } catch {
     return undefined

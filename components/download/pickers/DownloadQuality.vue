@@ -16,7 +16,9 @@ defineProps<{
   disabled?: boolean
   variant?: 'select' | 'cards'
 }>()
+
 const quality = defineModel<QualityPreference>({ required: true })
+
 const options: QualityPreference[] = ['best', '1080', '720', '480']
 const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
   get best() {
@@ -54,12 +56,16 @@ const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
         class="absolute top-2 right-2 size-3"
         aria-hidden="true"
       />
-      <span class="block text-sm font-medium">{{
-        value === 'best' ? i18n.t('downloadQuality.bestAvailable') : `${value}P`
-      }}</span>
-      <span class="mt-1 block text-[11px] text-muted-foreground">{{
-        QUALITY_DESCRIPTIONS[value]
-      }}</span>
+      <span class="block text-sm font-medium">
+        {{
+          value === 'best'
+            ? i18n.t('downloadQuality.bestAvailable')
+            : `${value}P`
+        }}
+      </span>
+      <span class="mt-1 block text-[11px] text-muted-foreground">
+        {{ QUALITY_DESCRIPTIONS[value] }}
+      </span>
     </RadioGroupItem>
   </RadioGroupRoot>
   <div
@@ -69,16 +75,20 @@ const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
     <Label
       as="span"
       class="shrink-0 text-muted-foreground"
-      >{{ i18n.t('batchImportOptions.qualityPreference') }}</Label
     >
+      {{ i18n.t('batchImportOptions.qualityPreference') }}
+    </Label>
     <Select
       v-model="quality"
       :disabled
-      ><SelectTrigger
+    >
+      <SelectTrigger
         :aria-label="i18n.t('batchImportOptions.qualityPreference')"
         class="w-47.5 max-w-full"
-        ><SelectValue>{{ QUALITY_LABELS[quality] }}</SelectValue></SelectTrigger
-      ><SelectContent>
+      >
+        <SelectValue>{{ QUALITY_LABELS[quality] }}</SelectValue>
+      </SelectTrigger>
+      <SelectContent>
         <SelectItem
           v-for="value in options"
           :key="value"
@@ -86,7 +96,7 @@ const QUALITY_DESCRIPTIONS: Record<QualityPreference, string> = {
         >
           {{ QUALITY_LABELS[value] }}
         </SelectItem>
-      </SelectContent></Select
-    >
+      </SelectContent>
+    </Select>
   </div>
 </template>

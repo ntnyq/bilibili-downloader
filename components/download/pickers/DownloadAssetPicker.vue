@@ -24,10 +24,12 @@ import type { DownloadKind, SubtitleLanguage } from '~/types/download'
 defineProps<{
   disabled?: boolean
 }>()
+
 const kind = defineModel<DownloadKind>('kind', { required: true })
 const subtitleLanguage = defineModel<SubtitleLanguage>('subtitleLanguage', {
   required: true,
 })
+
 const groupId = useId()
 
 const ASSETS = [
@@ -109,18 +111,22 @@ const ASSETS = [
       <Label
         as="span"
         class="shrink-0 text-muted-foreground"
-        >{{ i18n.t('batchImportOptions.subtitleLanguage') }}</Label
       >
+        {{ i18n.t('batchImportOptions.subtitleLanguage') }}
+      </Label>
       <Select
         v-model="subtitleLanguage"
         :disabled
-        ><SelectTrigger
+      >
+        <SelectTrigger
           :aria-label="i18n.t('batchImportOptions.subtitleLanguage')"
           class="w-47.5 max-w-full"
-          ><SelectValue>{{
-            SUBTITLE_LANGUAGE_LABELS[subtitleLanguage]
-          }}</SelectValue></SelectTrigger
-        ><SelectContent>
+        >
+          <SelectValue>
+            {{ SUBTITLE_LANGUAGE_LABELS[subtitleLanguage] }}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
           <SelectItem
             v-for="(label, value) in SUBTITLE_LANGUAGE_LABELS"
             :key="value"
@@ -128,8 +134,8 @@ const ASSETS = [
           >
             {{ label }}
           </SelectItem>
-        </SelectContent></Select
-      >
+        </SelectContent>
+      </Select>
     </div>
     <p class="text-[11px] text-muted-foreground leading-4.5">
       {{ DOWNLOAD_KIND_HINTS[kind] }}

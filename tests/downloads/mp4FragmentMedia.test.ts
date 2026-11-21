@@ -24,10 +24,13 @@ async function packets(bytes: Uint8Array<ArrayBuffer>) {
     formats: [mediabunny.MP4],
     source: new mediabunny.BlobSource(new Blob([bytes])),
   })
+
   try {
     const track = await input.getPrimaryVideoTrack()
+
     assert.ok(track)
     const result = []
+
     for await (const packet of new mediabunny.EncodedPacketSink(
       track,
     ).packets()) {
@@ -38,6 +41,7 @@ async function packets(bytes: Uint8Array<ArrayBuffer>) {
         duration: packet.duration,
       })
     }
+
     return result
   } finally {
     input.dispose()
@@ -53,6 +57,7 @@ test('preserves complete MP4 bytes and B-frame seeking while reusing GOP media s
   const bytes = await generateGops({
     async append(trackId, data) {
       assert.equal(++pending, 1)
+
       try {
         await media.append(trackId, data)
       } finally {
@@ -62,6 +67,7 @@ test('preserves complete MP4 bytes and B-frame seeking while reusing GOP media s
     async read(trackId, offset, length) {
       assert.equal(++pending, 1)
       sizes.push(length)
+
       try {
         return await media.read(trackId, offset, length)
       } finally {
@@ -74,6 +80,7 @@ test('preserves complete MP4 bytes and B-frame seeking while reusing GOP media s
     },
   })
   const legacy = await generateGops(undefined)
+
   assert.deepEqual(bytes, legacy)
   assert.deepEqual(await packets(bytes), await packets(legacy))
   assert.deepEqual(resets, [1, 1, 1])
@@ -82,10 +89,13 @@ test('preserves complete MP4 bytes and B-frame seeking while reusing GOP media s
     formats: [mediabunny.MP4],
     source: new mediabunny.BlobSource(new Blob([bytes])),
   })
+
   try {
     const track = await input.getPrimaryVideoTrack()
+
     assert.ok(track)
     const sink = new mediabunny.EncodedPacketSink(track)
+
     for (const timestamp of [10, 1, 6, 0, 11]) {
       assert.equal(
         (await sink.getKeyPacket(timestamp))?.timestamp,
@@ -105,6 +115,7 @@ for (const browser of [false, true]) {
     const library: typeof mediabunny = require(
       browser ? path.replace('.node.cjs', '.cjs') : path,
     )
+
     assert.deepEqual(
       await generateGops(await testFragmentMedia(context), library),
       await generateGops(undefined),
@@ -116,6 +127,7 @@ for (const operation of ['append', 'read', 'reset', 'short-read'] as const) {
   test(`propagates media ${operation} failures`, async context => {
     const media = await testFragmentMedia(context)
     const failure = new DOMException('disk full', 'QuotaExceededError')
+
     await assert.rejects(
       generateGops({
         append:
@@ -164,12 +176,14 @@ for (const phase of ['append', 'read'] as const) {
           if (phase === 'append') {
             await pause()
           }
+
           await media.append(trackId, data)
         },
         async read(trackId, offset, length) {
           if (phase === 'read') {
             await pause()
           }
+
           return media.read(trackId, offset, length)
         },
       },
@@ -178,6 +192,7 @@ for (const phase of ['append', 'read'] as const) {
     ).then(() => {
       finished = true
     })
+
     await entered.promise
     assert.equal(finished, false)
     gate.resolve()
@@ -196,6 +211,7 @@ for (const phase of ['append', 'read'] as const) {
     const audio = await readFile(
       new URL('../fixtures/downloads/audio.m4a', import.meta.url),
     )
+
     await assert.rejects(
       remuxMedia(
         'dash',
@@ -207,16 +223,20 @@ for (const phase of ['append', 'read'] as const) {
           ...media,
           async append(trackId, sample, data) {
             const id = await media.append(trackId, sample, data)
+
             if (phase === 'append') {
               controller.abort()
             }
+
             return id
           },
           async readMedia(trackId, offset, length) {
             const data = await media.readMedia(trackId, offset, length)
+
             if (phase === 'read') {
               controller.abort()
             }
+
             return data
           },
         },
@@ -236,6 +256,7 @@ test('spools video after the shorter audio track ends without changing packets',
   // Production remuxing writes positioned chunks. Keep this small fixture in a
   // target solely to compare the resulting video packets and timing.
   const parts: { data: Uint8Array; position: number }[] = []
+
   await remuxMedia(
     'dash',
     [new Blob([video]), new Blob([audio])],
@@ -252,9 +273,11 @@ test('spools video after the shorter audio track ends without changing packets',
     ...parts.map(part => part.position + part.data.length),
   )
   const bytes = new Uint8Array(length)
+
   for (const part of parts) {
     bytes.set(part.data, part.position)
   }
+
   assert.deepEqual(await packets(bytes), await packets(video))
 })
 
@@ -270,6 +293,7 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
           )
 
     const { config } = await videoPackets()
+
     class SparseTarget extends library.NullTarget {
       head = new Uint8Array(65536)
       end = 0
@@ -277,9 +301,11 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
         if (position < this.head.length) {
           this.head.set(data.subarray(0, this.head.length - position), position)
         }
+
         this.end = Math.max(this.end, position + data.length)
       }
     }
+
     const target = new SparseTarget()
     const page = new Uint8Array(65536)
     let reset = 0
@@ -291,6 +317,7 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
           async append() {},
           async read(_track, _offset, length) {
             assert.ok(length <= 65536)
+
             return page.subarray(0, length)
           },
           async reset() {
@@ -301,11 +328,14 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
       target,
     })
     const source = new library.EncodedVideoPacketSource('avc')
+
     output.addVideoTrack(source, { decoderConfig: config })
     const audio = new library.EncodedAudioPacketSource('aac')
     const { config: audioConfig } = await audioPacket()
+
     output.addAudioTrack(audio, { decoderConfig: audioConfig })
     await output.start()
+
     for (let at = 0; at < 3; at++) {
       await source.add(
         new library.EncodedPacket(
@@ -321,50 +351,65 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
         { decoderConfig: audioConfig },
       )
     }
+
     // Model two very large samples with a sparse discard target and virtual media
     // pages, rather than allocating a multi-gigabyte packet or fixture file.
     const muxer: unknown = Reflect.get(output, '_muxer')
+
     assert.ok(muxer && typeof muxer === 'object')
     const tracks: unknown = Reflect.get(muxer, 'trackDatas')
+
     assert.ok(Array.isArray(tracks))
     const chunk: unknown = Reflect.get(tracks[0], 'currentChunk')
+
     assert.ok(chunk && typeof chunk === 'object')
     const samples: unknown = Reflect.get(chunk, 'samples')
+
     assert.ok(Array.isArray(samples))
     assert.equal(samples.length, 3)
+
     for (const sample of samples.slice(0, 2)) {
       Reflect.set(sample, 'size', 2 ** 31)
     }
+
     source.close()
     audio.close()
     await output.finalize()
     const view = new DataView(target.head.buffer)
     let offset = 0
+
     while (
       new TextDecoder().decode(target.head.subarray(offset + 4, offset + 8))
       !== 'mdat'
     ) {
       const size = view.getUint32(offset)
+
       assert.ok(size >= 8 && offset + size < target.head.length)
       offset += size
     }
+
     assert.equal(view.getUint32(offset), 1)
     const declared = view.getBigUint64(offset + 8)
+
     assert.equal(declared, 2n ** 32n + 4n + 16n)
     // Two tracks with one entry each produce a 128-byte final MFRA.
     assert.equal(BigInt(target.end - 128), BigInt(offset) + declared)
     assert.equal(reset, 2)
     let moof = 0
+
     while (
       new TextDecoder().decode(target.head.subarray(moof + 4, moof + 8))
       !== 'moof'
     ) {
       moof += view.getUint32(moof)
     }
+
     const children = (start: number, end: number, type: string) => {
       const found = []
+
       for (let at = start; at < end; at += view.getUint32(at)) {
         assert.ok(view.getUint32(at) >= 8)
+
         if (
           new TextDecoder().decode(target.head.subarray(at + 4, at + 8))
           === type
@@ -372,11 +417,13 @@ for (const entry of ['esm', 'node', 'browser'] as const) {
           found.push(at)
         }
       }
+
       return found
     }
     const traf = children(moof + 8, moof + view.getUint32(moof), 'traf')[1]!
     const tfhd = children(traf + 8, traf + view.getUint32(traf), 'tfhd')[0]!
     const trun = children(traf + 8, traf + view.getUint32(traf), 'trun')[0]!
+
     assert.ok(view.getUint32(tfhd + 8) & 1)
     assert.equal(view.getUint32(tfhd + 8) & 0x20000, 0)
     assert.equal(
@@ -395,6 +442,7 @@ test('rejects media spools with incompatible output modes or whole-mdat callback
     },
     async reset() {},
   }
+
   for (const options of [
     { fastStart: false, _fragmentMediaStore: store },
     { fastStart: 'fragmented', _fragmentMediaStore: store, onMdat() {} },
@@ -412,6 +460,7 @@ test('rejects media spools with incompatible output modes or whole-mdat callback
 
 test('bounds long-GOP payload buffers while writing and draining the fragment', async () => {
   const measurements = []
+
   for (const count of [2048, 8192]) {
     const { stdout } = await promisify(execFile)(
       process.execPath,
@@ -430,14 +479,19 @@ test('bounds long-GOP payload buffers while writing and draining the fragment', 
       { timeout: 60000 },
     )
     const measurement: unknown = JSON.parse(stdout)
+
     assert.ok(measurement && typeof measurement === 'object')
     const buffers: unknown = Reflect.get(measurement, 'retainedBufferBytes')
+
     assert.equal(typeof buffers, 'number')
+
     if (typeof buffers !== 'number') {
       throw new TypeError('Missing buffer measurements')
     }
+
     measurements.push(buffers)
   }
+
   assert.ok(measurements[1]! - measurements[0]! < 512 * 1024)
 })
 

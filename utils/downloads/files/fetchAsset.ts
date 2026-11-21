@@ -34,6 +34,7 @@ export async function fetchAsset(
 ) {
   if (job.kind === 'subtitle') {
     const { data, label } = await fetchSubtitle(job, signal, onProgress)
+
     return {
       blob: new Blob([subtitlesToSrt(data)], {
         type: 'application/x-subrip;charset=utf-8',
@@ -42,35 +43,46 @@ export async function fetchAsset(
       quality: label,
     }
   }
+
   let url: string | undefined
+
   if (job.kind === 'cover') {
     url = normalizeMediaUrl(job.cover)
   } else if (job.kind === 'danmaku') {
     url = `https://comment.bilibili.com/${job.cid}.xml`
   }
+
   if (!url) {
     throw new Error(i18n.t('fetchAsset.thisVideoHasNoExportableCover'))
   }
+
   const bytes = await fetchMediaBytes(
     [url],
     signal,
     MAX_ASSET_BYTES,
     onProgress,
   )
+
   signal.throwIfAborted()
+
   if (job.kind === 'cover') {
     const format = detectCoverFormat(bytes)
+
     return {
       blob: new Blob([bytes], { type: format.mime }),
       extension: format.extension,
       quality: i18n.t('fetchAsset.originalCover'),
     }
   }
+
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
+
   if (/<!DOCTYPE|<!ENTITY/i.test(text)) {
     throw new Error(i18n.t('fetchAsset.invalidDanmakuXmlNoFileWasSaved'))
   }
+
   const document = new DOMParser().parseFromString(text, 'application/xml')
+
   if (
     document.querySelector('parsererror')
     || document.documentElement.tagName !== 'i'
@@ -79,12 +91,15 @@ export async function fetchAsset(
       i18n.t('fetchAsset.theDanmakuApiReturnedAnInvalidFormatPlease'),
     )
   }
+
   const count = document.querySelectorAll('d').length
+
   if (!count) {
     throw new Error(
       i18n.t('fetchAsset.thisPartHasNoExportableDanmakuAtPresent'),
     )
   }
+
   return {
     blob: new Blob([text], { type: 'application/xml;charset=utf-8' }),
     extension: 'xml',

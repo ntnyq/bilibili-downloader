@@ -11,6 +11,7 @@ interface Props {
    * Canonical video identifier.
    */
   bvid: string
+  epId?: number
   /**
    * Current part whose selected tracks will be estimated.
    */
@@ -22,6 +23,7 @@ interface Props {
 }
 
 const props = defineProps<Props>()
+
 const bytes = shallowRef<number>()
 const isEstimating = shallowRef(false)
 const estimateError = shallowRef('')
@@ -29,11 +31,13 @@ const estimateError = shallowRef('')
 async function estimate() {
   isEstimating.value = true
   estimateError.value = ''
+
   try {
     bytes.value = await sendDownloadMessage(
       {
         type: 'video.estimate',
         bvid: props.bvid,
+        epId: props.epId,
         cid: props.part.cid,
         duration: props.part.duration,
         quality: props.quality,
@@ -71,12 +75,13 @@ async function estimate() {
     <span
       v-else
       class="text-foreground"
-      >{{
+    >
+      {{
         bytes
           ? i18n.t('downloadPanel.estimatedSize', [formatBytes(bytes)])
           : i18n.t('downloadPanel.estimateSizeUnavailable')
-      }}</span
-    >
+      }}
+    </span>
   </span>
   <p
     v-if="estimateError"

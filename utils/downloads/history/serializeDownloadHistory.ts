@@ -31,16 +31,20 @@ export function serializeDownloadHistory(
     filename: job.filename || '',
     createdAt: new Date(job.createdAt).toISOString(),
   }))
+
   if (format === 'json') {
     return JSON.stringify({ version: 1, records }, null, 2)
   }
+
   const escapeCsvCell = (value: string | number) => {
     const text = String(value)
     // Prevent spreadsheet formula execution even behind leading whitespace.
     const safe =
       /^\s*[=+@-]/.test(text) || /^[\t\r\n]/.test(text) ? `'${text}` : text
+
     return `"${safe.replace(/"/g, '""')}"`
   }
+
   return `\u{FEFF}${[
     [
       i18n.t('downloadFileSettings.bvId'),

@@ -30,8 +30,10 @@ const script = fileURLToPath(
 
 test('patch rebuild regenerates ESM, declarations and both CommonJS bundles from source', async context => {
   const directory = await mkdtemp(join(tmpdir(), 'mediabunny-rebuild-'))
+
   context.after(() => rm(directory, { recursive: true, force: true }))
   const source = join(directory, 'source')
+
   await cp(installed, source, { recursive: true })
   const artifacts = [
     ...[
@@ -46,27 +48,35 @@ test('patch rebuild regenerates ESM, declarations and both CommonJS bundles from
     'dist/bundles/mediabunny.cjs',
     'dist/bundles/mediabunny.node.cjs',
   ]
+
   for (const path of artifacts) {
     await writeFile(join(source, path), 'stale artifact')
   }
+
   const first = join(directory, 'first')
   const second = join(directory, 'second')
+
   for (const output of [first, second]) {
     await exec(process.execPath, ['--import', 'tsx', script, source, output])
   }
+
   for (const path of artifacts) {
     const rebuilt = await readFile(join(first, path), 'utf8')
+
     assert.doesNotMatch(rebuilt, /stale artifact/)
     assert.equal(rebuilt, await readFile(join(second, path), 'utf8'))
     assert.equal(await readFile(join(source, path), 'utf8'), 'stale artifact')
   }
+
   const declarations = await readFile(join(first, artifacts[1]!), 'utf8')
+
   assert.match(declarations, /_fragmentSampleStore/)
   context.mock.timers.enable({ apis: ['Date'], now: Date.UTC(2026, 0, 1) })
   const expected = await generateStoredSamples(
     undefined,
     await testFragmentIndex(context),
   )
+
   for (const path of [
     'dist/modules/src/index.js',
     'dist/bundles/mediabunny.cjs',
@@ -80,27 +90,33 @@ test('patch rebuild regenerates ESM, declarations and both CommonJS bundles from
       await testFragmentIndex(context),
       library,
     )
+
     assert.deepEqual(result, expected)
   }
 })
 
 test('patch rebuild refuses unsafe destinations, unsupported versions and invalid source', async context => {
   const directory = await mkdtemp(join(tmpdir(), 'mediabunny-rebuild-'))
+
   context.after(() => rm(directory, { recursive: true, force: true }))
   const source = join(directory, 'source')
+
   await cp(installed, source, { recursive: true })
   const run = (output: string) =>
     exec(process.execPath, ['--import', 'tsx', script, source, output])
+
   await assert.rejects(
     run(join(source, 'nested')),
     /outside the source package/,
   )
   const existing = join(directory, 'existing')
+
   await mkdir(existing)
   await writeFile(join(existing, 'sentinel'), 'keep me')
   await assert.rejects(run(existing), /EEXIST/)
   assert.equal(await readFile(join(existing, 'sentinel'), 'utf8'), 'keep me')
   const metadata = await readFile(join(source, 'package.json'), 'utf8')
+
   await writeFile(
     join(source, 'package.json'),
     JSON.stringify({ name: 'mediabunny', version: '0.0.0' }),

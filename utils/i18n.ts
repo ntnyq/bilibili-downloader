@@ -20,13 +20,16 @@ export const i18n = {
     apply(target, thisArgument, args: unknown[]) {
       const preference = selectedLanguage.value
       const [key, ...parameters] = args
+
       if (String(key).startsWith('@@')) {
         return Reflect.apply(target, thisArgument, args)
       }
+
       const messageKey = String(key).replaceAll('.', '_')
       const language =
         preference === 'browser' ? extensionI18n.t('localeCode') : preference
       const locale = language === 'zh-CN' ? 'zh_CN' : 'en'
+
       return formatI18nMessage(
         catalogs[locale][messageKey] ?? catalogs.en[messageKey] ?? '',
         parameters,
@@ -50,6 +53,7 @@ export function initializeI18n() {
   if (initialization) {
     return initialization
   }
+
   const onChanged = (
     changes: Record<string, { newValue?: unknown }>,
     area: string,
@@ -61,8 +65,10 @@ export function initializeI18n() {
       )
     }
   }
+
   browser.storage.onChanged.addListener(onChanged)
   const initialRevision = revision
+
   initialization = browser.storage.local
     .get(LANGUAGE_STORAGE_KEY)
     .then(stored => {
@@ -75,8 +81,10 @@ export function initializeI18n() {
     .catch(error => {
       browser.storage.onChanged.removeListener(onChanged)
       initialization = undefined
+
       throw error
     })
+
   return initialization
 }
 
@@ -86,7 +94,9 @@ export function initializeI18n() {
 export async function setLanguagePreference(preference: LanguagePreference) {
   await initializeI18n()
   const beforeUpdate = revision
+
   await browser.storage.local.set({ [LANGUAGE_STORAGE_KEY]: preference })
+
   if (revision === beforeUpdate) {
     selectedLanguage.value = preference
   }
@@ -117,9 +127,11 @@ export function initializeWorkerI18n(messages: Record<string, string>) {
   i18n.t = new Proxy(extensionI18n.t, {
     apply(_target, _thisArgument, args: unknown[]) {
       const [key, substitutions] = args
+
       if (typeof key !== 'string' || !Object.hasOwn(messages, key)) {
         throw new Error(`Missing worker translation: ${String(key)}`)
       }
+
       return formatI18nMessage(messages[key] ?? '', [substitutions])
     },
   })

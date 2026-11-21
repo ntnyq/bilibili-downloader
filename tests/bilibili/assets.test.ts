@@ -42,13 +42,16 @@ test('audio export selects highest available AAC without requiring a video strea
     },
   })
   const media = selectAudio(data)
+
   assert.equal(media.kind, 'audio')
   assert.equal(media.inputs.length, 1)
   assert.equal(media.inputs[0]?.urls[0], 'https://cdn.bilivideo.com/high')
   assert.equal(media.quality, 'AAC 192 kbps')
+
   for (const flag of ['is_preview', 'is_drm']) {
     assert.throws(() => selectAudio({ ...data, [flag]: true }), /受保护/)
   }
+
   assert.throws(
     () =>
       selectAudio(
@@ -76,6 +79,7 @@ test('subtitle selection prefers Chinese and human subtitles and preserves expli
     },
   ]
   const data = subtitleInfoSchema.parse({ subtitle: { subtitles } })
+
   assert.equal(selectSubtitle(data, 'auto').url, 'https://i0.hdslb.com/zh.json')
   assert.equal(selectSubtitle(data, 'en').url, 'https://i0.hdslb.com/en.json')
   assert.ok(
@@ -106,6 +110,7 @@ test('subtitle absence, login requirements, missing language and untrusted URLs 
       subtitles: [{ lan: 'ja', subtitle_url: 'https://evil.test/x' }],
     },
   })
+
   assert.throws(() => selectSubtitle(data, 'zh'), /所选语言/)
   assert.throws(() => selectSubtitle(data, 'auto'), /地址不受支持/)
 })
@@ -119,12 +124,14 @@ test('SRT and clipboard export share cue validation, order and text cleanup', ()
     ],
   }
   const srt = subtitlesToSrt(subtitles)
+
   assert.ok(srt.startsWith('1\n00:00:00,000 --> 00:00:02,345\n第一行\n\n2\n'))
   assert.ok(srt.includes('00:01:00,000 --> 01:00:01,002'))
   assert.ok(srt.includes('第二行\n&lt;内容&gt; &amp; 文本'))
   assert.equal(subtitlesToText(subtitles), '第一行\n第二行\n<内容> & 文本')
   assert.throws(() => subtitlesToSrt({ body: [] }), /内容为空/)
   assert.throws(() => subtitlesToText({ body: [] }), /内容为空/)
+
   for (const cue of [
     { from: -1, to: 1, content: 'x' },
     { from: 2, to: 1, content: 'x' },

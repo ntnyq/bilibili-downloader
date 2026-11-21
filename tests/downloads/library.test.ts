@@ -59,8 +59,10 @@ test('migration archives completed jobs once without inventing dates or storing 
   ]
   const snapshot = structuredClone(jobs)
   const library = initializeDownloadLibrary(undefined, jobs)
+
   assert.equal(library.records.length, 1)
   const record = library.records[0]
+
   assert.ok(record)
   assert.equal(record.identity, getJobIdentity(jobs[0]!))
   assert.equal(record.completedAt, undefined)
@@ -70,6 +72,7 @@ test('migration archives completed jobs once without inventing dates or storing 
   assert.equal('error' in record, false)
   assert.deepEqual(jobs, snapshot)
   const empty = createDownloadLibrary()
+
   assert.deepEqual(initializeDownloadLibrary(empty, jobs), empty)
 })
 
@@ -78,14 +81,17 @@ test('only new completion transitions archive and deletion never reimports uncha
   const previous = [{ ...completed, status: 'saving' as const }]
   const empty = createDownloadLibrary()
   const library = recordLibraryCompletions(empty, previous, [completed], 9000)
+
   assert.equal(library.records[0]?.completedAt, 9000)
   const progress = [{ ...createJob(2), status: 'downloading' as const }]
+
   assert.equal(recordLibraryCompletions(library, [], progress), library)
   assert.equal(
     recordLibraryCompletions(library, [completed], [completed]),
     library,
   )
   const deleted = deleteLibraryRecord(library, getJobIdentity(completed))
+
   assert.equal(deleted.records.length, 0)
   assert.equal(
     recordLibraryCompletions(deleted, [completed], [completed, ...progress]),
@@ -99,6 +105,7 @@ test('only new completion transitions archive and deletion never reimports uncha
     [completed, requeued],
     11000,
   )
+
   assert.equal(archivedAgain.records[0]?.id, 'new-job')
 })
 
@@ -122,6 +129,7 @@ test('latest completion per material replaces its snapshot, including equal time
     [completed, next],
     500,
   )
+
   assert.equal(library.records.length, 1)
   assert.equal(library.records[0]?.id, 'repeat')
   assert.equal(library.records[0]?.filename, 'new.mp4')
@@ -141,6 +149,7 @@ test('latest completion per material replaces its snapshot, including equal time
     },
   ]
   const separate = recordLibraryCompletions(library, [], subtitles, 501)
+
   assert.equal(separate.records.length, 3)
   assert.deepEqual(
     separate.records.slice(0, 2).map(record => record.kind),
@@ -153,12 +162,14 @@ test('count budget retains newest 5000 unique records independently from the 100
     createJob(index + 1),
   )
   const library = initializeDownloadLibrary(undefined, jobs)
+
   assert.equal(library.records.length, MAX_LIBRARY_RECORDS)
   assert.equal(library.records[0]?.cid, MAX_LIBRARY_RECORDS + 3)
   assert.equal(library.records.at(-1)?.cid, 4)
   assert.equal(library.evictedCount, 3)
   assert.deepEqual(initializeDownloadLibrary(library, jobs), library)
   const afterQueueClear = recordLibraryCompletions(library, jobs, [])
+
   assert.equal(afterQueueClear, library)
 })
 
@@ -170,6 +181,7 @@ test('byte budget counts encoded Unicode metadata and reports all oldest evictio
     filename: '名'.repeat(1024),
   }))
   const library = initializeDownloadLibrary(undefined, jobs)
+
   assert.ok(library.records.length > 100)
   assert.ok(library.records.length < 1000)
   assert.equal(library.records[0]?.cid, 1000)
@@ -180,6 +192,7 @@ test('byte budget counts encoded Unicode metadata and reports all oldest evictio
   )
   const extra = { ...createJob(1001), title: '课'.repeat(1000) }
   const updated = recordLibraryCompletions(library, [], [extra], 2000)
+
   assert.ok(updated.evictedCount >= library.evictedCount)
   assert.ok(
     new TextEncoder().encode(JSON.stringify(updated)).byteLength
@@ -201,6 +214,7 @@ test('metadata is bounded before persisting and oversized standalone records fai
     },
   ])
   const record = library.records[0]
+
   assert.ok(record)
   assert.equal(record.title.length, 1000)
   assert.equal(record.owner.length, 200)
@@ -229,8 +243,10 @@ test('corrupt stored records fail instead of being silently replaced with empty 
       /格式损坏/,
     )
   }
+
   const library = initializeDownloadLibrary(undefined, [createJob()])
   const record = library.records[0]
+
   assert.ok(record)
   assert.throws(
     () =>
@@ -244,9 +260,11 @@ test('corrupt stored records fail instead of being silently replaced with empty 
 
 test('requeue preserves submitted settings and metadata with fresh identity and execution state', () => {
   const record = initializeDownloadLibrary(undefined, [createJob()]).records[0]
+
   assert.ok(record)
   const snapshot = structuredClone(record)
   const job = createJobFromHistory(record, [])
+
   assert.notEqual(job.id, record.id)
   assert.notEqual(job.id, createJobFromHistory(record, []).id)
   assert.ok(job.createdAt > record.createdAt)
@@ -254,6 +272,7 @@ test('requeue preserves submitted settings and metadata with fresh identity and 
   assert.equal(job.progress, 0)
   assert.equal(job.receivedBytes, 0)
   assert.equal(job.totalBytes, 0)
+
   for (const field of [
     'runId',
     'downloadId',
@@ -265,6 +284,7 @@ test('requeue preserves submitted settings and metadata with fresh identity and 
   ]) {
     assert.equal(field in job, false)
   }
+
   for (const field of [
     'bvid',
     'cid',
@@ -281,6 +301,7 @@ test('requeue preserves submitted settings and metadata with fresh identity and 
   ] as const) {
     assert.equal(job[field], record[field])
   }
+
   assert.deepEqual(record, snapshot)
   assert.throws(() => createJobFromHistory(record, [job]), /已在下载队列/)
   assert.equal(createJobFromHistory(record, [createJob()]).status, 'queued')
@@ -288,6 +309,7 @@ test('requeue preserves submitted settings and metadata with fresh identity and 
     ...createJob(index + 2),
     status: 'queued' as const,
   }))
+
   assert.throws(() => createJobFromHistory(record, full), /队列已满/)
 })
 
@@ -312,6 +334,7 @@ test('library identity skips older than 100 records, supports override and forge
   }
   const completed = library.records.map(record => record.identity)
   const recentQueue = jobs.slice(-100)
+
   assert.equal(
     createBatchJobs(video, { page: 1 }, recentQueue, options).jobs.length,
     1,
@@ -336,6 +359,7 @@ test('library identity skips older than 100 records, supports override and forge
     1,
   )
   const active = [{ ...createJob(), status: 'queued' as const }]
+
   assert.equal(
     createBatchJobs(
       video,
@@ -353,6 +377,7 @@ test('search supports title, owner, BV, part and filename alongside material fil
     createJob(),
     { ...createJob(2), kind: 'audio', owner: '另一位 UP' },
   ])
+
   assert.equal(
     filterLibraryRecords(library.records, '  BV1xx411c7mD ', 'all').length,
     2,
@@ -374,6 +399,7 @@ test('search supports title, owner, BV, part and filename alongside material fil
     0,
   )
   const exported = serializeDownloadHistory(library.records, 'json')
+
   assert.equal(exported.includes('downloadId'), false)
   assert.equal(exported.includes('runId'), false)
   assert.equal(exported.includes('course-1.mp4'), true)

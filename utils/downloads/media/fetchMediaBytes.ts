@@ -29,6 +29,7 @@ export async function fetchMediaBytes(
   onProgress: (received: number) => void,
 ): Promise<Uint8Array<ArrayBuffer>> {
   let lastError: unknown
+
   for (const url of urls) {
     signal.throwIfAborted()
     const controller = new AbortController()
@@ -43,6 +44,7 @@ export async function fetchMediaBytes(
         30000,
       )
     }
+
     try {
       onProgress(0)
       resetTimeout()
@@ -50,6 +52,7 @@ export async function fetchMediaBytes(
         credentials: 'omit',
         signal: AbortSignal.any([signal, controller.signal]),
       })
+
       if (!response.ok || !response.body) {
         throw new MediaNetworkError(
           i18n.t('fetchMediaBytes.theMediaServerReturnedHttp', [
@@ -57,6 +60,7 @@ export async function fetchMediaBytes(
           ]),
         )
       }
+
       // Fetch decodes compressed bodies; Content-Length describes wire bytes.
       const encoding = response.headers
         .get('content-encoding')
@@ -66,6 +70,7 @@ export async function fetchMediaBytes(
         !encoding || encoding === 'identity'
           ? Number(response.headers.get('content-length')) || 0
           : 0
+
       if (declaredBytes > remainingBytes) {
         throw new RangeError(
           i18n.t('fetchMediaBytes.theAssetExceedsTheRemainingMbSizeLimit', [
@@ -73,15 +78,20 @@ export async function fetchMediaBytes(
           ]),
         )
       }
+
       const reader = response.body.getReader()
       const chunks: Uint8Array<ArrayBuffer>[] = []
       let received = 0
+
       while (true) {
         const { done, value } = await reader.read()
+
         if (done) {
           break
         }
+
         received += value.byteLength
+
         if (received > remainingBytes) {
           throw new RangeError(
             i18n.t(
@@ -89,33 +99,41 @@ export async function fetchMediaBytes(
             ),
           )
         }
+
         chunks.push(value)
         onProgress(received)
         resetTimeout()
       }
+
       if (!received || (declaredBytes > 0 && received !== declaredBytes)) {
         throw new MediaNetworkError(
           i18n.t('fetchMediaBytes.mediaTransferIncomplete'),
         )
       }
+
       const bytes = new Uint8Array(received)
       let offset = 0
+
       for (const chunk of chunks) {
         bytes.set(chunk, offset)
         offset += chunk.length
       }
+
       return bytes
     } catch (error) {
       signal.throwIfAborted()
+
       if (error instanceof RangeError) {
         throw error
       }
+
       lastError = error
     } finally {
       clearTimeout(timeout)
       controller.abort()
     }
   }
+
   throw new MediaNetworkError(
     i18n.t('fetchMediaBytes.allMediaSourcesFailedPleaseTryAgainLater'),
     {

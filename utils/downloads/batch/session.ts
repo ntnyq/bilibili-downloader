@@ -25,6 +25,7 @@ export const BATCH_SESSION_STORAGE_KEY = 'downloadBatchSessionV1'
  */
 export function createBatchSessionData(): BatchSessionData {
   const settings = downloadSettingsSchema.parse({})
+
   return {
     id: crypto.randomUUID(),
     sourceKind: 'links',
@@ -105,16 +106,20 @@ export function saveBatchSession(
       conflict: true,
     }
   }
+
   const data = batchSessionDataSchema.parse(input)
+
   if (current?.id === data.id) {
     if (current.optionsSnapshot) {
       data.optionsSnapshot = current.optionsSnapshot
       data.options = current.optionsSnapshot
     }
+
     // A stale client must never erase a durable receipt, even when it knows the revision.
     const committed = new Map(
       current.rows.filter(row => row.receipt).map(row => [row.key, row]),
     )
+
     if (
       [...committed.keys()].some(key => !data.rows.some(row => row.key === key))
     ) {
@@ -122,6 +127,7 @@ export function saveBatchSession(
         i18n.t('session.queuedVideosCannotBeRemovedFromThisSession'),
       )
     }
+
     data.rows = data.rows.map(
       row => committed.get(row.key) || { ...row, receipt: undefined },
     )
@@ -132,6 +138,7 @@ export function saveBatchSession(
       receipt: undefined,
     }))
   }
+
   return {
     session: batchSessionSchema.parse({
       ...data,
@@ -179,16 +186,21 @@ export function getBatchSessionRow(
     session?.id === request.sessionId
       ? session.rows.find(item => item.key === request.rowKey)
       : undefined
+
   if (!session || !row) {
     throw new Error(i18n.t('session.theBatchSessionWasReplacedReloadTheSaved'))
   }
+
   if (row.receipt) {
     return row
   }
+
   if (session.revision !== request.expectedRevision) {
     throw new Error(i18n.t('session.theBatchSessionWasUpdatedOnAnotherPage'))
   }
+
   const options = session.optionsSnapshot
+
   if (
     !options
     || !row.selected
@@ -201,6 +213,7 @@ export function getBatchSessionRow(
       i18n.t('session.batchImportOptionsChangedReloadTheSavedSession'),
     )
   }
+
   return row
 }
 
@@ -223,6 +236,7 @@ export function findBatchSessionReceiptRow(
 ): BatchImportRow | undefined {
   const options = session.optionsSnapshot
   const current = session.rows.find(row => row.key === rowKey)
+
   if (
     !current
     || !options
@@ -230,6 +244,7 @@ export function findBatchSessionReceiptRow(
   ) {
     return
   }
+
   return session.rows.find(
     row =>
       row.key !== rowKey
@@ -261,6 +276,7 @@ export function commitBatchSessionResult(
   now = Date.now(),
 ): BatchSession {
   const counts = i18n.t('session.addedSkipped', [result.added, result.skipped])
+
   return batchSessionSchema.parse({
     ...session,
     revision: session.revision + 1,

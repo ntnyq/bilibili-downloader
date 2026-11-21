@@ -12,6 +12,7 @@ export default defineContentScript({
   async main(ctx) {
     await initializeI18n().catch(console.warn)
     const url = shallowRef(window.location.href)
+
     ctx.addEventListener(window, 'wxt:locationchange', event => {
       // Navigation API dispatches before window.location has changed.
       url.value = event.newUrl.href
@@ -28,21 +29,25 @@ export default defineContentScript({
       }`,
       // Wait for Bilibili to hydrate its SSR tree before adding the action.
       anchor:
-        '#app:not([data-server-rendered]) :is(#arc_toolbar_report, .video-toolbar-container, .video-toolbar)',
+        '#app:not([data-server-rendered]) :is(#arc_toolbar_report, .video-toolbar-container, .video-toolbar), .player-left-components .toolbar-right',
       append(anchor, host) {
         const actions = anchor.querySelector('.video-toolbar-right') || anchor
+
         actions.append(host)
       },
       isolateEvents: true,
       onMount(container) {
         const app = createApp(App, { getUrl: () => url.value })
+
         app.mount(container)
+
         return app
       },
       onRemove(app) {
         app?.unmount()
       },
     })
+
     ui.autoMount()
   },
 })

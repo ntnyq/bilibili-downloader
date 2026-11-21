@@ -9,11 +9,14 @@ import type { DownloadHistoryRecord } from '~/types/downloadHistory'
 const props = defineProps<{
   records: DownloadHistoryRecord[]
 }>()
+
 defineSlots<{
   actions: () => VNode[]
 }>()
+
 const search = defineModel<string>('search', { required: true })
 const kind = defineModel<DownloadKind | 'all'>('kind', { required: true })
+
 const kinds = computed(
   () =>
     [
@@ -45,6 +48,7 @@ const kinds = computed(
 )
 const filters = computed(() => {
   const matching = filterLibraryRecords(props.records, search.value, 'all')
+
   return kinds.value.map(item => ({
     ...item,
     count:
@@ -95,7 +99,8 @@ const filters = computed(() => {
         type="button"
         class="text-xs"
       >
-        {{ item.label }}<span class="tabular-nums">{{ item.count }}</span>
+        {{ item.label }}
+        <span class="tabular-nums">{{ item.count }}</span>
       </Button>
     </div>
   </div>

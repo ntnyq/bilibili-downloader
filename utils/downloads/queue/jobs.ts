@@ -3,7 +3,6 @@ import { i18n } from '~/utils/i18n'
 import { MAX_PENDING_JOBS } from '../constants'
 import { isJobRunning } from './control'
 import { getJobIdentity } from './identity'
-
 import type {
   DownloadJob,
   DownloadKind,
@@ -73,28 +72,34 @@ export function createDownloadJobs(
     kind === 'cover'
       ? video.pages.slice(0, 1)
       : selectVideoPages(video.pages, page, mode, options.selectedPages)
+
   if (!pages.length) {
     throw new Error(i18n.t('jobs.cannotFindTheCurrentPartRefreshTheVideo'))
   }
+
   const active = new Set(existing.filter(isJobActive).map(getJobIdentity))
   const pending = pages.filter(
     item =>
       !active.has(
         getJobIdentity({
           bvid: video.bvid,
+          epId: video.epId,
           cid: item.cid,
           kind,
           subtitleLanguage,
         }),
       ),
   )
+
   if (active.size + pending.length > MAX_PENDING_JOBS) {
     throw new Error(i18n.t('jobs.theDownloadQueueIsFullWaitForSome'))
   }
+
   return pending.map(item => ({
     ...item,
     id: crypto.randomUUID(),
     bvid: video.bvid,
+    ...(video.epId === undefined ? {} : { epId: video.epId }),
     title: video.title,
     cover: video.cover,
     owner: video.owner,
@@ -135,14 +140,18 @@ export function selectVideoPages(
 ): VideoPage[] {
   if (mode === 'selected') {
     const selected = new Set(selectedPages)
+
     if (!selected.size) {
       throw new Error(i18n.t('jobs.selectAtLeastOnePart'))
     }
+
     if ([...selected].some(page => !pages.some(item => item.page === page))) {
       throw new Error(i18n.t('jobs.theSelectedPartsAreNoLongerValidReload'))
     }
+
     return pages.filter(page => selected.has(page.page))
   }
+
   return mode === 'all'
     ? pages
     : pages.filter(page => page.page === currentPage)
@@ -172,11 +181,14 @@ export function retryDownloadJobs(
       ? job.id === id && ['failed', 'cancelled'].includes(job.status)
       : job.status === 'failed'
     const key = getJobIdentity(job)
+
     if (!eligible || active.has(key)) {
       return job
     }
+
     active.add(key)
     added++
+
     return {
       ...job,
       status: 'queued' as const,
@@ -190,12 +202,15 @@ export function retryDownloadJobs(
       filename: undefined,
     }
   })
+
   if (active.size > MAX_PENDING_JOBS) {
     throw new Error(i18n.t('jobs.theDownloadQueueIsFullWaitForSome2'))
   }
+
   if (id && !added) {
     throw new Error(i18n.t('jobs.thisTaskDoesNotNeedRetryingOrThis'))
   }
+
   return next
 }
 
@@ -211,5 +226,6 @@ export function getNextQueuedJob(jobs: DownloadJob[], isPaused: boolean) {
   if (isPaused || jobs.some(isJobRunning)) {
     return undefined
   }
+
   return jobs.find(job => job.status === 'queued')
 }

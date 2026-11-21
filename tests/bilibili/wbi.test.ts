@@ -23,6 +23,7 @@ test('signs sorted, filtered, percent-encoded parameters without mutating inputs
   const input = { foo: "你 !'()*", bar: 514 }
   const expectedQuery = 'bar=514&foo=%E4%BD%A0%20&wts=1702204169'
   const digest = createHash('md5').update(`${expectedQuery}key`).digest('hex')
+
   assert.equal(
     signWbi(input, 'key', 1702204169),
     `${expectedQuery}&w_rid=${digest}`,

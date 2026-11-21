@@ -18,6 +18,7 @@ test('allows inputs larger than 16 GiB when quota can hold input plus output', a
       }
     },
   })
+
   await check({ received: 0, total: 20 * GIB, additionalBytes: 0 })
   await assert.rejects(
     check({ received: 0, total: 50 * GIB, additionalBytes: 0 }),
@@ -30,6 +31,7 @@ test('does not charge cached input twice and includes completed tracks in the ou
     quota: 100 * GIB,
     usage: 78 * GIB,
   })
+
   await createMediaStorageChecker(0, { estimate })({
     received: 20 * GIB,
     total: 20 * GIB,
@@ -65,6 +67,7 @@ test('refreshes quota during a transfer and responds to shrinking or growing cap
       }
     },
   })
+
   await check({ received: 0, total: 20 * GIB, additionalBytes: 0 })
   time = 1001
   quota = GIB
@@ -82,12 +85,14 @@ test('checks unknown-length downloads before writing and refreshes after bounded
     now: () => 0,
     async estimate() {
       reads++
+
       return {
         quota: 128 * MIB,
         usage: 0,
       }
     },
   })
+
   await check({ received: 0, total: null, additionalBytes: MIB })
   await check({ received: MIB, total: null, additionalBytes: MIB })
   assert.equal(reads, 1)
@@ -105,12 +110,14 @@ test('a changed representation releases the old accounting and takes a fresh sna
     now: () => 0,
     async estimate() {
       reads++
+
       return {
         quota: GIB,
         usage: 0,
       }
     },
   })
+
   await check({ received: 2 * MIB, total: 4 * MIB, additionalBytes: 0 })
   await check({ received: 0, total: 4 * MIB, additionalBytes: 0 })
   assert.equal(reads, 2)

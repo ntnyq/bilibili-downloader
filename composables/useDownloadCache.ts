@@ -22,13 +22,16 @@ export function useDownloadCache() {
     if (isRefreshing.value || isClearing.value || isDisposed) {
       return
     }
+
     isRefreshing.value = true
     const currentRevision = revision
+
     try {
       const [value, available] = await Promise.all([
         getMediaCacheStats(),
         getAvailableMediaStorageBytes(),
       ])
+
       if (!isDisposed && revision === currentRevision) {
         stats.value = value
         availableBytes.value = available
@@ -47,15 +50,18 @@ export function useDownloadCache() {
     if (isClearing.value || isDisposed) {
       return
     }
+
     isClearing.value = true
     actionError.value = ''
     notice.value = ''
+
     try {
       if (!navigator.locks) {
         throw new Error(
           i18n.t('useDownloadCache.thisBrowserCannotSafelyClearTheCacheUpdate'),
         )
       }
+
       await navigator.locks.request(
         'bilibili-media-cache',
         { ifAvailable: true },
@@ -65,6 +71,7 @@ export function useDownloadCache() {
               i18n.t('useDownloadCache.downloadsAreUsingTheCachePauseTheQueue'),
             )
           }
+
           await clearMediaCache()
         },
       )

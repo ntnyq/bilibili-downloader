@@ -35,10 +35,12 @@ export function groupHistoryRecords(
   now = new Date(),
 ): HistoryGroup[] {
   const yesterday = new Date(now)
+
   yesterday.setDate(yesterday.getDate() - 1)
   const todayKey = getLocalDateKey(now)
   const yesterdayKey = getLocalDateKey(yesterday)
   const groups = new Map<string, HistoryGroup>()
+
   for (const record of records) {
     const date =
       record.completedAt === undefined
@@ -46,6 +48,7 @@ export function groupHistoryRecords(
         : new Date(record.completedAt)
     const key = date ? getLocalDateKey(date) : 'legacy'
     let group = groups.get(key)
+
     if (!group) {
       group = {
         key,
@@ -64,7 +67,9 @@ export function groupHistoryRecords(
       }
       groups.set(key, group)
     }
+
     group.records.push(record)
   }
+
   return [...groups.values()]
 }

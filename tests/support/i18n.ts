@@ -14,6 +14,7 @@ const messages = generateChromeMessages(
   ),
 )
 const storageData: Record<string, unknown> = {}
+
 type StorageListener = (
   changes: Record<string, { newValue?: unknown; oldValue?: unknown }>,
   area: string,
@@ -46,14 +47,18 @@ Object.defineProperty(globalThis, 'chrome', {
               { oldValue: storageData[key], newValue },
             ]),
           )
+
           Object.assign(storageData, values)
+
           for (const listener of storageListeners) {
             listener(changes, 'local')
           }
         },
         async remove(key: string) {
           const oldValue = storageData[key]
+
           delete storageData[key]
+
           for (const listener of storageListeners) {
             listener({ [key]: { oldValue } }, 'local')
           }
@@ -66,6 +71,7 @@ Object.defineProperty(globalThis, 'chrome', {
         if (key === '@@ui_locale') {
           return locale
         }
+
         return (messages[key]?.message ?? fallback[key]?.message ?? '').replace(
           /\$(\d)/g,
           (placeholder, index) =>

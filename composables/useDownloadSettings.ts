@@ -21,17 +21,21 @@ export function useDownloadSettings() {
     if (area !== 'local' || !changes[SETTINGS_STORAGE_KEY]) {
       return
     }
+
     const result = downloadSettingsSchema.safeParse(
       changes[SETTINGS_STORAGE_KEY].newValue || {},
     )
+
     if (result.success) {
       revision++
       settings.value = result.data
       isReady.value = true
     }
   }
+
   browser.storage.onChanged.addListener(onChanged)
   const initialRevision = revision
+
   sendDownloadMessage({ type: 'settings.get' }, downloadSettingsSchema)
     .then(value => {
       if (!disposed && initialRevision === revision) {
@@ -51,20 +55,25 @@ export function useDownloadSettings() {
     if (isSaving.value || !isReady.value) {
       return false
     }
+
     isSaving.value = true
     error.value = ''
     const beforeUpdate = revision
+
     try {
       const value = await sendDownloadMessage(
         { type: 'settings.update', settings: patch },
         downloadSettingsSchema,
       )
+
       if (!disposed && beforeUpdate === revision) {
         settings.value = value
       }
+
       return true
     } catch (error_) {
       error.value = getErrorMessage(error_)
+
       return false
     } finally {
       isSaving.value = false
