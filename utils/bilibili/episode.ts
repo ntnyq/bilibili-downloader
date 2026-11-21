@@ -1,5 +1,7 @@
 import { z } from 'zod'
 import { episodeIdSchema, videoIdSchema } from '~/types/download'
+import { seasonIdSchema } from '~/types/season'
+import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import { QUALITY_REQUEST_IDS } from '~/utils/downloads/media/quality'
 import { i18n } from '~/utils/i18n'
 import { getVideoMedia, requestApiResult } from './api'
@@ -9,20 +11,29 @@ import type {
   EpisodeInfo,
   QualityPreference,
 } from '~/types/download'
+import type {
+  EpisodeAvailability,
+  EpisodePlaybackTarget,
+  SeasonEpisode,
+  SeasonTarget,
+} from '~/types/season'
 
 const episodeIdFields = z.object({
   id: episodeIdSchema.optional(),
   ep_id: episodeIdSchema.optional(),
 })
-const episodeSchema = z.object({
+const episodeTitleFields = z.object({
+  title: z.string(),
+  long_title: z.string().optional(),
+})
+const episodeSchema = episodeTitleFields.extend({
   badge: z.string().optional(),
   bvid: videoIdSchema,
   cid: z.number().int().positive(),
   duration: z.number().nonnegative(),
-  title: z.string(),
-  long_title: z.string().optional(),
 })
 const seasonSchema = z.object({
+  season_id: seasonIdSchema.optional(),
   title: z.string(),
   cover: z.string(),
   up_info: z.object({ uname: z.string().optional() }).nullish(),
@@ -46,29 +57,119 @@ const episodePlaybackSchema = z.object({
 })
 
 export async function getEpisodeInfo(epId: number): Promise<EpisodeInfo> {
+  const { season, entries } = await loadSeason({ epId })
+  const index = entries.findIndex(item => readEpisodeId(item) === epId)
+
+  if (index === -1) {
+    throw new Error(i18n.t('episode.episodeNotFound'))
+  }
+
+  return toEpisodeInfo(
+    season,
+    episodeSchema.parse(entries[index]),
+    epId,
+    index + 1,
+  )
+}
+
+export async function getSeasonInfo(target: SeasonTarget) {
+  const { season, entries } = await loadSeason(target)
+  const seen = new Set<number>()
+  const episodes = entries.flatMap<SeasonEpisode & { info?: EpisodeInfo }>(
+    (entry, index) => {
+      const epId = readEpisodeId(entry)
+
+      if (epId === undefined || seen.has(epId)) {
+        return []
+      }
+
+      seen.add(epId)
+      const parsed = episodeSchema.safeParse(entry)
+
+      if (parsed.success) {
+        const info = toEpisodeInfo(season, parsed.data, epId, index + 1)
+
+        return [
+          {
+            epId,
+            episodeLabel: info.episodeLabel,
+            episodeTitle: info.episodeTitle,
+            cid: info.pages[0].cid,
+            unavailableReason: info.unavailableReason,
+            info,
+          },
+        ]
+      }
+
+      return [
+        {
+          epId,
+          ...getEpisodeTitle(
+            episodeTitleFields.safeParse(entry).data,
+            index + 1,
+          ),
+          unavailableReason: i18n.t('episode.missingPlaybackInformation'),
+        },
+      ]
+    },
+  )
+
+  return {
+    seasonId: seasonIdSchema.parse(season.season_id),
+    title: season.title,
+    cover: normalizeMediaUrl(season.cover) || '',
+    episodes,
+  }
+}
+
+async function loadSeason(target: SeasonTarget) {
+  const query =
+    'seasonId' in target
+      ? `season_id=${target.seasonId}`
+      : `ep_id=${target.epId}`
   const season = seasonSchema.parse(
-    await requestApiResult(`/pgc/view/web/season?ep_id=${epId}`),
+    await requestApiResult(`/pgc/view/web/season?${query}`),
   )
   const entries = [season, ...(season.section ?? [])].flatMap(
     group => group.episodes ?? [],
   )
-  const entry = entries.find(item => {
-    const { data } = episodeIdFields.safeParse(item)
 
-    return (data?.ep_id ?? data?.id) === epId
-  })
-
-  if (!entry) {
-    throw new Error(i18n.t('episode.episodeNotFound'))
+  return {
+    season,
+    entries,
   }
+}
 
-  const episode = episodeSchema.parse(entry)
-  const label = episode.title.trim()
+function readEpisodeId(entry: unknown) {
+  const { data } = episodeIdFields.safeParse(entry)
+
+  return data?.ep_id ?? data?.id
+}
+
+function getEpisodeTitle(
+  episode: z.infer<typeof episodeTitleFields> | undefined,
+  page: number,
+) {
+  const label = episode?.title.trim() || String(page)
   const episodeLabel = /^\d+(?:\.\d+)?$/.test(label)
     ? i18n.t('episode.number', [label])
     : label
-  const longTitle = episode.long_title?.trim() || ''
+  const longTitle = episode?.long_title?.trim() || ''
   const episodeTitle = longTitle === label ? '' : longTitle
+
+  return {
+    episodeLabel,
+    episodeTitle,
+  }
+}
+
+function toEpisodeInfo(
+  season: z.infer<typeof seasonSchema>,
+  episode: z.infer<typeof episodeSchema>,
+  epId: number,
+  page: number,
+): EpisodeInfo {
+  const { episodeLabel, episodeTitle } = getEpisodeTitle(episode, page)
 
   return {
     epId,
@@ -83,12 +184,47 @@ export async function getEpisodeInfo(epId: number): Promise<EpisodeInfo> {
     pages: [
       {
         cid: episode.cid,
-        page: entries.indexOf(entry) + 1,
+        page,
         part: [episodeLabel, episodeTitle].filter(Boolean).join(' · '),
         duration: episode.duration / 1000,
       },
     ],
   }
+}
+
+export async function checkEpisodeAvailability(
+  episodes: EpisodePlaybackTarget[],
+  quality: QualityPreference,
+): Promise<EpisodeAvailability[]> {
+  const signal = AbortSignal.timeout(25_000)
+  const results: EpisodeAvailability[] = []
+  const concurrency = 4
+
+  for (let index = 0; index < episodes.length; index += concurrency) {
+    const batch = episodes.slice(index, index + concurrency)
+
+    results.push(
+      ...(await Promise.all(
+        batch.map(async ({ epId, cid }) => {
+          try {
+            signal.throwIfAborted()
+            await getEpisodeMedia(epId, cid, signal, quality)
+
+            return {
+              epId,
+            }
+          } catch (error) {
+            return {
+              epId,
+              unavailableReason: getErrorMessage(error),
+            }
+          }
+        }),
+      )),
+    )
+  }
+
+  return results
 }
 
 /**

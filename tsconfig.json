@@ -11,5 +11,6 @@
     "noUncheckedIndexedAccess": true,
     "ignoreDeprecations": "6.0",
     "noUncheckedSideEffectImports": true
-  }
+  },
+  "exclude": ["**/node_modules", "dist", "output"]
 }

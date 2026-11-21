@@ -47,6 +47,19 @@ export function parseEpisodeLocation(value: string) {
   }
 }
 
+export function parseSeasonLocation(value: string) {
+  const url = parseBilibiliUrl(value)
+  const seasonId = Number(
+    /^\/bangumi\/play\/ss([1-9]\d*)\/?$/.exec(url?.pathname || '')?.[1],
+  )
+
+  if (Number.isSafeInteger(seasonId)) {
+    return {
+      seasonId,
+    }
+  }
+}
+
 function parseBilibiliUrl(value: string) {
   try {
     const url = new URL(value)

@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { createDownloadPath } from '../../utils/downloads/files/createDownloadPath'
 import {
   parseEpisodeLocation,
+  parseSeasonLocation,
   parseVideoLocation,
 } from '../../utils/downloads/parseVideoLocation'
 import { createDownloadJobs } from '../../utils/downloads/queue/jobs'
@@ -67,6 +68,26 @@ test('recognizes a single episode play URL and rejects season URLs', () => {
     'https://www.bilibili.com.example/bangumi/play/ep21495',
   ]) {
     assert.equal(parseEpisodeLocation(url), undefined)
+  }
+})
+
+test('recognizes only safe positive season IDs on Bilibili playback URLs', () => {
+  assert.deepEqual(
+    parseSeasonLocation(
+      'https://www.bilibili.com/bangumi/play/ss1182/?from=example#list',
+    ),
+    { seasonId: 1182 },
+  )
+
+  for (const url of [
+    'https://www.bilibili.com/bangumi/play/ep21495',
+    'https://www.bilibili.com/bangumi/play/ss0',
+    'https://www.bilibili.com/bangumi/play/ss9007199254740992',
+    'https://www.bilibili.com/bangumi/play/ss1182/extra',
+    'https://www.bilibili.com.example/bangumi/play/ss1182',
+    'http://www.bilibili.com/bangumi/play/ss1182',
+  ]) {
+    assert.equal(parseSeasonLocation(url), undefined)
   }
 })
 

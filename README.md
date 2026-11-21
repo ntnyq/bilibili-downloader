@@ -31,6 +31,7 @@ For source builds, Firefox temporary installation, and distribution archives, se
 ## ✨ Features
 
 - **Download where you watch** — use the card below the Bilibili player or the toolbar popup; select current, all, or specific parts.
+- **Save bangumi episodes** — in a source build, open an episode or season playback page and queue one or more episodes as MP4 when your Bilibili session can play them in full.
 - **Choose video or audio** — save MP4 video with a remembered quality preference, or an AAC audio track as M4A without re-encoding.
 - **Save companion assets** — export original covers, SRT subtitles, and danmaku XML, individually or as an asset bundle.
 - **Download in batches** — preview links, favorites, collections, series, or creator uploads, then queue selected videos.

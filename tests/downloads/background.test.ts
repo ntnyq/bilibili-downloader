@@ -7,6 +7,11 @@ import {
   episodeInfoSchema,
 } from '../../types/download'
 import { downloadLibrarySchema } from '../../types/downloadHistory'
+import {
+  episodeAvailabilityListSchema,
+  seasonAddResultSchema,
+  seasonInfoSchema,
+} from '../../types/season'
 import { getDownloadPageUrl } from '../../utils/downloads/getDownloadPageUrl'
 import { installExtension } from '../support/extension'
 
@@ -45,6 +50,7 @@ test('episode playback gates the shared queue and episode IDs survive history re
     quality: 'best',
   } as const
   let badge = ''
+  let isSignedIn = false
   let playback: object = { play_check: { play_detail: 'PLAY_PREVIEW' } }
 
   context.mock.method(
@@ -85,10 +91,24 @@ test('episode playback gates the shared queue and episode IDs survive history re
       assert.equal(url.pathname, '/pgc/player/web/v2/playurl')
       assert.equal(url.searchParams.get('cid'), '1')
 
+      if (!isSignedIn) {
+        return Response.json({ code: -101, message: '账号未登录' })
+      }
+
       return Response.json({ code: 0, result: playback })
     },
   )
 
+  await assert.rejects(
+    sendDownloadMessage(addRequest, z.unknown()),
+    /请先在 B 站网页登录/,
+  )
+  assert.deepEqual(
+    await sendDownloadMessage({ type: 'queue.list' }, downloadJobsSchema),
+    [createJob()],
+  )
+
+  isSignedIn = true
   const unavailable = await sendDownloadMessage(
     episodeRequest,
     episodeInfoSchema,
@@ -140,6 +160,14 @@ test('episode playback gates the shared queue and episode IDs survive history re
   )
 
   const resultSchema = z.object({ added: z.number() })
+
+  await sendDownloadMessage(
+    {
+      type: 'settings.update',
+      settings: { filenameTemplate: '{part}', folderMode: 'video' },
+    },
+    z.unknown(),
+  )
   const added = await Promise.all([
     sendDownloadMessage(addRequest, resultSchema),
     sendDownloadMessage(addRequest, resultSchema),
@@ -183,15 +211,217 @@ test('episode playback gates the shared queue and episode IDs survive history re
 
   assert.ok(record)
   await sendDownloadMessage(
+    {
+      type: 'settings.update',
+      settings: {
+        quality: '480',
+        filenameTemplate: '{title}',
+        folderMode: 'flat',
+      },
+    },
+    z.unknown(),
+  )
+  await sendDownloadMessage(
     { type: 'library.requeue', identity: record.identity },
     z.unknown(),
   )
-  const requeued = await sendDownloadMessage(
+  const jobsAfterRequeue = await sendDownloadMessage(
+    { type: 'queue.list' },
+    downloadJobsSchema,
+  )
+  const requeued = jobsAfterRequeue.find(
+    job => job.epId === 42 && job.status === 'queued',
+  )
+
+  assert.ok(requeued)
+  assert.notEqual(requeued.id, episode.id)
+  assert.equal(requeued.cid, episode.cid)
+  assert.equal(requeued.qualityPreference, 'best')
+  assert.equal(requeued.filenameTemplate, '{part}')
+  assert.equal(requeued.folderMode, 'video')
+  assert.equal(requeued.filename, undefined)
+})
+
+test('season selection lists restrictions and queues unique playable episodes in season order', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  const existing = { ...createJob(), epId: 42, cid: 999 }
+
+  extension.stored.downloadJobs = [existing]
+  const playbackRequests: number[] = []
+  const previewIds = new Set([43])
+  const makeEpisode = (id: number, title: string) => ({
+    id,
+    bvid: existing.bvid,
+    cid: 10,
+    title,
+    duration: 120000,
+  })
+  const first = makeEpisode(12, '1')
+  const queued = makeEpisode(42, '2')
+  const last = makeEpisode(7, '3')
+
+  context.mock.method(
+    globalThis,
+    'fetch',
+    async (input: string, init?: RequestInit) => {
+      const url = new URL(input)
+
+      assert.equal(init?.credentials, 'include')
+
+      if (url.pathname === '/pgc/view/web/season') {
+        assert.ok(
+          url.searchParams.get('season_id') === '1182'
+            || ['12', '43'].includes(url.searchParams.get('ep_id') ?? ''),
+        )
+
+        return Response.json({
+          code: 0,
+          result: {
+            season_id: 1182,
+            title: '测试番剧',
+            cover: '',
+            episodes: [first, queued, makeEpisode(43, '试看'), last],
+            section: [
+              {
+                episodes: [
+                  first,
+                  { ...makeEpisode(18, '预告片'), badge: '预告' },
+                  { id: 99, title: '花絮' },
+                ],
+              },
+            ],
+          },
+        })
+      }
+
+      assert.equal(url.pathname, '/pgc/player/web/v2/playurl')
+      assert.equal(url.searchParams.get('cid'), '10')
+      const epId = Number(url.searchParams.get('ep_id'))
+
+      playbackRequests.push(epId)
+
+      return Response.json({
+        code: 0,
+        result: previewIds.has(epId)
+          ? { play_check: { play_detail: 'PLAY_PREVIEW' } }
+          : {
+              play_check: { play_detail: 'PLAY_WHOLE' },
+              video_info: {
+                quality: 64,
+                durl: [
+                  { url: 'https://example.bilivideo.com/part.mp4', size: 2048 },
+                ],
+              },
+            },
+      })
+    },
+  )
+
+  const season = await sendDownloadMessage(
+    { type: 'season.get', target: { seasonId: 1182 } },
+    seasonInfoSchema,
+  )
+
+  assert.deepEqual(
+    await sendDownloadMessage(
+      { type: 'season.get', target: { epId: 12 } },
+      seasonInfoSchema,
+    ),
+    season,
+  )
+  assert.deepEqual(
+    season.episodes.map(episode => episode.epId),
+    [12, 42, 43, 7, 18, 99],
+  )
+  assert.match(season.episodes[4]?.unavailableReason ?? '', /预告/)
+  assert.match(season.episodes[5]?.unavailableReason ?? '', /播放信息/)
+  assert.equal(playbackRequests.length, 0)
+
+  const availability = await sendDownloadMessage(
+    {
+      type: 'season.availability',
+      episodes: [
+        { epId: 12, cid: 10 },
+        { epId: 43, cid: 10 },
+      ],
+    },
+    episodeAvailabilityListSchema,
+  )
+
+  assert.equal(availability[0]?.unavailableReason, undefined)
+  assert.match(availability[1]?.unavailableReason ?? '', /试看/)
+
+  const request = {
+    type: 'queue.season.add',
+    seasonId: 1182,
+    epIds: [7, 18, 43, 42, 12, 7, 99],
+    quality: '720',
+  } as const
+
+  await assert.rejects(
+    sendDownloadMessage(
+      { ...request, epIds: [12, 100] },
+      seasonAddResultSchema,
+    ),
+    /所选剧集已发生变化/,
+  )
+  assert.deepEqual(extension.stored.downloadJobs, [existing])
+  const results = await Promise.all([
+    sendDownloadMessage(
+      { ...request, epIds: [...request.epIds] },
+      seasonAddResultSchema,
+    ),
+    sendDownloadMessage({ ...request, epIds: [7, 12] }, seasonAddResultSchema),
+  ])
+
+  assert.equal(results[0].added + results[1].added, 2)
+  assert.equal(results[0].skipped + results[1].skipped, 3)
+  assert.deepEqual(
+    results[0].unavailable.map(episode => episode.epId),
+    [43, 18, 99],
+  )
+  assert.equal(
+    playbackRequests.includes(18) || playbackRequests.includes(99),
+    false,
+  )
+  const jobs = await sendDownloadMessage(
     { type: 'queue.list' },
     downloadJobsSchema,
   )
 
-  assert.ok(requeued.some(job => job.epId === 42 && job.status === 'queued'))
+  assert.deepEqual(
+    jobs.map(job => job.epId),
+    [42, 12, 7],
+  )
+  assert.deepEqual(
+    jobs.slice(1).map(job => job.qualityPreference),
+    ['720', '720'],
+  )
+
+  previewIds.delete(43)
+  const singleAndSeason = await Promise.all([
+    sendDownloadMessage(
+      { type: 'queue.episode.add', epId: 43, quality: '720' },
+      z.object({ added: z.number() }),
+    ),
+    sendDownloadMessage({ ...request, epIds: [43] }, seasonAddResultSchema),
+  ])
+
+  assert.equal(singleAndSeason[0].added + singleAndSeason[1].added, 1)
+  const finalJobs = await sendDownloadMessage(
+    { type: 'queue.list' },
+    downloadJobsSchema,
+  )
+
+  assert.deepEqual(
+    finalJobs.map(job => job.epId),
+    [42, 12, 7, 43],
+  )
+  await sendDownloadMessage({ type: 'queue.clear' }, z.null())
 })
 
 test('invalid API metadata cannot poison an existing queue', async context => {
@@ -430,6 +660,36 @@ test('completion does not acknowledge a failed queue write', async context => {
     /Queue storage unavailable/,
   )
   assert.deepEqual(extension.stored.downloadJobs, before)
+})
+
+test('closing the download center preserves more than 100 waiting jobs in order', async context => {
+  const extension = installExtension(context)
+  const { registerDownloads } =
+    await import('../../entrypoints/background/services/downloads')
+
+  registerDownloads()
+  const queued = Array.from({ length: 105 }, (_, index) => ({
+    ...createJob(),
+    id: `queued-${index}`,
+    cid: index + 2,
+  }))
+  const paused = { ...createJob(), id: 'paused', status: 'paused' as const }
+  const running = { ...createJob(), status: 'downloading' as const }
+
+  extension.stored.downloadRunnerTabId = 1
+  await extension.local.set({ downloadSettings: { isPaused: true } })
+  extension.stored.downloadJobs = [running, paused, ...queued]
+
+  await extension.removed.emit(1)
+
+  const jobs = await sendDownloadMessage(
+    { type: 'queue.list' },
+    downloadJobsSchema,
+  )
+
+  assert.equal(jobs[0]?.status, 'failed')
+  assert.deepEqual(jobs.slice(1), [paused, ...queued])
+  assert.equal(extension.stored.downloadRunnerTabId, undefined)
 })
 
 for (const action of ['pause', 'cancel'] as const) {

@@ -1,5 +1,5 @@
 import { i18n } from '~/utils/i18n'
-import type { DownloadJob } from '~/types/download'
+import type { DownloadJob, JobStatus } from '~/types/download'
 
 /**
  * Checks whether a job currently owns a browser execution phase.
@@ -37,6 +37,22 @@ export function canApplyJobUpdate(
   runId: string | undefined,
 ): boolean {
   return !!job && !!runId && job.runId === runId && isJobRunning(job)
+}
+
+/**
+ * Acknowledge a replay of a committed terminal transition for the same run.
+ */
+export function hasAppliedTerminalUpdate(
+  job: DownloadJob | undefined,
+  runId: string | undefined,
+  status: JobStatus | undefined,
+): boolean {
+  return (
+    !!runId
+    && job?.runId === runId
+    && (status === 'completed' || status === 'failed')
+    && job.status === status
+  )
 }
 
 /**

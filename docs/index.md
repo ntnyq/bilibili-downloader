@@ -52,8 +52,10 @@ For source builds, Firefox temporary installation, and distribution archives, se
 
 Open an ordinary Bilibili video. Choose content, parts, and quality in the card below the player or the toolbar popup, then start downloading. Files default to `Bilibili/` in your browser's download folder.
 
+In the source build, you can also [save one or more bangumi episodes as MP4](guide/downloads.md#download-a-bangumi-episode).
+
 ::: warning Keep the download center open
-Closing or refreshing the center interrupts active tasks, including local-helper downloads. Available quality depends on your account. Live streams, bangumi, interactive videos, and protected content are unsupported.
+Closing or refreshing the center interrupts active tasks, including local-helper downloads. Available quality depends on your account.
 :::
 
 ## Your data stays local

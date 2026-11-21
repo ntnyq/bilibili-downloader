@@ -117,11 +117,11 @@ failed / cancelled → queued (user retry)
 
 - A Promise lock serializes background mutations. Metadata loads before taking the lock, avoiding blocked cancellation.
 - Initial deduplication uses `bvid + cid` for unfinished tasks; current-to-all adds only missing parts.
-- Web Locks selects one download center executor across tabs.
+- Web Locks selects one download center executor across tabs. Other open download centers wait for the lock and can take over.
 - Each claim creates a fresh `runId`, rejecting delayed progress from previous runs.
 - At most 1,000 tasks queue; the latest 100 terminal records remain. Clearing records does not delete disk files.
 - `AbortController` stops reads, dedicated Worker termination stops remuxing, and cancellation while saving reaches the browser downloads API.
-- Closing the center marks unfinished work failed; refreshing recovers processing tasks as failed and retains queued tasks.
+- Closing or refreshing the executing download center recovers interrupted runs and preserves queued and paused tasks.
 - Expired URLs try alternate CDNs before one fresh resolution. Connections time out after 30 seconds without data; anti-abuse errors do not retry indefinitely.
 - Valid Range responses with forward progress have no request-count cap. Invalid representations get at most one recovery attempt; strong ETags and cache checks determine safe resume.
 

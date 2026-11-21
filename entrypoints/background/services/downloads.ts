@@ -8,9 +8,15 @@ import {
   downloadSettingsSchema,
 } from '~/types/download'
 import { DOWNLOAD_LIBRARY_STORAGE_KEY } from '~/types/downloadHistory'
+import { seasonInfoSchema } from '~/types/season'
 import { BilibiliApiError, getVideoInfo } from '~/utils/bilibili/api'
 import { getBatchPage } from '~/utils/bilibili/batch'
-import { getDownloadMedia, getEpisodeInfo } from '~/utils/bilibili/episode'
+import {
+  checkEpisodeAvailability,
+  getDownloadMedia,
+  getEpisodeInfo,
+  getSeasonInfo,
+} from '~/utils/bilibili/episode'
 import { MEDIA_DOMAINS } from '~/utils/bilibili/streams'
 import { subtitlesToText } from '~/utils/bilibili/subtitles'
 import { createVideoInfoCache } from '~/utils/bilibili/videoInfoCache'
@@ -51,6 +57,7 @@ import {
 } from '~/utils/downloads/queue/capacity'
 import {
   canApplyJobUpdate,
+  hasAppliedTerminalUpdate,
   isJobRunning,
   moveQueuedJob,
   pauseJob,
@@ -65,7 +72,12 @@ import {
 import { i18n } from '~/utils/i18n'
 import type { Browser } from '#imports'
 import type { BatchAddResult } from '~/types/batchSession'
-import type { DownloadJob, VideoInfo } from '~/types/download'
+import type {
+  DownloadJob,
+  EpisodeInfo,
+  QualityPreference,
+  VideoInfo,
+} from '~/types/download'
 
 const RUNNER_STORAGE_KEY = 'downloadRunnerTabId'
 const RUNNER_INSTANCE_STORAGE_KEY = 'downloadRunnerInstanceId'
@@ -287,16 +299,9 @@ async function openRunner(active: boolean) {
   await browser.tabs.create({ url, active })
 }
 
-async function recoverInterruptedJobs(
-  jobs: DownloadJob[],
-  includeQueued = false,
-) {
+async function recoverInterruptedJobs(jobs: DownloadJob[]) {
   for (const job of jobs) {
-    if (
-      !isJobActive(job)
-      || job.status === 'paused'
-      || (!includeQueued && job.status === 'queued')
-    ) {
+    if (!isJobRunning(job) && job.status !== 'native') {
       continue
     }
 
@@ -337,6 +342,40 @@ async function ensureBatchTabOpen(sender: Browser.runtime.MessageSender) {
       i18n.t('downloads.theDownloadCenterClosedThisImportHasStopped'),
     )
   }
+}
+
+async function checkSelectedSeasonEpisodes(
+  seasonId: number,
+  epIds: number[],
+  quality: QualityPreference,
+) {
+  const season = await getSeasonInfo({ seasonId })
+  const requested = new Set(epIds)
+  const selected = season.episodes.filter(episode =>
+    requested.has(episode.epId),
+  )
+
+  if (selected.length !== requested.size) {
+    throw new Error(i18n.t('season.selectionChanged'))
+  }
+
+  const availability = await checkEpisodeAvailability(
+    selected.flatMap(({ epId, cid, unavailableReason }) =>
+      cid === undefined || unavailableReason ? [] : [{ epId, cid }],
+    ),
+    quality,
+  )
+  const reasons = new Map(
+    availability.map(({ epId, unavailableReason }) => [
+      epId,
+      unavailableReason,
+    ]),
+  )
+
+  return selected.map(episode => ({
+    ...episode,
+    unavailableReason: episode.unavailableReason ?? reasons.get(episode.epId),
+  }))
 }
 
 async function handleRequest(
@@ -594,20 +633,27 @@ async function handleRequest(
       return episode
     }
 
-    try {
-      await getDownloadMedia(
-        { ...episode, cid: episode.pages[0].cid },
-        AbortSignal.timeout(20000),
-        'best',
-      )
+    const [availability] = await checkEpisodeAvailability(
+      [{ epId: episode.epId, cid: episode.pages[0].cid }],
+      'best',
+    )
 
-      return episode
-    } catch (error) {
-      return {
-        ...episode,
-        unavailableReason: getErrorMessage(error),
-      }
+    return {
+      ...episode,
+      unavailableReason: availability?.unavailableReason,
     }
+  }
+
+  if (message.type === 'season.get') {
+    await ensureHeaders()
+
+    return seasonInfoSchema.parse(await getSeasonInfo(message.target))
+  }
+
+  if (message.type === 'season.availability') {
+    await ensureHeaders()
+
+    return checkEpisodeAvailability(message.episodes, 'best')
   }
 
   if (message.type === 'video.estimate') {
@@ -633,7 +679,9 @@ async function handleRequest(
   }
 
   // Slow API requests must not hold the queue lock and block cancellation.
-  let episode: Awaited<ReturnType<typeof getEpisodeInfo>> | undefined
+  let episode: EpisodeInfo | undefined
+  let seasonEpisodes: Awaited<ReturnType<typeof checkSelectedSeasonEpisodes>> =
+    []
 
   if (message.type === 'queue.episode.add') {
     await ensureHeaders()
@@ -646,6 +694,15 @@ async function handleRequest(
     await getDownloadMedia(
       { ...episode, cid: episode.pages[0].cid },
       AbortSignal.timeout(20000),
+      message.quality,
+    )
+  }
+
+  if (message.type === 'queue.season.add') {
+    await ensureHeaders()
+    seasonEpisodes = await checkSelectedSeasonEpisodes(
+      message.seasonId,
+      message.epIds,
       message.quality,
     )
   }
@@ -783,26 +840,53 @@ async function handleRequest(
       return jobs
     }
 
-    if (message.type === 'queue.episode.add' && episode) {
-      const added = createDownloadJobs(
-        episode,
-        episode.pages[0].page,
-        'current',
-        jobs,
-        {
-          quality: message.quality,
-          settings: await readSettings(),
-        },
+    if (
+      message.type === 'queue.episode.add'
+      || message.type === 'queue.season.add'
+    ) {
+      const selected = episode
+        ? [{ epId: episode.epId, info: episode, unavailableReason: undefined }]
+        : seasonEpisodes
+      const activeEpisodeIds = new Set(
+        jobs
+          .filter(job => job.kind === 'video' && isJobActive(job))
+          .map(job => job.epId),
       )
+      const settings = await readSettings()
+      const added: DownloadJob[] = []
+      const unavailable: { epId: number; unavailableReason: string }[] = []
+      let skipped = 0
+
+      for (const { epId, info, unavailableReason } of selected) {
+        if (activeEpisodeIds.has(epId)) {
+          skipped++
+        } else if (unavailableReason || !info) {
+          unavailable.push({
+            epId,
+            unavailableReason:
+              unavailableReason ?? i18n.t('episode.missingPlaybackInformation'),
+          })
+        } else {
+          added.push(
+            ...createDownloadJobs(
+              info,
+              info.pages[0].page,
+              'current',
+              [...jobs, ...added],
+              { quality: message.quality, settings },
+            ),
+          )
+        }
+      }
 
       if (added.length) {
         await openRunner(false)
         await writeJobs([...jobs, ...added])
       }
 
-      return {
-        added: added.length,
-      }
+      return message.type === 'queue.season.add'
+        ? { added: added.length, skipped, unavailable }
+        : { added: added.length }
     }
 
     if (message.type === 'queue.add' && video) {
@@ -934,6 +1018,10 @@ async function handleRequest(
     const stored = await browser.storage.local.get(RUNNER_STORAGE_KEY)
 
     if (stored[RUNNER_STORAGE_KEY] !== sender.tab?.id) {
+      if (message.type === 'native.update') {
+        return false
+      }
+
       throw new Error(
         i18n.t('downloads.anotherDownloadCenterIsProcessingTheQueue'),
       )
@@ -949,6 +1037,10 @@ async function handleRequest(
 
     if (message.type === 'native.update') {
       const job = jobs.find(item => item.id === message.id)
+
+      if (hasAppliedTerminalUpdate(job, message.runId, message.update.status)) {
+        return true
+      }
 
       if (!job || !applyNativeJobUpdate(job, message.runId, message.update)) {
         return false
@@ -989,12 +1081,7 @@ async function handleRequest(
     if (message.type === 'runner.update') {
       const job = jobs.find(item => item.id === message.id)
 
-      if (
-        message.runId
-        && job?.runId === message.runId
-        && ['completed', 'failed'].includes(job.status)
-        && job.status === message.update.status
-      ) {
+      if (hasAppliedTerminalUpdate(job, message.runId, message.update.status)) {
         return true
       }
 
@@ -1068,7 +1155,7 @@ export function registerDownloads(ready: Promise<void> = Promise.resolve()) {
       return true
     },
   )
-  const handleRunnerClosed = (tabId: number) => {
+  const handleRunnerClosed = (tabId: number) =>
     serialize(async () => {
       const stored = await browser.storage.local.get(RUNNER_STORAGE_KEY)
 
@@ -1078,14 +1165,13 @@ export function registerDownloads(ready: Promise<void> = Promise.resolve()) {
 
       const jobs = await readJobs()
 
-      await recoverInterruptedJobs(jobs, true)
+      await recoverInterruptedJobs(jobs)
       await writeJobs(jobs)
       await browser.storage.local.remove([
         RUNNER_STORAGE_KEY,
         RUNNER_INSTANCE_STORAGE_KEY,
       ])
     }).catch(console.error)
-  }
 
   browser.tabs.onRemoved.addListener(handleRunnerClosed)
   browser.tabs.onUpdated.addListener((tabId, changes) => {
@@ -1093,7 +1179,7 @@ export function registerDownloads(ready: Promise<void> = Promise.resolve()) {
       changes.url
       && changes.url !== browser.runtime.getURL('/downloads.html')
     ) {
-      handleRunnerClosed(tabId)
+      return handleRunnerClosed(tabId)
     }
   })
 }

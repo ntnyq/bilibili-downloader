@@ -4,7 +4,7 @@ Find the symptom below. Retry the original task when possible so it can validate
 
 ## The download card does not appear
 
-1. Confirm that the extension is enabled and the page is an ordinary `https://www.bilibili.com/video/...` video.
+1. Confirm that the extension is enabled. Open an ordinary `/video/…` page or, in a build with bangumi support, a `/bangumi/play/ep…` or `/bangumi/play/ss…` playback page.
 2. Refresh the page after installing, updating, or reloading the extension.
 3. Try the toolbar popup on that video page.
 4. If the page layout changed, report the video URL and browser version without account data.
@@ -12,6 +12,10 @@ Find the symptom below. Retry the original task when possible so it can validate
 ## A quality option is unavailable
 
 The extension can only use streams returned for your current Bilibili session. Sign in on Bilibili and confirm that your account can play the desired quality. A cap such as 720P never upgrades to 1080P when no stream meets it. Changing the default only affects newly queued tasks; retry preserves the original setting.
+
+## A bangumi episode cannot be queued
+
+Confirm that the same Bilibili session can play the full episode. After signing in, click **Check again** in the episode list or reopen the download panel. For an episode that is already in your history, use **Download again** after restoring playback access. See the [bangumi download guide](../guide/downloads.md#download-a-bangumi-episode).
 
 ## A download stopped after closing the tab
 
@@ -51,4 +55,4 @@ Confirm Python 3.10+ and FFmpeg are installed, register the correct browser with
 
 [Open an issue](https://github.com/ntnyq/bilibili-downloader/issues) with the browser and extension versions, steps to reproduce, the visible error, and whether it affects browser or helper downloads. Include a public video URL only if appropriate. Remove cookies, signed CDN links, `.bili.json` contents, and private download records.
 
-For the current test scope, see [verification records](../development/verification.md). Live streams, bangumi, interactive videos, and protected content remain unsupported.
+For the current test scope, see [verification records](../development/verification.md).

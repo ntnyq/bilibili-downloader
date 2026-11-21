@@ -31,4 +31,6 @@ Queue JSON / CSV exports include only the current search and filter results: tit
 
 Long-term history independently records successful downloads with search, asset filters, pagination, exports, and requeue. The latest success replaces matching content; limits are 5,000 records and 3 MiB, evicting the oldest when exceeded. It stores neither media nor temporary CDN URLs. Upgrades migrate only successful queue records still retained at that moment. Clearing the queue keeps long-term history; deleting history stops its duplicate checks without deleting downloaded files. Requeue preserves quality and file settings but creates a fresh task and resolves current streams, subject to account permissions and active-task deduplication.
 
+Bangumi records are matched by episode ID, and their source links open the original episode. Select **Download again** on a saved episode to requeue it with its recorded settings. You can do this from the download center with the playback page closed.
+
 [Having trouble? See troubleshooting](../help/troubleshooting.md).

@@ -3,6 +3,7 @@ import { test } from 'node:test'
 import { computed, readonly, shallowRef, watch } from 'vue'
 import { browser } from 'wxt/browser'
 import { downloadJobSchema, downloadJobsSchema } from '../../types/download'
+import { downloadLibrarySchema } from '../../types/downloadHistory'
 import { setLanguagePreference } from '../../utils/i18n'
 import {
   createEvent,
@@ -15,13 +16,25 @@ import type { NativeManifest } from '../../utils/downloads/native/bridge'
 const { useNativeBridge } = await import('../../composables/useNativeBridge')
 const { registerDownloads } =
   await import('../../entrypoints/background/services/downloads')
-const { sendDownloadMessage } = await import('../../utils/downloads/messages')
+const { requestSchema, sendDownloadMessage } =
+  await import('../../utils/downloads/messages')
 
-for (const changedMedia of [false, true]) {
+const scenarios = [
+  ['refresh', 'native refresh freezes the output path across language changes'],
+  ['changedMedia', 'native refresh still rejects a changed representation'],
+  [
+    'retryWrites',
+    'native completion survives failed queue writes and a lost reply without cancelling',
+  ],
+] as const
+
+for (const [scenario, description] of scenarios) {
+  const changedMedia = scenario === 'changedMedia'
+
   test(
-    changedMedia
-      ? 'native refresh still rejects a changed representation'
-      : 'native refresh freezes the output path across language changes',
+    description,
+    // The write recovery scenario exercises two real backoff delays.
+    { timeout: 10000 },
     async context => {
       const extension = installExtension(context)
 
@@ -132,6 +145,104 @@ for (const changedMedia of [false, true]) {
         requestId: initial.requestId,
         type: 'started',
       })
+
+      if (scenario === 'retryWrites') {
+        const send = browser.runtime.sendMessage.bind(browser.runtime)
+        const set = extension.local.set.bind(extension.local)
+        let lostReply = false
+        let completionWrites = 0
+
+        context.mock.method(
+          extension.local,
+          'set',
+          async (values: Record<string, unknown>) => {
+            const { downloadJobs } = values
+            const result = downloadJobsSchema.safeParse(downloadJobs)
+            const current = result.data?.[0]
+
+            if (current?.receivedBytes === 8) {
+              throw new Error('Progress write unavailable')
+            }
+
+            if (current?.status === 'completed') {
+              completionWrites++
+
+              if (completionWrites <= 2) {
+                throw new Error('Completion write unavailable')
+              }
+            }
+
+            await set(values)
+          },
+        )
+        context.mock.method(
+          browser.runtime,
+          'sendMessage',
+          async (message: unknown) => {
+            const request = requestSchema.parse(message)
+            const reply = await send(message)
+
+            if (
+              request.type === 'native.update'
+              && request.update.status === 'completed'
+              && completionWrites === 3
+              && !lostReply
+            ) {
+              lostReply = true
+
+              throw new Error('Completion reply lost')
+            }
+
+            return reply
+          },
+        )
+
+        for (const receivedBytes of [8, 16]) {
+          await incoming.emit({
+            version: 1,
+            requestId: initial.requestId,
+            type: 'progress',
+            status: 'downloading',
+            receivedBytes,
+          })
+        }
+
+        const jobs = await sendDownloadMessage(
+          { type: 'queue.list' },
+          downloadJobsSchema,
+        )
+
+        assert.equal(bridge.isRunning.value, true)
+        assert.equal(jobs[0]?.receivedBytes, 16)
+        await incoming.emit({
+          version: 1,
+          requestId: initial.requestId,
+          type: 'completed',
+          filename: '/Downloads/Bilibili/Test.m4a',
+          quality: 'AAC 128 kbps',
+        })
+        const [saved] = await sendDownloadMessage(
+          { type: 'queue.list' },
+          downloadJobsSchema,
+        )
+        const library = downloadLibrarySchema.parse(
+          extension.stored.downloadLibrary,
+        )
+
+        assert.equal(saved?.status, 'completed')
+        assert.equal(library.records.length, 1)
+        assert.equal(completionWrites, 3)
+        assert.equal(lostReply, true)
+        assert.equal(bridge.isRunning.value, false)
+        assert.equal(bridge.error.value, '')
+        assert.deepEqual(
+          sent.map(message => message.type),
+          ['start'],
+        )
+
+        return
+      }
+
       await setLanguagePreference('en')
       refreshed = true
       await incoming.emit({

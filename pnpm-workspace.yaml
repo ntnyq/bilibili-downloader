@@ -1,4 +1,6 @@
 overrides:
+  # This version provides parseGitCommit without the old tar dependency.
+  changelogithub@15.0.5>changelogen: 0.6.2
   esbuild: ^0.28.2
 
 patchedDependencies:

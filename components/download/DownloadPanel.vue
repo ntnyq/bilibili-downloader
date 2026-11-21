@@ -12,6 +12,7 @@ import { useDownloadBundle } from '~/composables/useDownloadBundle'
 import { useDownloadQueue } from '~/composables/useDownloadQueue'
 import { useVideoDownload } from '~/composables/useVideoDownload'
 import { DOWNLOAD_KIND_LABELS, QUALITY_LABELS } from '~/utils/downloads/labels'
+import { parseSeasonLocation } from '~/utils/downloads/parseVideoLocation'
 import { getJobIdentity } from '~/utils/downloads/queue/identity'
 import { isJobActive } from '~/utils/downloads/queue/jobs'
 import { i18n } from '~/utils/i18n'
@@ -60,6 +61,28 @@ const {
 } = useDownloadQueue()
 
 const { bundles } = useDownloadBundle(jobs)
+
+const isSeasonOpen = shallowRef(false)
+
+const seasonLocation = computed(() => parseSeasonLocation(props.url))
+const epId = computed(() =>
+  location.value && 'epId' in location.value ? location.value.epId : undefined,
+)
+const seasonTarget = computed(
+  () =>
+    seasonLocation.value
+    ?? (isSeasonOpen.value && epId.value ? { epId: epId.value } : undefined),
+)
+const activeEpisodeIds = computed(
+  () =>
+    new Set(
+      jobs.value.flatMap(job =>
+        job.epId !== undefined && job.kind === 'video' && isJobActive(job)
+          ? [job.epId]
+          : [],
+      ),
+    ),
+)
 
 const latestBundle = computed(() =>
   bundles.value.find(bundle => bundle.bvid === video.value?.bvid),
@@ -215,6 +238,10 @@ const panelError = computed(
 
 const optionsUrl = browser.runtime.getURL('/options.html')
 const { settings, updateSettings } = preferences
+
+watch(epId, () => {
+  isSeasonOpen.value = false
+})
 </script>
 
 <template>
@@ -244,7 +271,43 @@ const { settings, updateSettings } = preferences
         <slot name="header-actions" />
       </div>
     </header>
-    <div class="min-h-0 flex-1 overflow-y-auto px-4 py-2.5">
+    <div
+      v-if="epId"
+      class="flex shrink-0 justify-end border-b px-4 py-1"
+    >
+      <Button
+        @click="isSeasonOpen = !isSeasonOpen"
+        :aria-expanded="isSeasonOpen"
+        size="sm"
+        variant="ghost"
+        type="button"
+        class="text-primary"
+      >
+        {{
+          i18n.t(
+            isSeasonOpen ? 'season.backToEpisode' : 'season.selectEpisodes',
+          )
+        }}
+      </Button>
+    </div>
+    <div
+      v-if="seasonTarget"
+      class="min-h-0 flex-1 overflow-y-auto px-4 py-2.5"
+    >
+      <DownloadSeason
+        :key="
+          'seasonId' in seasonTarget
+            ? `ss${seasonTarget.seasonId}`
+            : `ep${seasonTarget.epId}`
+        "
+        :target="seasonTarget"
+        :active-episode-ids
+      />
+    </div>
+    <div
+      v-else
+      class="min-h-0 flex-1 overflow-y-auto px-4 py-2.5"
+    >
       <div
         v-if="isLoading"
         class="py-4.5 text-[13px] text-muted-foreground"
@@ -442,7 +505,7 @@ const { settings, updateSettings } = preferences
     <footer
       class="shrink-0 rounded-b-lg border-t bg-muted/60 px-4 py-2 text-xs text-muted-foreground"
     >
-      <template v-if="video && currentPage">
+      <template v-if="!seasonTarget && video && currentPage">
         <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
           <span
             v-if="episode"

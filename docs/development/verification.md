@@ -1,23 +1,38 @@
 # Verification records
 
-Latest verification date: 2026-10-27. Earlier milestone records remain below. Their 512 MB / WASM-output limits were replaced by disk remuxing, and the subsequent fixed 16 GiB input limit was replaced by dynamic disk budgeting.
+Latest verification date: 2026-11-21. Earlier milestone records remain below. Their 512 MB / WASM-output limits were replaced by disk remuxing, and the subsequent fixed 16 GiB input limit was replaced by dynamic disk budgeting.
 
 ## Automated checks
 
 | Check                | Result                    |
 | -------------------- | ------------------------- |
-| `pnpm test`          | 325 tests passed          |
+| `pnpm test`          | 365 tests passed          |
 | `pnpm test:native`   | 38 tests passed           |
 | `pnpm format:check`  | Passed                    |
 | `pnpm lint`          | Passed                    |
 | `pnpm typecheck`     | Passed                    |
 | `pnpm build`         | Chromium MV3 build passed |
 | `pnpm build:firefox` | Firefox MV3 build passed  |
+| `pnpm docs:build`    | Passed                    |
 | `git diff --check`   | Passed                    |
 
-The production package is approximately 34 MB, including about 32 MB of bundled FFmpeg WASM. Chromium checks covered the download center, welcome, and options pages. Firefox was build-only in this round.
+## Bangumi season selection (2026-11-21)
+
+Loaded the Chromium and Firefox MV3 builds with an offline season fixture. The `ss` page displayed the episode list, disabled previews and trailers, retained selections across pages, and added the selected episodes in season order. The Chromium toolbar popup showed the same list and marked queued episodes. Firefox also verified the `ep` panel's switch between the current episode and the season list. The background regression covers active-task deduplication by episode ID, including concurrent single-episode and season submissions and episodes that share a CID.
+
+## Single-episode bangumi downloads (2026-11-21)
+
+Verified the unpacked Chromium 151.0.7922.76 build and the temporary Firefox 160.0.1 add-on against real Bilibili pages and CDN responses while signed out.
+
+- **Switch episodes in place.** In the episode list for 悠久之翼2, switched from `ep21484` to `ep21485` without reloading the document. The old panel closed. Reopening it showed Episode 2 (read), with the MP4 action available in both browsers.
+- **Download again from history.** Downloaded `ep678060`, closed its playback tab, verified the history link, and used **Download again**. Each browser completed two distinct jobs for the same episode and retained one history record. Each saved MP4 was about 266 seconds and contained 480p HEVC video and AAC audio, confirmed with `ffprobe`. The automated test also checks that the new task keeps the episode ID, quality preference, and file settings.
+- **Download after signing in.** Pending a real signed-in Bilibili session. The automated background test simulates a sign-in requirement followed by full playback. It checks that both API requests include browser credentials and that a rejected request leaves the queue unchanged.
+
+To complete signed-in acceptance, use a fresh browser profile and choose an episode that requires sign-in in that profile. Confirm the account can play the full episode after signing in. Reopen the extension panel, queue the current episode, and verify that the saved MP4 contains video and audio.
 
 ## Input single-moof sample paging: 2026-10-27
+
+Chromium checks in the October round covered the download center, welcome, and options pages. Firefox coverage for that round was limited to builds.
 
 Input `moof/traf` traversal separates fixed headers from source-backed trun rows. Each track fragment retains four copied 16 KiB pages, 128 adaptive summaries, 256 raw samples and 512 computed durations, without full sample/run-count/sorted-PTS arrays. First use streams summaries; default-only runs accumulate arithmetically. Reordered durations use 256-sample windows and candidate-block rescans. Fragment `senc` / `saiz/saio` retain locations, with at most 128 variable-size auxiliary checkpoints.
 

@@ -502,6 +502,7 @@ episode:
   drmProtected: This episode is protected by DRM.
   episodeNotFound: Bilibili could not find this episode. Refresh the playback page and try again.
   fullPlaybackUnavailable: Bilibili did not provide full playback for this episode.
+  missingPlaybackInformation: Bilibili did not provide playback information for this episode.
   moreActions: 'More actions: $1, $2'
   number: Episode $1
   previewOnly: Bilibili only provides a preview for this episode.
@@ -740,10 +741,36 @@ remuxMedia:
 remuxWorker:
   browserMediaRemuxingFailed: Browser media remuxing failed.
 runner:
-  aDownloadCenterIsAlreadyRunningUseThe: A Download Center is already running. Use the existing one.
+  waitingForTheOtherDownloadCenter: Another Download Center is running. This tab will take over when it closes.
 saveFile:
   downloadRemoved: Download removed
   fileSavingFailed: 'File saving failed: $1.'
+season:
+  addSelected:
+    0: Add selected episodes to queue
+    1: Add $1 episode to queue
+    n: Add $1 episodes to queue
+  added:
+    1: Added $1 episode to the queue.
+    n: Added $1 episodes to the queue.
+  alreadyQueued: Already in queue
+  available: Available to download
+  backToEpisode: Back to current episode
+  checking: Checking availability…
+  episodes: Episodes
+  loading: Loading episodes…
+  nextPage: Next page
+  noEpisodes: Bilibili did not return any episodes for this season.
+  previousPage: Previous page
+  recheck: Check again
+  selectEpisodes: Select episodes
+  selectionChanged: The selected episodes have changed. Reopen the list and try again.
+  skipped:
+    1: Skipped $1 episode already in the queue.
+    n: Skipped $1 episodes already in the queue.
+  unavailableCount:
+    1: $1 episode could not be queued. See its status in the list.
+    n: $1 episodes could not be queued. See their statuses in the list.
 serializeDownloadHistory:
   createdTimeUtc: Created time (UTC)
   part: Part

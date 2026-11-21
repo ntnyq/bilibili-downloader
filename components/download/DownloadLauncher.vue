@@ -10,7 +10,10 @@ import {
 import { useOverlayTarget } from '~/composables/useOverlayTarget'
 import { useQuickDownload } from '~/composables/useQuickDownload'
 import { createDownloadClickHandler } from '~/utils/downloads/launcher'
-import { parseEpisodeLocation } from '~/utils/downloads/parseVideoLocation'
+import {
+  parseEpisodeLocation,
+  parseSeasonLocation,
+} from '~/utils/downloads/parseVideoLocation'
 import { i18n } from '~/utils/i18n'
 
 const props = defineProps<{
@@ -32,7 +35,9 @@ const triggerRef = useTemplateRef('triggerRef')
 
 const isOpen = shallowRef(false)
 
-const isEpisode = computed(() => !!parseEpisodeLocation(props.url))
+const isBangumi = computed(
+  () => !!(parseEpisodeLocation(props.url) || parseSeasonLocation(props.url)),
+)
 
 const clicks = createDownloadClickHandler({
   open: togglePanel,
@@ -48,7 +53,7 @@ function togglePanel() {
 }
 
 function onTriggerClick(event: MouseEvent) {
-  if (isEpisode.value) {
+  if (isBangumi.value) {
     if (event.detail < 2) {
       togglePanel()
     }
@@ -104,8 +109,8 @@ onScopeDispose(clicks.cancel)
             @dblclick.prevent
             ref="triggerRef"
             :disabled="isAdding"
-            :title="isEpisode ? i18n.t('downloadLauncher.download') : hint"
-            :aria-label="isEpisode ? i18n.t('downloadLauncher.download') : hint"
+            :title="isBangumi ? i18n.t('downloadLauncher.download') : hint"
+            :aria-label="isBangumi ? i18n.t('downloadLauncher.download') : hint"
             :aria-expanded="isOpen"
             aria-haspopup="dialog"
             variant="ghost"

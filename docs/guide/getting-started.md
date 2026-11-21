@@ -8,11 +8,11 @@ Install the extension and save your first video.
 | ------------ | ----------------------------------------------------------------------------------- |
 | Browser      | Chrome 120+ or a compatible Edge version; Firefox 142+ build available              |
 | Build tools  | Source builds only: Node.js LTS, Git, and the pnpm version pinned in `package.json` |
-| Content      | Ordinary Bilibili videos accessible to your current account                         |
+| Content      | Ordinary videos and bangumi episodes your current account can play in full          |
 | Local helper | Optional; Python 3.10+ and FFmpeg, installed separately                             |
 
 ::: info Browser verification
-Chromium runtime checks and Firefox builds are recorded in [verification](../development/verification.md). Firefox runtime acceptance is still incomplete.
+[Verification records](../development/verification.md) include Chromium and Firefox runtime results for single-episode bangumi downloads.
 :::
 
 ## Install
@@ -71,12 +71,13 @@ Files default to `Bilibili/` inside your browser's download folder. Each part is
 
 ## What can I download?
 
-| Content                                                 | Support                                              |
-| ------------------------------------------------------- | ---------------------------------------------------- |
-| Ordinary single or multi-part videos                    | MP4 video; available quality depends on your account |
-| Standalone AAC audio                                    | M4A, without re-encoding                             |
-| Covers, subtitles, danmaku                              | Original image, SRT, XML when available              |
-| Favorites, collections, series, creator uploads         | Selected ordinary videos through batch import        |
-| Live streams, bangumi, interactive or protected content | Unsupported                                          |
+| Content                                                 | Support                                                                                                  |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
+| Ordinary single or multi-part videos                    | MP4 video; available quality depends on your account                                                     |
+| Bangumi playback pages (`ep…`, `ss…`)                   | [Current or selected episodes as MP4](downloads.md#download-a-bangumi-episode) through the browser queue |
+| Standalone AAC audio                                    | M4A, without re-encoding                                                                                 |
+| Covers, subtitles, danmaku                              | Original image, SRT, XML when available                                                                  |
+| Favorites, collections, series, creator uploads         | Selected ordinary videos through batch import                                                            |
+| Live streams, interactive videos, and protected content | Unsupported                                                                                              |
 
 See the [feature guide](usage.md) for your next task, or [troubleshooting](../help/troubleshooting.md) if the first download fails.

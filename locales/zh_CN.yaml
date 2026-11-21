@@ -477,6 +477,7 @@ episode:
   drmProtected: 当前集受 DRM 保护，无法下载。
   episodeNotFound: B 站未找到当前集，请刷新播放页后重试。
   fullPlaybackUnavailable: B 站未提供当前集的完整正片，无法下载。
+  missingPlaybackInformation: B 站未提供该集的播放信息。
   moreActions: 更多操作：$1，$2
   number: 第 $1 集
   previewOnly: B 站仅提供当前集的试看，无法下载。
@@ -714,10 +715,33 @@ remuxMedia:
 remuxWorker:
   browserMediaRemuxingFailed: 浏览器音视频封装失败。
 runner:
-  aDownloadCenterIsAlreadyRunningUseThe: 已有下载中心正在运行，请使用原来的下载中心。
+  waitingForTheOtherDownloadCenter: 另一个下载中心正在运行，关闭它后此标签页会接管队列。
 saveFile:
   downloadRemoved: 下载已被移除
   fileSavingFailed: 文件保存失败：$1。
+season:
+  addSelected:
+    0: 将所选剧集加入队列
+    1: 将 $1 集加入队列
+    n: 将 $1 集加入队列
+  added:
+    n: 已将 $1 集加入队列。
+  alreadyQueued: 已在队列中
+  available: 可下载
+  backToEpisode: 返回当前集
+  checking: 正在检查可下载状态…
+  episodes: 剧集列表
+  loading: 正在加载剧集列表…
+  nextPage: 下一页
+  noEpisodes: B 站未返回这一季的剧集。
+  previousPage: 上一页
+  recheck: 重新检查
+  selectEpisodes: 选择剧集
+  selectionChanged: 所选剧集已发生变化，请重新打开剧集列表后再试。
+  skipped:
+    n: 已跳过队列中已有的 $1 集。
+  unavailableCount:
+    n: 有 $1 集未能入队，原因见剧集列表。
 serializeDownloadHistory:
   createdTimeUtc: 创建时间（UTC）
   part: 分 P

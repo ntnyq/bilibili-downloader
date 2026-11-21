@@ -1,3 +1,4 @@
+import { waitFor } from '@ntnyq/utils'
 import { z } from 'zod'
 import { browser } from '#imports'
 import { downloadJobSchema, downloadJobsSchema } from '~/types/download'
@@ -68,6 +69,7 @@ function createNativeSession(onSettled: () => void) {
   let refreshCount = 0
   let isRefreshing = false
   let isFinishing = false
+  let isPageHidden = false
   let writes = Promise.resolve()
   let startupTimer: ReturnType<typeof setTimeout> | undefined
   let generation = 0
@@ -83,7 +85,7 @@ function createNativeSession(onSettled: () => void) {
   }
 
   function handleMessage(value: unknown) {
-    receive(value)
+    return receive(value)
   }
 
   function handleDisconnect() {
@@ -165,20 +167,69 @@ function createNativeSession(onSettled: () => void) {
       return Promise.resolve()
     }
 
-    writes = writes.then(async () => {
-      const accepted = await sendDownloadMessage(
-        { type: 'native.update', id: job.id, runId, update },
-        z.boolean(),
-      )
+    const next = writes.then(async () => {
+      const isProgress = update.status === 'native'
 
-      if (!accepted) {
-        throw new Error(
-          i18n.t('useNativeBridge.theLocalTaskWasCancelledOrItsExecution'),
-        )
+      if (isProgress && isFinishing) {
+        return
+      }
+
+      let retryDelay = 1000
+
+      while (true) {
+        let accepted: boolean
+
+        try {
+          accepted = await sendDownloadMessage(
+            { type: 'native.update', id: job.id, runId, update },
+            z.boolean(),
+          )
+        } catch (error_) {
+          if (isProgress) {
+            // Subsequent progress can replace this update while the helper keeps running.
+            console.warn(error_)
+
+            return
+          }
+
+          if (isPageHidden) {
+            throw error_
+          }
+
+          if (update.status === 'completed') {
+            error.value = i18n.t(
+              'useNativeBridge.fileSavedButTheTaskRecordCouldNot',
+              [getErrorMessage(error_)],
+            )
+          }
+
+          await waitFor(retryDelay)
+
+          if (isPageHidden) {
+            throw error_
+          }
+
+          retryDelay = Math.min(retryDelay * 2, 5000)
+          continue
+        }
+
+        if (!accepted) {
+          throw new Error(
+            i18n.t('useNativeBridge.theLocalTaskWasCancelledOrItsExecution'),
+          )
+        }
+
+        if (update.status === 'completed') {
+          error.value = ''
+        }
+
+        return
       }
     })
 
-    return writes
+    writes = next.catch(() => {})
+
+    return next
   }
 
   async function finishFailure(reason: string) {
@@ -191,11 +242,9 @@ function createNativeSession(onSettled: () => void) {
     releasePort(true)
 
     try {
-      await writes.catch(() => {})
-      writes = Promise.resolve()
       await persist({ status: 'failed', error: reason })
     } catch {
-      // A cancelled/deleted job is deliberately rejected by the queue owner.
+      // The queue owner rejects stale runs and recovers jobs after page closure.
     } finally {
       settle()
     }
@@ -351,6 +400,7 @@ function createNativeSession(onSettled: () => void) {
     const currentGeneration = ++generation
 
     isFinishing = false
+    isPageHidden = false
     claimedJob = undefined
     error.value = ''
     outputPath.value = ''
@@ -487,6 +537,8 @@ function createNativeSession(onSettled: () => void) {
 
   // A filtered-out row must not stop the task; only the owning page does.
   function handlePageHide() {
+    isPageHidden = true
+
     if (isRunning.value && !isFinishing) {
       finishFailure(
         i18n.t('useNativeBridge.theDownloadPageClosedAndTheLocalTask'),

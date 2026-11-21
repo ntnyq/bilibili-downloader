@@ -295,8 +295,8 @@ async function runDownloadJob(
  * @param onError - Reports a duplicate runner or a retrying connection;
  * receives an empty string when the connection recovers.
  * @param signal - Optional owning-page cancellation signal.
- * @returns A promise that resolves when the lock is unavailable, otherwise
- * remains pending while the elected runner claims and executes jobs.
+ * @returns A promise that remains pending while waiting for the lock or
+ * executing jobs as the elected runner.
  * @throws The abort reason or lock rejection if execution cannot continue.
  * @throws Any exception thrown by onError when a duplicate runner is detected.
  * @remarks Individual job failures are reported to the background queue and
@@ -309,14 +309,17 @@ export async function startDownloadRunner(
   const request = <Result>(message: RunnerRequest, schema: z.ZodType<Result>) =>
     sendRunnerMessage(message, schema, onError, signal)
 
+  const lockName = 'bilibili-download-runner'
+
   await navigator.locks.request(
-    'bilibili-download-runner',
+    lockName,
     { ifAvailable: true },
-    async lock => {
+    async function run(lock) {
       signal?.throwIfAborted()
 
       if (!lock) {
-        onError(i18n.t('runner.aDownloadCenterIsAlreadyRunningUseThe'))
+        onError(i18n.t('runner.waitingForTheOtherDownloadCenter'))
+        await navigator.locks.request(lockName, { signal }, run)
 
         return
       }

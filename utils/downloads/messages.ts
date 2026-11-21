@@ -15,10 +15,25 @@ import {
   videoPageSchema,
 } from '../../types/download'
 import { bundleKindsSchema } from '../../types/downloadBundle'
+import {
+  episodePlaybackTargetSchema,
+  SEASON_EPISODES_PER_PAGE,
+  seasonIdSchema,
+  seasonTargetSchema,
+} from '../../types/season'
+import { MAX_PENDING_JOBS } from './constants'
 
 export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('video.get'), videoId: videoIdSchema }),
   z.object({ type: z.literal('episode.get'), epId: episodeIdSchema }),
+  z.object({ type: z.literal('season.get'), target: seasonTargetSchema }),
+  z.object({
+    type: z.literal('season.availability'),
+    episodes: z
+      .array(episodePlaybackTargetSchema)
+      .min(1)
+      .max(SEASON_EPISODES_PER_PAGE),
+  }),
   z.object({
     type: z.literal('video.estimate'),
     bvid: videoIdSchema,
@@ -62,6 +77,12 @@ export const requestSchema = z.discriminatedUnion('type', [
   z.object({
     type: z.literal('queue.episode.add'),
     epId: episodeIdSchema,
+    quality: qualityPreferenceSchema,
+  }),
+  z.object({
+    type: z.literal('queue.season.add'),
+    seasonId: seasonIdSchema,
+    epIds: z.array(episodeIdSchema).min(1).max(MAX_PENDING_JOBS),
     quality: qualityPreferenceSchema,
   }),
   z.object({

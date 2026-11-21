@@ -14,6 +14,20 @@ Choose video parts and a quality cap, then control the resulting tasks in the do
 
 Open `https://www.bilibili.com/video/...` and click **Download video** below the player. Multi-part videos default to the current part; choose all parts or a custom selection. The picker supports selecting, selecting all, inverting, and clearing, shows the count and total duration, and always preserves the original part order. You can also start downloads from the extension popup.
 
+## Download a bangumi episode
+
+1. Open an episode at `https://www.bilibili.com/bangumi/play/ep…`. If playback requires sign-in, sign in to Bilibili in the same browser and confirm that you can play the full episode.
+2. Click **Download** below the player or open the toolbar popup. Confirm the episode shown in the panel, choose a quality cap, and click **Download current episode**.
+3. Keep the download center open while the browser saves the episode as MP4.
+
+### Select multiple episodes
+
+Open a season at `https://www.bilibili.com/bangumi/play/ss…` and open the download panel. If Bilibili redirects to an episode page, click **Select episodes** in the panel.
+
+The list checks availability for your current Bilibili session as you browse. Tick the available episodes, choose a quality cap, and add them to the queue. Your selection carries across list pages. The queue follows the season's episode order and skips episodes that already have an active task.
+
+Bangumi downloads use the browser queue and save MP4 files. Previews, trailers, region-restricted playback, and DRM-protected streams cannot be queued.
+
 ## Choose quality
 
 Quality preferences are saved and synchronized across interfaces. Queued tasks keep their submitted settings, including on retry. “Up to 720P” selects the highest available stream at or below 720P; if your account only receives 480P, that is what downloads. A task fails when no stream meets the cap rather than selecting a higher resolution.
@@ -28,6 +42,6 @@ Search the download center by title, BV ID, or part, filter failures, and retry 
 
 ## Keep the download center open
 
-Tasks run in the download center tab that opens in the background. **Keep the download center open while downloading.** Each part is saved separately under `Bilibili/` in the default download folder. Closing or refreshing the tab interrupts active work. Reopen it and retry: committed media fragments remain on disk, and fresh media URLs and cache validation determine whether the server allows resuming.
+Tasks run in the download center tab that opens in the background. **Keep the download center open while downloading.** Each part is saved separately under `Bilibili/` in the default download folder. Closing or refreshing the tab interrupts active work and preserves waiting tasks in order. Another open download center takes over the queue when the active tab closes. Retry interrupted tasks to reuse committed media fragments if the server supports resuming.
 
 [Having trouble? See troubleshooting](../help/troubleshooting.md).

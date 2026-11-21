@@ -10,6 +10,73 @@ const { registerDownloads } =
   await import('../../entrypoints/background/services/downloads')
 const { requestSchema } = await import('../../utils/downloads/messages')
 
+test(
+  'a waiting download center registers after the owner releases its lock',
+  { timeout: 5000 },
+  async context => {
+    const extension = installExtension(context)
+    const locks = navigator.locks
+    const ownerReady = Promise.withResolvers<void>()
+    const releaseOwner = Promise.withResolvers<void>()
+    const owner = locks.request('bilibili-download-runner', async () => {
+      ownerReady.resolve()
+      await releaseOwner.promise
+    })
+    const stop = new AbortController()
+
+    context.after(() => {
+      releaseOwner.resolve()
+      stop.abort()
+    })
+    registerDownloads()
+    replaceProperty(context, globalThis, 'navigator', {
+      locks,
+      storage: {
+        async getDirectory() {
+          throw new DOMException('No cache', 'NotFoundError')
+        },
+      },
+    })
+    const send = browser.runtime.sendMessage.bind(browser.runtime)
+
+    context.mock.method(
+      browser.runtime,
+      'sendMessage',
+      async (message: unknown) => {
+        if (requestSchema.parse(message).type === 'runner.claim') {
+          stop.abort()
+
+          throw stop.signal.reason
+        }
+
+        return send(message)
+      },
+    )
+    await ownerReady.promise
+    const waiting = Promise.withResolvers<void>()
+    const feedback: string[] = []
+    const runner = assert.rejects(
+      startDownloadRunner(message => {
+        feedback.push(message)
+
+        if (message) {
+          waiting.resolve()
+        }
+      }, stop.signal),
+      { name: 'AbortError' },
+    )
+
+    await waiting.promise
+    assert.equal(extension.stored.downloadRunnerTabId, undefined)
+    releaseOwner.resolve()
+    await owner
+    await runner
+
+    assert.equal(extension.stored.downloadRunnerTabId, 1)
+    assert.equal(feedback.at(-1), '')
+  },
+)
+
 for (const failure of [
   'runner.ready',
   'queue.list',
