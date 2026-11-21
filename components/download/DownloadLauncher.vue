@@ -25,10 +25,10 @@ const {
   clearFeedback,
 } = useQuickDownload(() => props.url)
 
-const isOpen = shallowRef(false)
-
 const anchorRef = useTemplateRef<HTMLSpanElement>('anchorRef')
 const triggerRef = useTemplateRef('triggerRef')
+
+const isOpen = shallowRef(false)
 
 const clicks = createDownloadClickHandler({
   open() {
@@ -41,13 +41,16 @@ const clicks = createDownloadClickHandler({
   },
 })
 
-function keepAnchorInteraction(event: {
+function keepLauncherInteraction(event: {
   preventDefault: () => void
   detail: { originalEvent: Event }
 }) {
+  const { originalEvent } = event.detail
+  const root = overlayTarget?.value?.getRootNode()
   if (
-    anchorRef.value
-    && event.detail.originalEvent.composedPath().includes(anchorRef.value)
+    (anchorRef.value && originalEvent.composedPath().includes(anchorRef.value))
+    // Focus on a portalled picker can be retargeted to the shadow host.
+    || (root instanceof ShadowRoot && originalEvent.target === root.host)
   ) {
     event.preventDefault()
   }
@@ -111,7 +114,7 @@ onScopeDispose(clicks.cancel)
       <PopoverPortal :to="overlayTarget ?? undefined">
         <PopoverContent
           @keydown.esc.stop.prevent="close"
-          @interact-outside="keepAnchorInteraction"
+          @interact-outside="keepLauncherInteraction"
           :aria-labelledby="undefined"
           :side-offset="10"
           :collision-padding="12"

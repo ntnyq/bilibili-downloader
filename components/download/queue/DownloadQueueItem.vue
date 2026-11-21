@@ -46,7 +46,6 @@ const emit = defineEmits<{
   move: [id: string, direction: 'up' | 'down']
   showFile: [id?: number]
 }>()
-const detailsId = useId()
 const isDetailsOpen = shallowRef(false)
 const isNativeOptionsOpen = shallowRef(false)
 const isActive = computed(() => isJobActive(props.job))
@@ -78,6 +77,8 @@ const statusClass = computed(() => {
   }
   return 'bg-accent text-primary'
 })
+
+const detailsId = useId()
 </script>
 
 <template>

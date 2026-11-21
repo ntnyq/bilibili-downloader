@@ -11,11 +11,25 @@ import {
   qualityPreferenceSchema,
   subtitleLanguageSchema,
   videoIdSchema,
+  videoPageSchema,
 } from '../../types/download'
 import { bundleKindsSchema } from '../../types/downloadBundle'
 
 export const requestSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('video.get'), videoId: videoIdSchema }),
+  z.object({
+    type: z.literal('video.estimate'),
+    bvid: videoIdSchema,
+    cid: videoPageSchema.shape.cid,
+    duration: videoPageSchema.shape.duration,
+    quality: qualityPreferenceSchema,
+  }),
+  z.object({
+    type: z.literal('subtitle.text'),
+    bvid: videoIdSchema,
+    cid: videoPageSchema.shape.cid,
+    subtitleLanguage: subtitleLanguageSchema,
+  }),
   z.object({ type: z.literal('batch.session.get') }),
   z.object({ type: z.literal('batch.session.reset') }),
   z.object({

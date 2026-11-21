@@ -8,6 +8,7 @@ import { createDownloadPath } from '../files/createDownloadPath'
 import { fetchAsset } from '../files/fetchAsset'
 import { saveFile } from '../files/saveFile'
 import { getErrorMessage } from '../getErrorMessage'
+import { estimateMediaBytes } from '../media/estimateMediaBytes'
 import { fetchCachedMedia } from '../media/fetchCachedMedia'
 import { MediaNetworkError } from '../media/fetchMediaBytes'
 import { createMediaCache, pruneMediaCache } from '../media/mediaCache'
@@ -160,12 +161,7 @@ async function runDownloadJob(
           job.kind === 'audio' ? 'best' : job.qualityPreference,
           job.kind === 'audio' ? 'audio' : 'video',
         )
-        const estimatedBytes = Math.round(
-          media.inputs.reduce(
-            (sum, input) => sum + (input.bandwidth * job.duration) / 8,
-            0,
-          ),
-        )
+        const estimatedBytes = estimateMediaBytes(media, job.duration)
         await update({ quality: media.quality, totalBytes: estimatedBytes })
         // A different selection must never combine tracks from an older run.
         const identity = [

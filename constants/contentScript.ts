@@ -1,4 +1,7 @@
 /**
  * Pages supported by the downloader content script and toolbar icon.
  */
-export const DOWNLOAD_PAGE_MATCHES = ['https://www.bilibili.com/video/*']
+export const DOWNLOAD_PAGE_MATCHES = [
+  'https://www.bilibili.com/video/*',
+  'https://www.bilibili.com/s/video/*',
+]

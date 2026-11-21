@@ -10,29 +10,9 @@ const props = defineProps<{
 }>()
 const mode = defineModel<DownloadMode>('mode', { required: true })
 const selectedPages = defineModel<number[]>('selectedPages', { required: true })
-const modes = [
-  {
-    value: 'current',
-    get label() {
-      return i18n.t('downloadPartPicker.currentPart')
-    },
-  },
-  {
-    value: 'all',
-    get label() {
-      return i18n.t('downloadPartPicker.allParts')
-    },
-  },
-  {
-    value: 'selected',
-    get label() {
-      return i18n.t('downloadPartPicker.selectParts')
-    },
-  },
-] as const
-const selected = computed(() => new Set(selectedPages.value))
 const search = shallowRef('')
 const isSelectedOnly = shallowRef(false)
+const selected = computed(() => new Set(selectedPages.value))
 const query = computed(() => search.value.trim().toLocaleLowerCase())
 const visiblePages = computed(() =>
   props.pages.filter(
@@ -57,6 +37,27 @@ const targetPages = computed(() =>
 const totalDuration = computed(() =>
   targetPages.value.reduce((sum, page) => sum + page.duration, 0),
 )
+
+const modes = [
+  {
+    value: 'current',
+    get label() {
+      return i18n.t('downloadPartPicker.currentPart')
+    },
+  },
+  {
+    value: 'all',
+    get label() {
+      return i18n.t('downloadPartPicker.allParts')
+    },
+  },
+  {
+    value: 'selected',
+    get label() {
+      return i18n.t('downloadPartPicker.selectParts')
+    },
+  },
+] as const
 
 function invertSelection() {
   const next = new Set(selected.value)

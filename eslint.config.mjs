@@ -8,6 +8,9 @@ export default defineESLintConfig({
   prettier: false,
   svgo: true,
   vue: {
-    vuePerfectionist: {},
+    vuePerfectionist: {
+      autoImport: true,
+      overrides: {},
+    },
   },
 })

@@ -186,7 +186,7 @@ function parseBatchLink(input: string): BatchCandidate {
   if (url.hostname === 'space.bilibili.com') {
     throw new Error(i18n.t('batch.enterASingleVideoUrl'))
   }
-  const videoId = /^\/video\/(BV[\dA-Za-z]{10}|av[1-9]\d*)\/?$/.exec(
+  const videoId = /^\/(?:s\/)?video\/(BV[\dA-Za-z]{10}|av[1-9]\d*)\/?$/.exec(
     url.pathname,
   )?.[1]
   const pageValue = url.searchParams.get('p')

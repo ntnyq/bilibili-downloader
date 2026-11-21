@@ -13,7 +13,7 @@ export function parseVideoLocation(value: string) {
     if (url.hostname !== 'www.bilibili.com' || url.protocol !== 'https:') {
       return
     }
-    const videoId = /^\/video\/(BV[\dA-Za-z]{10}|av\d+)(?:\/|$)/.exec(
+    const videoId = /^\/(?:s\/)?video\/(BV[\dA-Za-z]{10}|av\d+)(?:\/|$)/.exec(
       url.pathname,
     )?.[1]
     if (!videoId) {

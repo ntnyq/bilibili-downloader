@@ -26,6 +26,17 @@ test('recognizes BV/av URLs and rejects invalid pages or misleading hosts', () =
     videoId: 'av123',
     page: 1,
   })
+  assert.deepEqual(
+    parseVideoLocation('https://www.bilibili.com/s/video/BV1xx411c7mD/?p=2'),
+    { videoId: video.bvid, page: 2 },
+  )
+  assert.deepEqual(
+    parseVideoLocation('https://www.bilibili.com/s/video/av123'),
+    {
+      videoId: 'av123',
+      page: 1,
+    },
+  )
   for (const url of [
     'https://www.bilibili.com/video/BV1xx411c7mD/?p=0',
     'https://www.bilibili.com/video/BV1xx411c7mD/?p=1.5',

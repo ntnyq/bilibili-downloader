@@ -5,6 +5,7 @@ import {
   playDataSchema,
   selectMedia,
 } from '../../utils/bilibili/streams'
+import { estimateMediaBytes } from '../../utils/downloads/media/estimateMediaBytes'
 
 function stream(
   id: number,
@@ -47,6 +48,7 @@ test('selects available resolution, FPS and enhanced tier before codec bitrate',
   assert.equal(result.quality, '4K')
   assert.equal(result.inputs[0]?.urls[0], 'https://example.bilivideo.com/120')
   assert.equal(result.inputs[1]?.urls[0], 'https://example.bilivideo.com/30280')
+  assert.equal(estimateMediaBytes(result, 60), 22500)
 })
 
 test('prefers SDR and AVC at equal quality, not larger bandwidth across codecs', () => {
@@ -182,11 +184,19 @@ test('progressive fallback enforces cap without dropping fragments or guessing u
   const data = playDataSchema.parse({
     quality: 64,
     durl: [
-      { url: 'https://a.bilivideo.com/1' },
-      { url: 'https://a.bilivideo.com/2' },
+      { url: 'https://a.bilivideo.com/1', size: 1200 },
+      { url: 'https://a.bilivideo.com/2', size: 800 },
     ],
   })
   assert.equal(selectMedia(data, '720').inputs.length, 2)
+  assert.equal(estimateMediaBytes(selectMedia(data, '720'), 0), 2000)
+  assert.equal(
+    estimateMediaBytes(
+      selectMedia({ ...data, durl: [{ url: 'https://a.bilivideo.com/1' }] }),
+      60,
+    ),
+    0,
+  )
   assert.throws(() => selectMedia(data, '480'), /未返回符合/)
   assert.throws(
     () => selectMedia({ ...data, quality: 999 }, '1080'),

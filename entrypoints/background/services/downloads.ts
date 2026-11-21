@@ -8,9 +8,14 @@ import {
   downloadSettingsSchema,
 } from '~/types/download'
 import { DOWNLOAD_LIBRARY_STORAGE_KEY } from '~/types/downloadHistory'
-import { BilibiliApiError, getVideoInfo } from '~/utils/bilibili/api'
+import {
+  BilibiliApiError,
+  getVideoInfo,
+  getVideoMedia,
+} from '~/utils/bilibili/api'
 import { getBatchPage } from '~/utils/bilibili/batch'
 import { MEDIA_DOMAINS } from '~/utils/bilibili/streams'
+import { subtitlesToText } from '~/utils/bilibili/subtitles'
 import { createVideoInfoCache } from '~/utils/bilibili/videoInfoCache'
 import { createBatchJobs } from '~/utils/downloads/batch/jobs'
 import {
@@ -25,6 +30,7 @@ import {
   JOBS_STORAGE_KEY,
   SETTINGS_STORAGE_KEY,
 } from '~/utils/downloads/constants'
+import { fetchSubtitle } from '~/utils/downloads/files/fetchSubtitle'
 import { getErrorMessage } from '~/utils/downloads/getErrorMessage'
 import {
   createDownloadLibrary,
@@ -34,6 +40,7 @@ import {
   recordLibraryCompletions,
 } from '~/utils/downloads/history/library'
 import { DOWNLOAD_KIND_LABELS } from '~/utils/downloads/labels'
+import { estimateMediaBytes } from '~/utils/downloads/media/estimateMediaBytes'
 import { requestSchema } from '~/utils/downloads/messages'
 import {
   applyNativeJobUpdate,
@@ -508,6 +515,21 @@ async function handleRequest(
   if (message.type === 'video.get') {
     await ensureHeaders()
     return getCachedVideoInfo(message.videoId)
+  }
+  if (message.type === 'video.estimate') {
+    await ensureHeaders()
+    const media = await getVideoMedia(
+      message.bvid,
+      message.cid,
+      AbortSignal.timeout(20000),
+      message.quality,
+    )
+    return estimateMediaBytes(media, message.duration)
+  }
+  if (message.type === 'subtitle.text') {
+    await ensureHeaders()
+    const { data } = await fetchSubtitle(message, AbortSignal.timeout(20000))
+    return subtitlesToText(data)
   }
   if (message.type === 'queue.add' || message.type === 'queue.bundle.add') {
     await ensureHeaders()

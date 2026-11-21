@@ -106,20 +106,7 @@ function timestamp(seconds: number): string {
   return `${String(Math.floor(milliseconds / 3600000)).padStart(2, '0')}:${String(Math.floor(milliseconds / 60000) % 60).padStart(2, '0')}:${String(Math.floor(milliseconds / 1000) % 60).padStart(2, '0')},${String(milliseconds % 1000).padStart(3, '0')}`
 }
 
-/**
- * Convert validated cues to plain SRT in chronological order, rounding
- * milliseconds.
- *
- * @param value - Untrusted Bilibili subtitle JSON containing a body of timed
- * text cues.
- * @returns Chronologically ordered, renumbered SRT with normalized text and
- * escaped markup.
- * @throws {import('zod').ZodError} If cues have invalid fields, excessive
- *   counts, or nonincreasing time ranges.
- * @throws {Error} If no nonempty cue survives text cleanup and millisecond
- *   rounding.
- */
-export function subtitlesToSrt(value: unknown): string {
+function parseSubtitleCues(value: unknown) {
   const data = subtitleBodySchema.parse(value)
   const cues = data.body
     .map(cue => ({
@@ -139,9 +126,25 @@ export function subtitlesToSrt(value: unknown): string {
     throw new Error(i18n.t('subtitles.subtitleContentIsEmptyNoFileWasSaved'))
   }
   return cues
+}
+
+/**
+ * Formats validated subtitle cues as chronological SRT with escaped markup.
+ */
+export function subtitlesToSrt(value: unknown): string {
+  return parseSubtitleCues(value)
     .map(
       (cue, index) =>
         `${index + 1}\n${timestamp(cue.from)} --> ${timestamp(cue.to)}\n${cue.content.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}\n`,
     )
+    .join('\n')
+}
+
+/**
+ * Formats validated subtitle cues as chronological text for the clipboard.
+ */
+export function subtitlesToText(value: unknown): string {
+  return parseSubtitleCues(value)
+    .map(cue => cue.content)
     .join('\n')
 }

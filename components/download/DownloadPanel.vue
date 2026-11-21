@@ -58,18 +58,9 @@ const {
 
 const { bundles } = useDownloadBundle(jobs)
 
-const optionsUrl = browser.runtime.getURL('/options.html')
-
 const latestBundle = computed(() =>
   bundles.value.find(bundle => bundle.bvid === video.value?.bvid),
 )
-const {
-  settings,
-  isReady,
-  isSaving,
-  error: settingsError,
-  updateSettings,
-} = preferences
 const isMultipart = computed(() => (video.value?.pages.length || 0) > 1)
 const isSplitLayout = computed(
   () => props.embedded && isMultipart.value && hasPageAssets.value,
@@ -162,9 +153,33 @@ const isDownloadDisabled = computed(
     || isAlreadyQueued.value
     || (isBundleEnabled.value && !bundleKinds.value.length)
     || !targetPages.value.length
-    || !isReady.value
-    || isSaving.value,
+    || !preferences.isReady.value
+    || preferences.isSaving.value,
 )
+const subtitlePart = computed(() =>
+  !isBundleEnabled.value
+  && kind.value === 'subtitle'
+  && targetPages.value.length === 1
+    ? targetPages.value[0]
+    : undefined,
+)
+const canEstimateSize = computed(
+  () =>
+    !isBundleEnabled.value
+    && kind.value === 'video'
+    && mode.value === 'current'
+    && preferences.isReady.value
+    && !preferences.isSaving.value,
+)
+
+const optionsUrl = browser.runtime.getURL('/options.html')
+const {
+  settings,
+  isReady,
+  isSaving,
+  error: settingsError,
+  updateSettings,
+} = preferences
 </script>
 
 <template>
@@ -365,15 +380,20 @@ const isDownloadDisabled = computed(
       class="shrink-0 rounded-b-lg border-t bg-muted/60 px-4 py-2 text-xs text-muted-foreground"
     >
       <template v-if="video && currentPage">
-        <div
-          class="flex flex-wrap items-center justify-between gap-1 text-[11px]"
-        >
+        <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11px]">
           <span>{{
             hasPageAssets
               ? i18n.t('downloadPanel.partsSelected', targetPages.length)
               : i18n.t('downloadPanel.oneCoverPerVideo')
           }}</span>
-          <span class="text-foreground"
+          <DownloadSizeEstimate
+            v-if="canEstimateSize"
+            :key="`${video.bvid}:${currentPage.cid}:${settings.quality}`"
+            :bvid="video.bvid"
+            :part="currentPage"
+            :quality="settings.quality"
+          />
+          <span class="ms-auto text-foreground"
             >{{
               isBundleEnabled
                 ? i18n.t('downloadPanel.bundleAssets', bundleTaskCount)
@@ -383,17 +403,26 @@ const isDownloadDisabled = computed(
             ></span
           >
         </div>
-        <Button
-          @click="download"
-          :disabled="isDownloadDisabled"
-          type="button"
-          class="my-2 h-10 w-full"
-        >
-          <DownloadIcon
-            class="shrink-0 size-4"
-            aria-hidden="true"
-          />{{ downloadLabel }}
-        </Button>
+        <div class="my-2 flex flex-wrap gap-2">
+          <Button
+            @click="download"
+            :disabled="isDownloadDisabled"
+            type="button"
+            class="h-10 grow"
+          >
+            <DownloadIcon
+              class="shrink-0 size-4"
+              aria-hidden="true"
+            />{{ downloadLabel }}
+          </Button>
+          <DownloadSubtitleCopy
+            v-if="subtitlePart"
+            :key="`${video.bvid}:${subtitlePart.cid}:${subtitleLanguage}`"
+            :bvid="video.bvid"
+            :cid="subtitlePart.cid"
+            :subtitle-language
+          />
+        </div>
       </template>
       <div class="flex items-center justify-between gap-2">
         <span class="inline-flex items-center gap-1.5"

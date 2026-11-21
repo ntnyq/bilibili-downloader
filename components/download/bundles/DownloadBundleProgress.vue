@@ -13,6 +13,13 @@ const emit = defineEmits<{
   resume: [id: string]
 }>()
 
+const unfinished = computed(() =>
+  props.bundle.jobs.filter(job => job.status !== 'completed'),
+)
+const createdAtLabel = computed(() =>
+  new Date(props.bundle.createdAt).toLocaleString(i18n.t('localeCode')),
+)
+
 const statusLabels: Record<DownloadBundleSummary['status'], string> = {
   get active() {
     return i18n.t('downloadBundleProgress.downloadingBundle')
@@ -30,13 +37,6 @@ const statusLabels: Record<DownloadBundleSummary['status'], string> = {
     return i18n.t('downloadBundleProgress.bundleRecordsIncomplete')
   },
 }
-
-const unfinished = computed(() =>
-  props.bundle.jobs.filter(job => job.status !== 'completed'),
-)
-const createdAtLabel = computed(() =>
-  new Date(props.bundle.createdAt).toLocaleString(i18n.t('localeCode')),
-)
 </script>
 
 <template>

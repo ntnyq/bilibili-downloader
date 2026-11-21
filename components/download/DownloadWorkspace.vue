@@ -19,64 +19,56 @@ defineProps<{
   runnerError: string
 }>()
 const { jobs } = useDownloadQueue()
-const sections = [
-  {
-    id: 'queue',
-    get label() {
-      return i18n.t('downloadWorkspace.downloadQueue')
-    },
-    get description() {
-      return i18n.t('downloadWorkspace.trackProgressAndManageYourDownloads')
-    },
-    icon: ListVideoIcon,
-  },
-  {
-    id: 'bundles',
-    get label() {
-      return i18n.t('downloadWorkspace.assetBundles')
-    },
-    get description() {
-      return i18n.t('downloadWorkspace.viewAssetsAndBundleResultsByVideo')
-    },
-    icon: LayersIcon,
-  },
-  {
-    id: 'batch',
-    get label() {
-      return i18n.t('downloadWorkspace.batchImport')
-    },
-    get description() {
-      return i18n.t('downloadWorkspace.reviewVideosAndAddThemToTheQueue')
-    },
-    icon: ListPlusIcon,
-  },
-  {
-    id: 'library',
-    get label() {
-      return i18n.t('downloadWorkspace.downloadHistory')
-    },
-    get description() {
-      return i18n.t('downloadWorkspace.findSavedAssetsOrDownloadThemAgainWith')
-    },
-    icon: HistoryIcon,
-  },
-  {
-    id: 'local',
-    get label() {
-      return i18n.t('downloadWorkspace.downloadCache')
-    },
-    get description() {
-      return i18n.t(
-        'downloadWorkspace.checkBrowserStorageUsageAndManageResumableDownloads',
-      )
-    },
-    icon: HardDriveIcon,
-  },
-] as const
 const activeSection = shallowRef('queue')
+const sections = computed(
+  () =>
+    [
+      {
+        id: 'queue',
+        label: i18n.t('downloadWorkspace.downloadQueue'),
+        description: i18n.t(
+          'downloadWorkspace.trackProgressAndManageYourDownloads',
+        ),
+        icon: ListVideoIcon,
+      },
+      {
+        id: 'bundles',
+        label: i18n.t('downloadWorkspace.assetBundles'),
+        description: i18n.t(
+          'downloadWorkspace.viewAssetsAndBundleResultsByVideo',
+        ),
+        icon: LayersIcon,
+      },
+      {
+        id: 'batch',
+        label: i18n.t('downloadWorkspace.batchImport'),
+        description: i18n.t(
+          'downloadWorkspace.reviewVideosAndAddThemToTheQueue',
+        ),
+        icon: ListPlusIcon,
+      },
+      {
+        id: 'library',
+        label: i18n.t('downloadWorkspace.downloadHistory'),
+        description: i18n.t(
+          'downloadWorkspace.findSavedAssetsOrDownloadThemAgainWith',
+        ),
+        icon: HistoryIcon,
+      },
+      {
+        id: 'local',
+        label: i18n.t('downloadWorkspace.downloadCache'),
+        description: i18n.t(
+          'downloadWorkspace.checkBrowserStorageUsageAndManageResumableDownloads',
+        ),
+        icon: HardDriveIcon,
+      },
+    ] as const,
+)
 const currentSection = computed(
   () =>
-    sections.find(section => section.id === activeSection.value) || sections[0],
+    sections.value.find(section => section.id === activeSection.value)
+    || sections.value[0],
 )
 </script>
 

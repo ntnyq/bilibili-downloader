@@ -55,25 +55,10 @@ const {
   addSelected,
   stopAdding,
 } = useBatchImport()
-const { settings, isReady, isSaving, error: settingsError } = preferences
 const isEditingSource = shallowRef(false)
 const isSourceVisible = computed(
   () => isEditingSource.value || !hasPreview.value || isPreviewStale.value,
 )
-const sourceLabels = {
-  get links() {
-    return i18n.t('batchSourceForm.linkList')
-  },
-  get favorites() {
-    return i18n.t('batchSourceForm.favorites')
-  },
-  get collection() {
-    return i18n.t('batchSourceForm.collectionSeries')
-  },
-  get uploads() {
-    return i18n.t('batchSourceForm.uploaderVideos')
-  },
-}
 const step = computed(() =>
   isSourceVisible.value
     ? 1
@@ -112,11 +97,27 @@ const loadNextPageLabel = computed(() => {
 const isOptionsDisabled = computed(
   () =>
     isAdding.value
-    || !isReady.value
-    || isSaving.value
+    || !preferences.isReady.value
+    || preferences.isSaving.value
     || !canEdit.value
     || !!optionsSnapshot.value,
 )
+
+const { settings, error: settingsError } = preferences
+const sourceLabels = {
+  get links() {
+    return i18n.t('batchSourceForm.linkList')
+  },
+  get favorites() {
+    return i18n.t('batchSourceForm.favorites')
+  },
+  get collection() {
+    return i18n.t('batchSourceForm.collectionSeries')
+  },
+  get uploads() {
+    return i18n.t('batchSourceForm.uploaderVideos')
+  },
+}
 
 async function previewSource() {
   await preview()

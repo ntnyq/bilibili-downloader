@@ -18,56 +18,44 @@ const sourceKind = defineModel<BatchSourceKind>('sourceKind', {
 })
 const input = defineModel<string>('input', { required: true })
 
-const sources: {
-  kind: BatchSourceKind
-  label: string
-  hint: string
-  placeholder: string
-}[] = [
+const sources = computed<
+  {
+    kind: BatchSourceKind
+    label: string
+    hint: string
+    placeholder: string
+  }[]
+>(() => [
   {
     kind: 'links',
-    get label() {
-      return i18n.t('batchSourceForm.linkList')
-    },
-    get hint() {
-      return i18n.t('batchSourceForm.oneVideoUrlBvIdOrAvId', [MAX_BATCH_ITEMS])
-    },
+    label: i18n.t('batchSourceForm.linkList'),
+    hint: i18n.t('batchSourceForm.oneVideoUrlBvIdOrAvId', [MAX_BATCH_ITEMS]),
     placeholder:
       'https://www.bilibili.com/video/BV1xx411c7mD/?p=2\nBV1xx411c7mD',
   },
   {
     kind: 'favorites',
-    get label() {
-      return i18n.t('batchSourceForm.favorites')
-    },
-    get hint() {
-      return i18n.t('batchSourceForm.pasteAFavoritesUrlOrIdSignIn')
-    },
+    label: i18n.t('batchSourceForm.favorites'),
+    hint: i18n.t('batchSourceForm.pasteAFavoritesUrlOrIdSignIn'),
     placeholder: 'https://space.bilibili.com/123/favlist?fid=456',
   },
   {
     kind: 'collection',
-    get label() {
-      return i18n.t('batchSourceForm.collectionSeries')
-    },
-    get hint() {
-      return i18n.t('batchSourceForm.openACollectionOrSeriesFromAnUploader')
-    },
+    label: i18n.t('batchSourceForm.collectionSeries'),
+    hint: i18n.t('batchSourceForm.openACollectionOrSeriesFromAnUploader'),
     placeholder: 'https://space.bilibili.com/123/lists/456?type=season',
   },
   {
     kind: 'uploads',
-    get label() {
-      return i18n.t('batchSourceForm.uploaderVideos')
-    },
-    get hint() {
-      return i18n.t('batchSourceForm.pasteAnUploaderProfileUrlOrUidOnly')
-    },
+    label: i18n.t('batchSourceForm.uploaderVideos'),
+    hint: i18n.t('batchSourceForm.pasteAnUploaderProfileUrlOrUidOnly'),
     placeholder: 'https://space.bilibili.com/123/upload/video',
   },
-]
+])
 const activeSource = computed(
-  () => sources.find(item => item.kind === sourceKind.value) || sources[0],
+  () =>
+    sources.value.find(item => item.kind === sourceKind.value)
+    || sources.value[0],
 )
 </script>
 

@@ -6,6 +6,7 @@ import {
   selectSubtitle,
   subtitleInfoSchema,
   subtitlesToSrt,
+  subtitlesToText,
 } from '../../utils/bilibili/subtitles'
 
 test('audio export selects highest available AAC without requiring a video stream', () => {
@@ -109,24 +110,28 @@ test('subtitle absence, login requirements, missing language and untrusted URLs 
   assert.throws(() => selectSubtitle(data, 'auto'), /地址不受支持/)
 })
 
-test('SRT conversion sorts, renumbers, handles carry rounding and normalizes text', () => {
-  const srt = subtitlesToSrt({
+test('SRT and clipboard export share cue validation, order and text cleanup', () => {
+  const subtitles = {
     body: [
       { from: 59.9996, to: 3601.002, content: '第二行\r\n\r\n<内容> & 文本' },
       { from: 0, to: 2.345, content: ' 第一行\u{0} ' },
       { from: 1, to: 2, content: '  ' },
     ],
-  })
+  }
+  const srt = subtitlesToSrt(subtitles)
   assert.ok(srt.startsWith('1\n00:00:00,000 --> 00:00:02,345\n第一行\n\n2\n'))
   assert.ok(srt.includes('00:01:00,000 --> 01:00:01,002'))
   assert.ok(srt.includes('第二行\n&lt;内容&gt; &amp; 文本'))
+  assert.equal(subtitlesToText(subtitles), '第一行\n第二行\n<内容> & 文本')
   assert.throws(() => subtitlesToSrt({ body: [] }), /内容为空/)
+  assert.throws(() => subtitlesToText({ body: [] }), /内容为空/)
   for (const cue of [
     { from: -1, to: 1, content: 'x' },
     { from: 2, to: 1, content: 'x' },
     { from: 0, to: Number.POSITIVE_INFINITY, content: 'x' },
   ]) {
     assert.throws(() => subtitlesToSrt({ body: [cue] }))
+    assert.throws(() => subtitlesToText({ body: [cue] }))
   }
 })
 

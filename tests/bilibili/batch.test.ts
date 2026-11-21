@@ -105,7 +105,7 @@ test('source and video URLs reject foreign hosts, credentials, protocols and mal
 
 test('links preserve order and page selection, report original lines and collapse exact duplicates', () => {
   const result = parseBatchLinks(
-    `\n${BVID}\n\nhttps://www.bilibili.com/video/${BVID}?p=1\nhttps://www.bilibili.com/video/${BVID}?p=2\nav123\nnot a video\n`,
+    `\n${BVID}\n\nhttps://www.bilibili.com/s/video/${BVID}?p=1\nhttps://www.bilibili.com/s/video/${BVID}?p=2\nav123\nnot a video\n`,
   )
   assert.deepEqual(result.items, [
     { videoId: BVID, title: BVID, page: 1 },

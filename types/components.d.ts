@@ -65,6 +65,8 @@ declare module 'vue' {
     DownloadQueueItem: typeof import('./../components/download/queue/DownloadQueueItem.vue')['default']
     DownloadQuickSettings: typeof import('./../components/download/settings/DownloadQuickSettings.vue')['default']
     DownloadSettingsSection: typeof import('./../components/download/settings/DownloadSettingsSection.vue')['default']
+    DownloadSizeEstimate: typeof import('./../components/download/DownloadSizeEstimate.vue')['default']
+    DownloadSubtitleCopy: typeof import('./../components/download/DownloadSubtitleCopy.vue')['default']
     DownloadWorkspace: typeof import('./../components/download/DownloadWorkspace.vue')['default']
     DropdownMenu: typeof import('./../components/ui/dropdown-menu/DropdownMenu.vue')['default']
     DropdownMenuCheckboxItem: typeof import('./../components/ui/dropdown-menu/DropdownMenuCheckboxItem.vue')['default']

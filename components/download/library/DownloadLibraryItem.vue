@@ -25,13 +25,6 @@ const emit = defineEmits<{
   remove: [identity: string]
 }>()
 const isExpanded = shallowRef(false)
-const icons = {
-  video: VideoIcon,
-  audio: Music2Icon,
-  cover: ImageIcon,
-  subtitle: CaptionsIcon,
-  danmaku: MessageSquareIcon,
-}
 const date = computed(
   () => new Date(props.record.completedAt ?? props.record.createdAt),
 )
@@ -42,6 +35,14 @@ const time = computed(() =>
     hour12: false,
   }),
 )
+
+const icons = {
+  video: VideoIcon,
+  audio: Music2Icon,
+  cover: ImageIcon,
+  subtitle: CaptionsIcon,
+  danmaku: MessageSquareIcon,
+}
 </script>
 
 <template>

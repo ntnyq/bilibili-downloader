@@ -323,6 +323,11 @@ downloadPanel:
   bundleAssets:
     1: Bundle · $1 asset
     n: Bundle · $1 assets
+  clipboardUnavailable: Clipboard access is unavailable.
+  copiedSubtitleText: Subtitle text copied
+  copySubtitleFailed: 'Could not copy subtitles: $1'
+  copySubtitleText: Copy subtitle text
+  copyingSubtitleText: Copying…
   downloadAllParts:
     1: Download all $1 part
     n: Download all $1 parts
@@ -339,6 +344,11 @@ downloadPanel:
     n: Download $1 selected parts
   downloadVideo: Download video
   downloadVideoCover: Download video cover
+  estimateSize: Estimate size
+  estimateSizeFailed: 'Could not estimate the download size: $1'
+  estimateSizeUnavailable: Size unavailable
+  estimatedSize: About $1
+  estimatingSize: Estimating…
   findAVideoYouLove: Find a video you love
   loadingVideoInformation: Loading video information…
   oneCoverPerVideo: One cover per video

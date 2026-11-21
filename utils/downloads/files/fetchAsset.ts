@@ -1,12 +1,11 @@
-import { getSubtitle } from '~/utils/bilibili/api'
 import { detectCoverFormat } from '~/utils/bilibili/cover'
 import { normalizeMediaUrl } from '~/utils/bilibili/streams'
 import { subtitlesToSrt } from '~/utils/bilibili/subtitles'
 import { i18n } from '~/utils/i18n'
+import { MAX_ASSET_BYTES } from '../constants'
 import { fetchMediaBytes } from '../media/fetchMediaBytes'
+import { fetchSubtitle } from './fetchSubtitle'
 import type { DownloadJob } from '~/types/download'
-
-const MAX_ASSET_BYTES = 16 * 1024 * 1024
 
 /**
  * Fetches and validates a cover, subtitle, or danmaku without saving the file.
@@ -33,19 +32,19 @@ export async function fetchAsset(
   signal: AbortSignal,
   onProgress: (received: number) => void,
 ) {
+  if (job.kind === 'subtitle') {
+    const { data, label } = await fetchSubtitle(job, signal, onProgress)
+    return {
+      blob: new Blob([subtitlesToSrt(data)], {
+        type: 'application/x-subrip;charset=utf-8',
+      }),
+      extension: 'srt',
+      quality: label,
+    }
+  }
   let url: string | undefined
-  let label = ''
   if (job.kind === 'cover') {
     url = normalizeMediaUrl(job.cover)
-  } else if (job.kind === 'subtitle') {
-    const subtitle = await getSubtitle(
-      job.bvid,
-      job.cid,
-      job.subtitleLanguage,
-      signal,
-    )
-    url = subtitle.url
-    label = subtitle.label
   } else if (job.kind === 'danmaku') {
     url = `https://comment.bilibili.com/${job.cid}.xml`
   }
@@ -68,15 +67,6 @@ export async function fetchAsset(
     }
   }
   const text = new TextDecoder('utf-8', { fatal: true }).decode(bytes)
-  if (job.kind === 'subtitle') {
-    return {
-      blob: new Blob([subtitlesToSrt(JSON.parse(text))], {
-        type: 'application/x-subrip;charset=utf-8',
-      }),
-      extension: 'srt',
-      quality: label,
-    }
-  }
   if (/<!DOCTYPE|<!ENTITY/i.test(text)) {
     throw new Error(i18n.t('fetchAsset.invalidDanmakuXmlNoFileWasSaved'))
   }

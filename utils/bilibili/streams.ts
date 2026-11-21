@@ -92,6 +92,7 @@ export interface MediaInput {
   id: string
   urls: string[]
   bandwidth: number
+  size?: number
 }
 
 export interface SelectedMedia {
@@ -307,6 +308,7 @@ export function selectMedia(
         .map(normalizeMediaUrl)
         .filter((url): url is string => !!url),
       bandwidth: 0,
+      size: stream.size,
     }))
     if (inputs.some(input => !input.urls.length)) {
       throw new Error(i18n.t('streams.thisVideoCdnIsNotSupportedUpdateThe'))

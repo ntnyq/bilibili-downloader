@@ -176,9 +176,13 @@ export function useVideoDownload(url: MaybeRefOrGetter<string>) {
     }
   }
 
-  watch(() => `${location.value?.videoId}:${location.value?.page}`, load, {
-    immediate: true,
-  })
+  watch(
+    () => `${location.value?.videoId}:${location.value?.page}`,
+    () => {
+      return load()
+    },
+    { immediate: true },
+  )
   onScopeDispose(() => {
     requestId++
   })

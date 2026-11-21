@@ -27,6 +27,7 @@ export type { BatchImportRow, BatchSourceKind } from '~/types/batchSession'
 
 export function useBatchImport() {
   const preferences = useDownloadSettings()
+
   const session = shallowRef(createBatchSessionData())
   const revision = shallowRef<number | null>(null)
   const isSessionReady = shallowRef(false)
@@ -229,7 +230,9 @@ export function useBatchImport() {
     }
   }
 
-  watch(preferences.isReady, seedQuality)
+  watch(preferences.isReady, () => {
+    seedQuality()
+  })
 
   async function resetBrokenSession() {
     if (isSessionReady.value || isSavingSession.value) {

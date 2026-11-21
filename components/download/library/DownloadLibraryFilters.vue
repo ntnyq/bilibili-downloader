@@ -14,47 +14,38 @@ defineSlots<{
 }>()
 const search = defineModel<string>('search', { required: true })
 const kind = defineModel<DownloadKind | 'all'>('kind', { required: true })
-const kinds = [
-  {
-    value: 'all',
-    get label() {
-      return i18n.t('downloadLibraryFilters.allAssets')
-    },
-  },
-  {
-    value: 'video',
-    get label() {
-      return i18n.t('downloadLibraryFilters.video')
-    },
-  },
-  {
-    value: 'audio',
-    get label() {
-      return i18n.t('downloadLibraryFilters.audio')
-    },
-  },
-  {
-    value: 'cover',
-    get label() {
-      return i18n.t('downloadLibraryFilters.cover')
-    },
-  },
-  {
-    value: 'subtitle',
-    get label() {
-      return i18n.t('downloadLibraryFilters.subtitles')
-    },
-  },
-  {
-    value: 'danmaku',
-    get label() {
-      return i18n.t('downloadLibraryFilters.danmaku')
-    },
-  },
-] as const
+const kinds = computed(
+  () =>
+    [
+      {
+        value: 'all',
+        label: i18n.t('downloadLibraryFilters.allAssets'),
+      },
+      {
+        value: 'video',
+        label: i18n.t('downloadLibraryFilters.video'),
+      },
+      {
+        value: 'audio',
+        label: i18n.t('downloadLibraryFilters.audio'),
+      },
+      {
+        value: 'cover',
+        label: i18n.t('downloadLibraryFilters.cover'),
+      },
+      {
+        value: 'subtitle',
+        label: i18n.t('downloadLibraryFilters.subtitles'),
+      },
+      {
+        value: 'danmaku',
+        label: i18n.t('downloadLibraryFilters.danmaku'),
+      },
+    ] as const,
+)
 const filters = computed(() => {
   const matching = filterLibraryRecords(props.records, search.value, 'all')
-  return kinds.map(item => ({
+  return kinds.value.map(item => ({
     ...item,
     count:
       item.value === 'all'

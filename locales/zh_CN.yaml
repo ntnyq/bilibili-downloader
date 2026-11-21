@@ -308,6 +308,11 @@ downloadPanel:
   bilibiliFolder: Bilibili 文件夹
   bundleAssets:
     n: 素材组合 · $1 个素材
+  clipboardUnavailable: 当前无法使用剪贴板。
+  copiedSubtitleText: 已复制字幕文本
+  copySubtitleFailed: 复制字幕失败：$1
+  copySubtitleText: 复制字幕文本
+  copyingSubtitleText: 正在复制…
   downloadAllParts:
     n: 下载全部 $1 P
   downloadAssetParts:
@@ -320,6 +325,11 @@ downloadPanel:
     n: 下载所选 $1 P
   downloadVideo: 下载视频
   downloadVideoCover: 下载视频封面
+  estimateSize: 估算大小
+  estimateSizeFailed: 估算下载大小失败：$1
+  estimateSizeUnavailable: 暂无大小信息
+  estimatedSize: 约 $1
+  estimatingSize: 正在估算…
   findAVideoYouLove: 去看看喜欢的视频
   loadingVideoInformation: 正在读取视频信息…
   oneCoverPerVideo: 每个视频保存一份封面
